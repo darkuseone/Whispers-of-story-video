@@ -69,7 +69,7 @@ def make_sparks(out: Path, seconds=20, count=30, seed=1,
     периодов за петлю, они замыкаются по той же причине.
 
     Яркость печатается на полную: сила наложения живёт отдельно, в
-    spark_opacity, чтобы ручка была одна, а не две перемноженные.
+    overlay_opacity, чтобы ручка была одна, а не две перемноженные.
     """
     rng = random.Random(seed)
     frames = int(round(seconds * FPS))
