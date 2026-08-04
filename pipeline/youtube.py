@@ -168,6 +168,8 @@ def thumbnail(video: Path, out: Path, at: float, title: str, style="lower_left")
       lower_band   подпись в плашке во всю ширину внизу   — плотно, «газета»
       upper_left   подпись сверху слева, затемнение сверху — под кадры,
                    где главное в нижней половине
+      centre_band  подпись в плашке по центру кадра — под ночные кадры,
+                   где и верх, и низ тёмные и градиент по краю не читается
     """
     from PIL import Image, ImageDraw, ImageFont, ImageFilter
     raw = out.parent / "_thumb_raw.png"
@@ -177,13 +179,16 @@ def thumbnail(video: Path, out: Path, at: float, title: str, style="lower_left")
     im = Image.open(raw).convert("RGB").resize((W_THUMB, H_THUMB), Image.LANCZOS)
     top = style == "upper_left"
 
-    if style == "lower_band":
+    if style in ("lower_band", "centre_band"):
         # плашка: сплошная полоса, текст на ней всегда читается независимо
-        # от того, что попало в кадр
+        # от того, что попало в кадр. centre_band нужен именно этому
+        # каналу: кадры ночные, у них и верх, и низ тёмные, и градиент от
+        # края на них не виден вовсе — подпись висит в пустоте.
         band = Image.new("RGB", im.size, (0, 0, 0))
         mask = Image.new("L", im.size, 0)
-        ImageDraw.Draw(mask).rectangle([0, H_THUMB - 210, W_THUMB, H_THUMB],
-                                       fill=205)
+        box = ([0, H_THUMB - 210, W_THUMB, H_THUMB] if style == "lower_band"
+               else [0, H_THUMB // 2 - 105, W_THUMB, H_THUMB // 2 + 105])
+        ImageDraw.Draw(mask).rectangle(box, fill=205)
         im = Image.composite(band, im, mask.filter(ImageFilter.GaussianBlur(2)))
     else:
         # градиент от края: мягче, но зависит от содержимого кадра
@@ -198,10 +203,10 @@ def thumbnail(video: Path, out: Path, at: float, title: str, style="lower_left")
                              shade.filter(ImageFilter.GaussianBlur(8)))
 
     d = ImageDraw.Draw(im)
-    size = 54 if style == "lower_band" else 62
+    size = 54 if style in ("lower_band", "centre_band") else 62
     font = ImageFont.truetype(FONT_BOLD, size)
     step = size + 12
-    margin = 46 if style == "lower_band" else 60
+    margin = 46 if style in ("lower_band", "centre_band") else 60
 
     lines, cur = [], ""
     for w in title.split():
@@ -215,6 +220,8 @@ def thumbnail(video: Path, out: Path, at: float, title: str, style="lower_left")
 
     if top:
         y = 52
+    elif style == "centre_band":
+        y = H_THUMB // 2 - len(lines) * step // 2
     elif style == "lower_band":
         y = H_THUMB - 40 - len(lines) * step
     else:

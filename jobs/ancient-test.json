@@ -1,0 +1,80 @@
+{
+  "_": "КОРОТКАЯ СПЕЦИФИКАЦИЯ ДЛЯ ПРОВЕРКИ МОНТАЖА. Не ролик канала: сценарий здесь на четыре коротких главы, чтобы синтетический прогон занимал минуты, а не полчаса. Порядок: python pipeline/mock.py jobs/ancient-test.json && python pipeline/smoke.py jobs/ancient-test.json, либо этап smoke в Actions.",
+
+  "id": "ancient-test",
+
+  "voice_settings": {
+    "stability": 0.64,
+    "similarity": 0.8,
+    "style": 0.0,
+    "speed": 0.92
+  },
+  "bed_gain_db": -27.0,
+
+  "lut": "temple_ash",
+  "archive_lut": "archive_platinum",
+
+  "batch": false,
+  "vet_vision": false,
+  "material_overshoot": 1.0,
+  "fill_limit": 6,
+
+  "topic": {
+    "slug": "test-build-only",
+    "keywords": ["test", "build", "timeline"]
+  },
+
+  "script_blocks": [
+    "This block exists to check the timeline, not to be watched. It has several sentences of different lengths, because the shot boundaries are taken from sentence ends and a block of identical sentences would hide exactly the problems this run is meant to catch. Some sentences are long and unhurried, the way the narrator actually speaks on this channel. Others are short. The point is variety.",
+    "The second block starts a new chapter, and the boundary between chapters is where the longest transition of the video goes. It is worth saying a number here: the city was abandoned around 1200 BC, and nobody has explained it since. That sentence should produce a text card if the style vector asked for one.",
+    "The third block is where the pacing curve is usually at its slowest, so the shots here should be the longest in the plan. If any of them ends up with a short camera move, the smoke run fails and says so. That check exists because a still frame held for thirty seconds is the single worst thing this channel can do.",
+    "The fourth block closes the test. It is deliberately shorter than the others so that the last shot has to stretch to the end of the audio, which is the case that used to cut the narration off. If the timeline and the audio agree to within half a second, the run passes."
+  ],
+
+  "image_prompts": [
+    "ruined stone colonnade at night under a full moon, cool blue light, no people, photoreal, 16:9",
+    "close view of weathered limestone carved with hieroglyphs, raking light, deep shadows, macro, 16:9",
+    "desert horizon before dawn, cold sky, low dunes, atmospheric haze, photoreal, 16:9",
+    "calm dark sea seen from a cliff, moonlight on water, long exposure, photoreal, 16:9",
+    "clay tablet with cuneiform on a dark surface, single cold light source, macro, 16:9",
+    "empty amphitheatre at night, cold stone, star field above, photoreal, 16:9"
+  ],
+
+  "footage_queries": [
+    "ancient ruins columns",
+    "desert sand wind",
+    "night sky stars"
+  ],
+  "archive_queries": [
+    "egyptian relief limestone",
+    "greek marble statue",
+    "cuneiform tablet"
+  ],
+
+  "reject": { "clip": [], "arch": [] },
+
+  "style_override": {
+    "_": "Числа тут не художественные, а проверочные: короткое вступление, чтобы тест не занимал полчаса, и всё остальное как на настоящем ролике.",
+    "intro_footage_seconds": 60,
+    "generated_share": 0.45,
+    "body_clip_share": 0.25,
+    "crf": 26,
+    "fps": 30
+  },
+
+  "youtube": {
+    "title": "Test Build — Ancient Whispers Pipeline",
+    "title_alternatives": ["Test Build"],
+    "description_intro": "Technical test build. Not for publication.",
+    "chapters": [
+      "Timeline check",
+      "Chapter boundary check",
+      "Long shot check",
+      "Tail check"
+    ],
+    "description_notes": "Technical test build.",
+    "hashtags": ["#test"],
+    "tags": ["test"],
+    "thumbnail_at": 30.0
+  }
+}

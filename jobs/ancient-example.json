@@ -1,0 +1,141 @@
+{
+  "_": "ОБРАЗЕЦ СПЕЦИФИКАЦИИ. Скопировать в jobs/<имя>.json и заполнить. Все поля с подчёркивания — комментарии, код их пропускает. Сценарий здесь короткий, на три главы: это образец полей, а не ролик.",
+
+  "id": "ancient-example",
+  "_id": "Имя рабочей папки: work/<id>. Может не совпадать с именем файла; кэш и выкладка смотрят именно на id.",
+
+  "_голос": "Голос канала берётся из секрета ELEVENLABS_VOICE_ID. Поле voice_id здесь — переопределение на случай, когда конкретному ролику нужен другой голос.",
+  "voice_settings": {
+    "_": "Ровный уверенный рассказчик, а не ведущий. stability выше, чем на канале о находках (0.62 против 0.42): чем она выше, тем меньше модель играет интонацией, а игра голосом мешает засыпать. style в нуле по той же причине. speed передаётся, только если задан — не все модели его принимают.",
+    "stability": 0.64,
+    "similarity": 0.80,
+    "style": 0.0,
+    "speed": 0.92
+  },
+
+  "_подложка": "Пять подложек bed1..bed5 лежат в assets/music. Движок выбирает две (журнал канала следит, чтобы соседние ролики не открывались одной музыкой), вторая заходит около середины через перекрёстное затухание. Поле music перебивает жребий: строка — один трек, список — свои две.",
+  "_music_пример": ["assets/music/bed2.mp3", "assets/music/bed5.mp3"],
+  "bed_gain_db": -27.0,
+
+  "_цветокор": "Без этих полей выпадает жребием из холодной семьи, разведённый с тремя последними роликами. Семья: moonlit_marble, nile_indigo, aegean_teal, temple_ash, starlit_lapis, bronze_frost. Архивная: archive_platinum, archive_cyanotype, archive_stone.",
+  "lut": "nile_indigo",
+  "archive_lut": "archive_cyanotype",
+
+  "_генерация": "batch=false — картинки xAI рисуются поштучно и сразу. true вдвое дешевле, но пакет закрывается до суток, и на 30% кадров экономия не стоит ожидания. magnific_share — доля кадров за Magnific, остальное за xAI.",
+  "batch": false,
+  "magnific_share": 0.7,
+  "image_model": "grok-imagine-image",
+
+  "material_overshoot": 1.4,
+  "fill_limit": 24,
+
+  "_отбраковка": "Робот отбирает материал сам: локальный ярус плюс зрение через xAI. vet_vision:false выключает зрение. trusted_sources пуст по умолчанию — здесь отсеивается не «не тот предмет», а не та эпоха, и музейный источник от этого не спасает.",
+  "vet_vision": true,
+
+  "photo_sources": ["wikimedia", "met", "artic", "cleveland", "openverse", "loc"],
+  "video_sources": ["pexels", "pixabay", "archive_org", "wikimedia_video"],
+  "_источники": "Ещё доступны по имени: nasa и nasa_video (ночное небо под сюжеты об астрономии древних), magnific_image и magnific_video — но последние два вручную ставить не надо, они и так вызываются добором по запросам, где ничего не нашлось.",
+
+  "topic": {
+    "slug": "example-topic-slug",
+    "keywords": ["keyword one", "keyword two"]
+  },
+
+  "_сценарий": "Один блок = одна глава = один пункт в chapters. Блок держать до 4800 символов: ElevenLabs режет длинные запросы МОЛЧА, с кодом 200. Проверяет это smoke.py.",
+  "script_blocks": [
+    "First chapter text goes here. It should read like a person talking, not like an encyclopedia.",
+    "Second chapter text goes here. Each block becomes one chapter in the description with its own timecode.",
+    "Third chapter text goes here. Three chapters is the minimum YouTube will display."
+  ],
+
+  "_картинки": "Только то, чего не сохранилось: города при жизни, ночь перед событием, атмосфера, общие планы. Под НАЗВАННЫЙ предмет или место идёт настоящее изображение из архива. Порядок соответствует порядку сценария — по нему кадр ложится под свой кусок текста.",
+  "image_prompts": [
+    "wide view of an ancient city at night under a full moon, cool blue light, no people, photoreal, cinematic, 16:9",
+    "close view of weathered limestone carved with hieroglyphs, raking moonlight, deep shadows, photoreal, macro, 16:9",
+    "calm sea at dusk seen from a ruined colonnade, cold horizon light, atmospheric haze, photoreal, cinematic, 16:9"
+  ],
+
+  "_запросы": "Запрос должен называть ПРЕДМЕТ и МЕСТО, а не настроение: общие слова приводят общий сток. Робот отбракует нерелевантное, но чем точнее запрос, тем меньше уходит в брак.",
+  "footage_queries": [
+    "ancient ruins columns slow pan",
+    "desert sand dunes wind",
+    "night sky stars timelapse"
+  ],
+  "archive_queries": [
+    "egyptian relief limestone",
+    "greek marble statue museum",
+    "cuneiform clay tablet"
+  ],
+
+  "_видеовставки": "video_prompts — промпты для коротких генераций через Magnific, если по теме не нашлось футажа вовсе. Без этого поля они строятся из footage_queries. Потолок 5% от нужного видео плюс суточный лимит, длина 2-3 секунды.",
+  "video_prompts": [
+    "slow drift over ancient stone ruins at night, moonlight, no people, no text, photoreal, 16:9"
+  ],
+
+  "reject": { "clip": [], "arch": [] },
+
+  "style_override": {
+    "_": "ВСЁ ЗДЕСЬ НЕОБЯЗАТЕЛЬНО. Без блока ролик собирается на жребии, разведённом с историей канала. Жёстко заданная ось перестаёт участвовать в разведении — прибив здесь arc и opening, вы вернёте канал к тому состоянию, из-за которого весь этот слой и появился.",
+
+    "_доли": "Сколько экранного ВРЕМЕНИ чему. generated_share — сгенерированному, body_clip_share — видео в теле ролика, intro_clip_share — видео во вступлении.",
+    "generated_share": 0.45,
+    "body_clip_share": 0.25,
+    "intro_clip_share": 0.78,
+
+    "_вступление": "3-5 минут. Видео кусками по 3-8 секунд, изображения по 7-15.",
+    "intro_footage_seconds": 240,
+    "intro_clip_duration_range": [3, 8],
+    "intro_photo_duration_range": [7, 15],
+    "intro_transition_duration_range": [0.6, 1.1],
+
+    "_тело": "База 9-16 секунд, потолок кадра 42. Одно изображение держится 10-40 секунд — но всегда с движением, за этим следит проверка плана.",
+    "base_duration_range": [10.0, 15.0],
+    "max_shot_seconds": 42,
+    "body_clip_every_n_shots": 2,
+
+    "_склейка": "Переходы длинные и мягкие. На границах глав движок сам ставит самый долгий переход ролика, вплоть до ухода в чёрное.",
+    "transition_duration_range": [1.0, 2.4],
+    "hard_cut_probability": 0.0,
+
+    "_эффекты": "Список закрытый; опечатка роняет сборку со списком допустимых. Здесь убраны vhs_dark и prism_1: расслоение каналов — приём про технику, на камне читается как брак.",
+    "effects_enabled": true,
+    "effect_probability": 0.3,
+    "effects": [
+      "cold_mist", "night_swell", "time_dust", "bronze_patina",
+      "deep_water", "charcoal_film", "lapis_gold", "torchlight",
+      "sun_bleached", "moon_bloom", "dream_soft", "vintage_blemish"
+    ],
+
+    "_слой": "Пылинки, звёзды, угли, дымка или ничего. Без поля выпадает жребием, и примерно у трети роликов слоя нет вовсе.",
+    "overlay_kind": "motes",
+    "overlay_opacity": 0.24,
+
+    "_сжатие": "45 минут при crf 22 — около 1.2 ГБ, в пределах лимита GitHub Releases в 2 ГБ. build.py печатает размер и предупреждает.",
+    "crf": 22,
+    "fps": 30
+  },
+
+  "youtube": {
+    "title": "Example Title: What The Ancient World Left Behind",
+    "title_alternatives": [
+      "Second variant of the title",
+      "Third variant of the title"
+    ],
+    "description_intro": "Two or three sentences that say what the video is about, written the way the narrator speaks.",
+    "chapters": [
+      "First chapter name",
+      "Second chapter name",
+      "Third chapter name"
+    ],
+    "description_notes": "A general interest documentary. Dates and figures are given as they are currently understood; where scholars disagree, the video says so.",
+    "hashtags": ["#ancienthistory", "#archaeology", "#history"],
+    "tags": [
+      "ancient history",
+      "archaeology",
+      "ancient egypt",
+      "ancient greece",
+      "sleep documentary"
+    ],
+    "thumbnail_at": 900.0
+  }
+}

@@ -1,18 +1,31 @@
 """
 assets.py — собирает всё, из чего потом монтируется ролик.
 
-Три источника:
+Четыре поставщика:
+
   1. ElevenLabs — озвучка блоками, с посимвольными тайм-кодами.
      Тайм-коды нужны, чтобы кадры менялись на границах предложений,
      а не по таймеру. Механическая нарезка через равные промежутки
      видна зрителю сразу.
-  2. xAI — генерация изображений. Через batch вдвое дешевле, но до суток.
-  3. Шесть открытых архивов — реальные фото и хроника. Только
-     общественное достояние и CC0, всё что требует атрибуции отсекается.
+  2. Magnific — 70% генерации изображений (flux2pro, nano-banana2,
+     seedream5pro), редкие вставки видео по 2-3 секунды и библиотека
+     графики. Подробности и лимиты — в pipeline/magnific.py.
+  3. xAI (grok) — оставшиеся 30% изображений и всё зрение отбраковки.
+     ВИДЕО ЧЕРЕЗ xAI НЕ ГЕНЕРИРУЕТСЯ НИКОГДА: так заказано, и это же
+     арифметически верно — секунда видео там стоит как две дюжины картинок.
+     Через batch картинки вдвое дешевле, но ждать до суток.
+  4. Открытые архивы и стоки — реальные фото, гравюры, хроника, футаж.
+     Только общественное достояние и CC0, всё что требует атрибуции
+     отсекается.
+
+Порядок обращения к ним не случаен: сначала бесплатное и настоящее
+(архивы), потом безлимитное по подписке (Magnific), и только потом
+поштучно оплачиваемое (xAI) и лимитированное (библиотека Magnific).
 """
 
 import json
 import os
+import random
 import re
 import subprocess
 import sys
@@ -22,6 +35,7 @@ from pathlib import Path
 import requests
 
 sys.path.insert(0, str(Path(__file__).parent))
+import magnific
 import vet
 
 UA = {"User-Agent": "sleep-docs-pipeline/1.0 (educational video project)"}
@@ -82,25 +96,44 @@ def log(*a):
 
 # ────────────────────────── ОЗВУЧКА ──────────────────────────
 
-def tts_block(text, out_mp3: Path, voice_id, api_key, stability=0.42,
-              similarity=0.78, style=0.10):
+# Потолок на блок сценария. ElevenLabs режет длинные запросы, и режет он
+# их МОЛЧА: ответ приходит с кодом 200, в нём звук на первые несколько
+# тысяч символов, а хвост главы просто отсутствует. Тайм-коды при этом
+# честные — на ту часть, что озвучена. Обнаруживается такое на готовом
+# ролике, где глава обрывается на полуслове.
+BLOCK_CHARS_WARN = 4800
+
+
+def tts_block(text, out_mp3: Path, voice_id, api_key, stability=0.62,
+              similarity=0.80, style=0.0, speed=None):
     """
     Один блок текста → mp3 + выравнивание по символам.
     Настройки голоса чуть плавают от ролика к ролику — иначе интонация
     становится одинаковой на всём канале.
+
+    ГОЛОС ЗДЕСЬ ДРУГОЙ ПО ХАРАКТЕРУ, и настройки это отражают. Канал
+    слушают перед сном, значит нужен ровный уверенный рассказчик, а не
+    ведущий. stability поднята с 0.42 до 0.62: чем она выше, тем меньше
+    модель играет интонацией, а игра голосом — ровно то, что не даёт
+    заснуть. style опущен в ноль по той же причине.
+
+    speed передаётся ТОЛЬКО если задан в спецификации. Причина
+    техническая: поле поддерживают не все модели, а лишний ключ в
+    voice_settings отдельные из них отклоняют целиком с 422 — и вместо
+    чуть более быстрой начитки получаешь отсутствие начитки.
     """
     url = (f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
            f"/with-timestamps")
+    vs = {"stability": stability, "similarity_boost": similarity,
+          "style": style, "use_speaker_boost": True}
+    if speed is not None:
+        vs["speed"] = float(speed)
     r = requests.post(url, timeout=TIMEOUT,
                       headers={"xi-api-key": api_key,
                                "Content-Type": "application/json"},
                       json={"text": text,
                             "model_id": "eleven_multilingual_v2",
-                            "voice_settings": {
-                                "stability": stability,
-                                "similarity_boost": similarity,
-                                "style": style,
-                                "use_speaker_boost": True}})
+                            "voice_settings": vs})
     if r.status_code != 200:
         # ElevenLabs пишет причину в тело ответа: истёкший ключ, исчерпанная
         # квота, чужой voice_id, блокировка облачного IP на бесплатном тарифе.
@@ -205,10 +238,16 @@ def build_voice(job, work: Path):
             log(f"  блок {i} уже озвучен, пропускаю")
         else:
             log(f"  озвучиваю блок {i} ({len(block)} символов)")
+            if len(block) > BLOCK_CHARS_WARN:
+                log(f"  ! блок {i} длиной {len(block)} символов при разумном "
+                    f"потолке {BLOCK_CHARS_WARN} — ElevenLabs режет длинные "
+                    f"запросы молча, с кодом 200. Разбей главу надвое: "
+                    f"глав в описании станет больше, и это не беда")
             al = tts_block(block, mp3, voice, key,
-                           vs.get("stability", 0.42),
-                           vs.get("similarity", 0.78),
-                           vs.get("style", 0.10))
+                           vs.get("stability", 0.62),
+                           vs.get("similarity", 0.80),
+                           vs.get("style", 0.0),
+                           vs.get("speed"))
             (adir / f"block_{i:02d}.json").write_text(json.dumps(al))
         al = json.loads((adir / f"block_{i:02d}.json").read_text())
         marks += sentence_marks(block, al, offset)
@@ -244,10 +283,19 @@ def _duration(p: Path):
 XAI = "https://api.x.ai/v1"
 
 
-def images_sync(prompts, out: Path, model, key):
-    """Быстрый режим: по одному запросу, полная цена, готово за минуты."""
+def images_sync(items, out: Path, model, key):
+    """
+    Быстрый режим: по одному запросу, полная цена, готово за минуты.
+
+    items — пары (НОМЕР, промпт), а не просто список промптов. Номер
+    приходит снаружи, потому что часть кадров рисует Magnific, и
+    нумерация обязана оставаться сквозной: img_007 — это седьмой промпт
+    сценария, кто бы его ни нарисовал. Своя нумерация у каждого
+    поставщика перебила бы привязку кадра к тексту, ради которой всё и
+    затевалось (пункт 10 задания).
+    """
     out.mkdir(parents=True, exist_ok=True)
-    for i, p in enumerate(prompts, 1):
+    for i, p in items:
         dst = out / f"img_{i:03d}.jpg"
         if dst.exists():
             continue
@@ -260,7 +308,7 @@ def images_sync(prompts, out: Path, model, key):
             continue
         url = r.json()["data"][0]["url"]
         dst.write_bytes(requests.get(url, timeout=120).content)
-        log(f"  картинка {i}/{len(prompts)}")
+        log(f"  картинка {i} (grok)")
 
 
 class BatchFailed(RuntimeError):
@@ -290,7 +338,7 @@ class BatchFailed(RuntimeError):
         self.alive = alive
 
 
-def images_batch(prompts, out: Path, model, key, poll=120, max_wait=5400):
+def images_batch(items, out: Path, model, key, poll=120, max_wait=5400):
     """
     Дешёвый режим: пакет заданий, минус 50% от цены, до суток ожидания.
     Ссылки на готовые файлы живут около часа, поэтому качаем сразу
@@ -323,12 +371,15 @@ def images_batch(prompts, out: Path, model, key, poll=120, max_wait=5400):
         return BatchFailed(reason)
 
     if not state.exists():
+        # custom_id — это будущее имя файла, поэтому номер приходит
+        # снаружи: часть кадров рисует Magnific, и нумерация обязана
+        # оставаться сквозной по сценарию, см. images_sync.
         lines = [json.dumps({
             "custom_id": f"img_{i:03d}",
             "method": "POST",
             "url": "/v1/images/generations",
             "body": {"model": model, "prompt": p, "n": 1},
-        }) for i, p in enumerate(prompts, 1)]
+        }) for i, p in items]
         jsonl = out / "requests.jsonl"
         jsonl.write_text("\n".join(lines))
 
@@ -436,20 +487,128 @@ def images_batch(prompts, out: Path, model, key, poll=120, max_wait=5400):
         (out / f"{cid}.jpg").write_bytes(img.content)
         n += 1
 
-    log(f"  скачано {n} картинок из {len(prompts)}")
+    log(f"  скачано {n} картинок из {len(items)}")
     if n == 0:
         raise reset(
             "пакет не отдал ни одной картинки"
             + (f"; первая причина — {why[0]}" if why else "")
             + ". Состояние сброшено, перезапусти")
-    if n < len(prompts):
-        log(f"  ! не хватает {len(prompts) - n} картинок из пакета — "
+    if n < len(items):
+        log(f"  ! не хватает {len(items) - n} картинок из пакета — "
             f"их закроет добор в fill_gaps")
     return n
 
 
+# ────────── РАСПРЕДЕЛЕНИЕ КАРТИНОК МЕЖДУ ПОСТАВЩИКАМИ ──────────
+
+# Доля кадров, которую рисует Magnific. Остальное — xAI, как на соседнем
+# канале. Заказано прямо: 70 на 30.
+MAGNIFIC_SHARE = 0.70
+
+
+def split_providers(prompts, share=MAGNIFIC_SHARE, seed=0):
+    """
+    Делит промпты между Magnific и xAI. Возвращает (magnific, xai) —
+    списки пар (номер, промпт), нумерация сквозная от единицы.
+
+    ДЕЛИТСЯ ПЕРЕМЕШАННО, а не первые 70% против последних 30%. Промпты
+    написаны в порядке сценария, и подряд идущий кусок означал бы, что
+    вся вторая половина ролика нарисована одной моделью — то есть виден
+    шов ровно там, где зритель уже втянулся. Перемешивание детерминировано
+    (seed из id ролика): пересборка не должна перерисовывать кадры.
+
+    Тот же принцип разводит и почерк внутри доли Magnific: там модели
+    чередуются по кругу, см. magnific.pick_image_model.
+    """
+    items = list(enumerate(prompts, 1))
+    if not items:
+        return [], []
+    rng = random.Random(seed)
+    order = items[:]
+    rng.shuffle(order)
+    n_mag = int(round(len(order) * share))
+    mag = sorted(order[:n_mag])
+    xai = sorted(order[n_mag:])
+    return mag, xai
+
+
+def build_images(job, prompts, out: Path, xai_model, xai_key):
+    """
+    Все изображения ролика: Magnific и xAI вместе.
+
+    ПАДАТЬ ЗДЕСЬ НЕЛЬЗЯ ИЗ-ЗА ОДНОГО ПОСТАВЩИКА. К этому моменту озвучка
+    уже сделана и уже оплачена; потерять её из-за того, что у одного из
+    двух сервисов день не задался, дороже, чем дорисовать кадры вторым.
+    Поэтому всё, что не вышло у Magnific, уезжает в очередь xAI, и
+    наоборот — если xAI недоступен, его доля уходит в Magnific.
+
+    Возвращает число готовых файлов.
+    """
+    out.mkdir(parents=True, exist_ok=True)
+    share = float(job.get("magnific_share", MAGNIFIC_SHARE))
+    mag_key = magnific.available()
+    if not mag_key:
+        log("  ! MAGNIFIC_API_KEY не задан — всё рисует xAI")
+        share = 0.0
+    if not xai_key:
+        log("  ! XAI_API_KEY не задан — всё рисует Magnific")
+        share = 1.0
+
+    mag, xai = split_providers(prompts, share, seed=style_seed(job["id"]))
+    log(f"  делёж: Magnific {len(mag)}, xAI {len(xai)} "
+        f"(заказано {share*100:.0f}%)")
+
+    failed = []
+    for n, (i, p) in enumerate(mag):
+        dst = out / f"img_{i:03d}.jpg"
+        if dst.exists():
+            continue
+        model = magnific.pick_image_model(n)
+        if magnific.generate_image(p, dst, model):
+            log(f"  картинка {i} ({model})")
+        else:
+            failed.append((i, p))
+    if failed:
+        log(f"  ! Magnific не отдал {len(failed)} картинок — "
+            f"передаю их xAI")
+        xai = sorted(xai + failed)
+
+    if xai and xai_key:
+        if job.get("batch", False):
+            # Пакет вдвое дешевле, но он же вдвое ненадёжнее: он может
+            # закрыться пустым, протухнуть или потерять файл результатов.
+            try:
+                images_batch(xai, out, xai_model, xai_key)
+            except BatchFailed as e:
+                if e.alive:
+                    # Пакет жив и будет выставлен в счёт. Уйти сейчас в
+                    # поштучную генерацию значит оплатить одни и те же
+                    # картинки дважды.
+                    raise SystemExit(
+                        f"{e}\n\nПоштучную догенерацию НЕ запускаю: пакет "
+                        f"живой и всё равно будет оплачен, а поштучная "
+                        f"стоила бы вдвое дороже за те же картинки.")
+                log(f"  ! пакет не сложился: {e}")
+                log("  перехожу на поштучную генерацию (полная цена вместо "
+                    "половинной) — иначе теряется уже оплаченная озвучка")
+                images_sync(xai, out, xai_model, xai_key)
+        else:
+            images_sync(xai, out, xai_model, xai_key)
+    elif xai:
+        log(f"  ! {len(xai)} картинок некому нарисовать: xAI недоступен, "
+            f"а Magnific их уже не осилил")
+
+    return len(list(out.glob("img_*.jpg")))
+
+
+def style_seed(video_id: str) -> int:
+    """Тот же seed, что у движка стиля: делёж обязан быть воспроизводимым."""
+    import hashlib
+    return int(hashlib.sha256(video_id.encode()).hexdigest()[:12], 16)
+
+
 # ────────────────────────── АРХИВЫ ──────────────────────────
-# Ключ нужен только Smithsonian. Остальные пять открыты.
+# Ключ нужен только Smithsonian. Остальные открыты.
 
 def ok(r, name, q):
     """
@@ -736,6 +895,59 @@ def src_nasa_video(q, n):
     return out
 
 
+def src_magnific_image(q, n):
+    """
+    Библиотека Magnific, фото и графика. ИСТОЧНИК ПОСЛЕДНЕЙ ОЧЕРЕДИ.
+
+    В умолчаниях его нет и быть не должно: у него суточный лимит в
+    10-15 файлов на все ролики сразу, а у Wikimedia лимита нет вовсе.
+    Вызывается только доборным проходом по тем запросам, по которым
+    открытые архивы не дали НИЧЕГО, — см. magnific_fallback.
+    """
+    return magnific.search_library(q, n, "image")
+
+
+def src_magnific_video(q, n):
+    """Библиотека Magnific, видео. Тоже последняя очередь, см. выше."""
+    return magnific.search_library(q, n, "video")
+
+
+def src_openverse(q, n):
+    """
+    Openverse — общий поиск по открытым коллекциям, ключ не нужен.
+
+    Добавлен под этот канал. Причина в арифметике: сорок пять минут при
+    доле изображений в 70-80% требуют втрое больше картинок, чем
+    двадцатиминутный ролик, а музейные API отдают по узкому запросу
+    единицы. Openverse ходит сразу по многим коллекциям и по запросам
+    вроде «hieroglyphs», «roman mosaic», «acropolis» отдаёт десятки.
+
+    Лицензии фильтруются на стороне сервиса: cc0 и pdm — то, что можно
+    брать без атрибуции. Всё остальное не запрашивается вовсе.
+    """
+    r = requests.get("https://api.openverse.org/v1/images/", timeout=TIMEOUT,
+                     headers=UA,
+                     params={"q": q, "license": "cc0,pdm",
+                             "page_size": min(n * 2, 40),
+                             "mature": "false"})
+    if not ok(r, "openverse", q):
+        return []
+    out = []
+    for it in (r.json().get("results") or []):
+        url = it.get("url") or it.get("thumbnail")
+        if not url:
+            continue
+        # мелочь отсекаем здесь: миниатюра на 400 пикселей в кадре 1920
+        # растянется и будет мылом, а холст мы всегда УМЕНЬШАЕМ
+        w = it.get("width") or 0
+        if w and w < 900:
+            continue
+        out.append({"url": url, "src": "openverse", "kind": "image"})
+        if len(out) >= n:
+            break
+    return out
+
+
 def src_met(q, n):
     """Met Museum. Ключ не нужен, только объекты в открытом доступе."""
     r = requests.get("https://collectionapi.metmuseum.org/public/collection/"
@@ -839,15 +1051,23 @@ def src_wikimedia_video(q, n):
 # Источники по умолчанию. Список СВОЙ У КАНАЛА и задаётся в спецификации
 # полями video_sources / photo_sources — здесь только умолчание.
 #
-# NASA из фото убрана. Это космическое агентство: на канале про древности
-# по любому запросу оно отдаёт снимки Земли и техники, то есть чистый шум.
-# В исходном проекте (научно-исторический канал) она была на месте.
+# Набор пересобран под древний мир. Что изменилось против канала о находках
+# и почему:
 #
-# Замер на первом прогоне pawn-01, 40 архивных фото: Met дал почти весь
-# годный материал — предметы, мебель, часы, живопись. Library of Congress
-# отдал в основном обложки книг и обмеры зданий, годного меньше половины.
-# Wikimedia не дала ничего: фильтр лицензий отсекает почти всё, что она
-# находит по предметным запросам.
+#   wikimedia поднята в начало. На предметных запросах о барахолке она не
+#     давала ничего, потому что фильтр лицензий отсекал почти всё. По
+#     запросам «karnak», «parthenon», «cuneiform tablet» ситуация обратная:
+#     археологическая съёмка почти вся либо общественное достояние по
+#     возрасту, либо выложена музеями под CC0.
+#   openverse добавлена — см. её собственный комментарий. Сорок пять минут
+#     при 70-80% изображений требуют втрое больше картинок, чем ролик на
+#     двадцать минут, и музейных API на это не хватает.
+#   nasa ВЕРНУЛАСЬ, но только по имени, не в умолчаниях. На канале о
+#     находках она была чистым шумом; здесь у неё есть ровно одно honest
+#     применение — ночное небо и звёздные поля под сюжеты об астрономии
+#     древних. Включать её надо осознанно, полем photo_sources.
+#   met, artic, cleveland остались: три предметных музея с сильнейшими
+#     египетскими, греческими и римскими коллекциями в открытом доступе.
 ALL_SOURCES = {
     # видео
     "pexels": src_pexels,
@@ -856,19 +1076,21 @@ ALL_SOURCES = {
     "wikimedia_video": src_wikimedia_video,
     "nasa_video": src_nasa_video,
     # фото
+    "wikimedia": src_wikimedia,
     "met": src_met,
     "artic": src_artic,
     "cleveland": src_cleveland,
+    "openverse": src_openverse,
     "loc": src_loc,
-    "wikimedia": src_wikimedia,
     "nasa": src_nasa,
+    # последняя очередь, в умолчаниях отсутствуют намеренно
+    "magnific_image": src_magnific_image,
+    "magnific_video": src_magnific_video,
 }
 
 VIDEO_SOURCES = [src_pexels, src_pixabay, src_archive_org, src_wikimedia_video]
-# Met, Чикаго и Кливленд идут первыми: все три — предметные музеи, и по
-# предметному запросу отдают предмет. Library of Congress оставлен следом,
-# но он же и главный поставщик книжных обложек, которые потом бракует зрение.
-PHOTO_SOURCES = [src_met, src_artic, src_cleveland, src_loc, src_wikimedia]
+PHOTO_SOURCES = [src_wikimedia, src_met, src_artic, src_cleveland,
+                 src_openverse, src_loc]
 
 
 def sources_from(job, key, default):
@@ -1102,6 +1324,19 @@ def check_keys():
     probe("PIXABAY_API_KEY", "https://pixabay.com/api/",
           None, {"key": pix, "q": "test", "per_page": 3})
 
+    # Magnific проверяется своим модулем: у него свой базовый адрес,
+    # который может быть переопределён переменной окружения, и своя
+    # логика «не разобрались — это не отказ».
+    ok_mag, why_mag = magnific.probe()
+    if ok_mag is True:
+        log(f"  + MAGNIFIC_API_KEY: {why_mag}")
+    elif ok_mag is False:
+        log(f"  ! MAGNIFIC_API_KEY: {why_mag}")
+        bad.append("MAGNIFIC_API_KEY")
+    else:
+        log(f"  ? MAGNIFIC_API_KEY: {why_mag}")
+    log(f"  . {magnific.report()}")
+
     if bad:
         raise SystemExit(
             "Сервисы не приняли ключи: " + ", ".join(bad) + ".\n"
@@ -1112,6 +1347,45 @@ def check_keys():
 
 
 # ────────────────────────── ГЛАВНОЕ ──────────────────────────
+
+def magnific_fallback(job, work: Path, queries, got, folder, kind, media):
+    """
+    ДОБОР ИЗ БИБЛИОТЕКИ MAGNIFIC по запросам, которые не дали ничего.
+
+    Условие заказчика дословно: брать оттуда только необходимое и только
+    если не нашлось в других базах стоков. Здесь это записано буквально —
+    в добор идут ровно те запросы, по которым обычные источники вернули
+    ноль файлов. Запрос, давший хотя бы один, в добор не попадает, даже
+    если этот один потом забракует зрение: платить лимитом за
+    «маловато» нельзя, лимит суточный и общий на все ролики.
+
+    Списание в журнал идёт по ФАКТУ скачивания, а не по числу найденных
+    ссылок: поиск может отдать десять, из которых лягут на диск три.
+    """
+    if not magnific.available():
+        return []
+    fed = {row.get("q") for row in got}
+    starving = [q for q in queries if q not in fed]
+    if not starving:
+        return []
+    left = magnific.remaining("library")
+    if left <= 0:
+        log(f"  magnific: {len(starving)} запросов без материала, но "
+            f"суточный лимит библиотеки выбран ({magnific.DAILY_LIBRARY_LIMIT})")
+        return []
+    log(f"  ── добор из библиотеки Magnific: {len(starving)} запросов без "
+        f"материала, лимита на сутки осталось {left}")
+    src = [src_magnific_video if media == "video" else src_magnific_image]
+    # По одному-два файла на запрос: лимит маленький, и размазать его по
+    # разным темам полезнее, чем закрыть одну.
+    extra = gather(starving, 2, src, work / folder, kind,
+                   budget=min(GATHER_BUDGET, 180))
+    n = sum(1 for row in extra if row.get("src") == "magnific")
+    if n:
+        magnific.note_library(n)
+    log(f"  {magnific.report()}")
+    return extra
+
 
 def fetch_material(job, work: Path):
     """
@@ -1137,12 +1411,22 @@ def fetch_material(job, work: Path):
     over = float(job.get("material_overshoot", 1.4))
     log("── футажи (" + ", ".join(f.__name__[4:] for f in vids) +
         f", запас x{over:g})")
-    gather(job["footage_queries"], max(1, round(7 * over)), vids,
-           work / "footage", "clip")
+    got_v = gather(job["footage_queries"], max(1, round(5 * over)), vids,
+                   work / "footage", "clip")
+    # ФОТО КАЧАЕМ БОЛЬШЕ, ЧЕМ ВИДЕО, и это переворот против канала о
+    # находках: там на кадр шёл сток, а фото закрывало паузы. Здесь тело
+    # ролика на 70-80% состоит из изображений, а видео занимает 20-30%
+    # только первых минут. Множители поменялись местами ровно поэтому.
     log("── реальные фото из архивов (" +
         ", ".join(f.__name__[4:] for f in phot) + ")")
-    gather(job["archive_queries"], max(1, round(4 * over)), phot,
-           work / "archive", "arch")
+    got_a = gather(job["archive_queries"], max(1, round(6 * over)), phot,
+                   work / "archive", "arch")
+
+    # И только теперь — библиотека Magnific, по тем запросам, где пусто.
+    magnific_fallback(job, work, job["footage_queries"], got_v,
+                      "footage", "clip", "video")
+    magnific_fallback(job, work, job["archive_queries"], got_a,
+                      "archive", "arch", "image")
 
 
 def fill_gaps(job, work: Path, total: float, model, key):
@@ -1158,9 +1442,14 @@ def fill_gaps(job, work: Path, total: float, model, key):
     равно поднимается выше заказанной — но это честнее повтора: зритель
     видит разное, а не одно и то же трижды.
 
-    ВИДЕО НЕ ГЕНЕРИРУЕТСЯ. Оно дорогое, и на этом канале не нужно: нехватку
-    футажа закрывает фотография с движением камеры, которую от плавного
-    стокового кадра на общем плане не отличить.
+    ВИДЕО ГЕНЕРИРУЕТСЯ, но по каплям. На канале о находках его не было
+    вовсе: у xAI секунда видео стоит как две дюжины картинок, и нехватку
+    футажа честнее закрывать фотографией с движением камеры. Здесь у
+    Magnific видео входит в подписку, и запрет снят — но не отменён:
+    потолок 5% от нужного ролику видео плюс суточный лимит, вставки по
+    2-3 секунды, и только когда по теме не нашлось НИЧЕГО. Причина не в
+    деньгах, а в узнаваемости: сгенерированное видео видно сразу, и чем
+    его больше, тем быстрее ролик читается как машинный.
     """
     rej = vet.rejected_from(work)
     def usable(folder, pat, kind):
@@ -1174,17 +1463,29 @@ def fill_gaps(job, work: Path, total: float, model, key):
                 out += 1
         return out
 
-    real = usable("archive", "arch_*", "arch") + usable("footage", "clip_*", "clip")
+    have_clip = usable("footage", "clip_*", "clip")
+    real = usable("archive", "arch_*", "arch") + have_clip
     have_gen = len(list((work / "images").glob("img_*")))
 
     # Сколько кадров в ролике и сколько из них под реальный материал.
     # Один файл спокойно показывается два-три раза разными кадрированиями,
     # поэтому нужное число файлов делится на 2.5.
-    base = float((job.get("style_override") or {}).get(
-        "base_duration_range", [4.2, 5.6])[0]) or 4.8
-    share = float((job.get("style_override") or {}).get("generated_share", 0.30))
+    ov = job.get("style_override") or {}
+    base = float(ov.get("base_duration_range", [9.0, 16.0])[0]) or 11.0
+    share = float(ov.get("generated_share", 0.45))
     shots = max(8, int(total / base))
     need_real = int(shots * (1 - share) / 2.5)
+
+    # ── видео: хватает ли, и не пора ли добрать генерацией ──
+    # Клипов ролику нужно немного: 20-30% экранного времени при среднем
+    # клиповом кадре в шесть секунд. Считаем по времени, а не по кадрам,
+    # потому что во вступлении кадры короткие, а в теле длинные.
+    clip_share = float(ov.get("body_clip_share", 0.25))
+    clip_seconds = total * clip_share
+    # каждый файл идёт в дело до трёх раз разными кусками, см. ClipCutter
+    need_clips = max(3, int(clip_seconds / 6.0 / 3.0))
+    if have_clip < need_clips:
+        fill_video(job, work, need_clips - have_clip, need_clips)
 
     # have_gen СЧИТАЛСЯ И НЕ ИСПОЛЬЗОВАЛСЯ — мёртвая переменная, ровно та
     # ошибка, от которой заведён smoke.py. Из-за неё добор смотрел только
@@ -1219,17 +1520,95 @@ def fill_gaps(job, work: Path, total: float, model, key):
     return _fill_generate(job, work, missing, model, key)
 
 
+def fill_video(job, work: Path, missing: int, need_clips: int):
+    """
+    ДОГЕНЕРАЦИЯ КОРОТКИХ ВСТАВОК, когда футажа по теме не нашлось.
+
+    Три ограничения сразу, и все три обязательны:
+
+      5% от нужного ролику видео   — потолок доли, считает magnific.video_budget
+      суточный лимит                — общий на все ролики и все пересборки
+      2-3 секунды на вставку        — длиннее модели разваливают кадр
+
+    Промпты берутся из поля video_prompts спецификации, а если его нет —
+    из запросов к футажу: они описывают ровно то, чего не нашлось
+    настоящим. К запросу дописывается характер съёмки, иначе модель
+    выдаёт статичную открытку вместо движения, а нам нужно именно
+    движение — за неподвижным кадром сюда бы не пошли, для этого есть
+    изображения с ходом камеры.
+    """
+    if not magnific.available():
+        log("  ! футажа не хватает, а MAGNIFIC_API_KEY не задан — "
+            "нехватку закроют изображения с движением камеры")
+        return 0
+    budget = magnific.video_budget(need_clips)
+    if budget <= 0:
+        log(f"  футажа не хватает {missing}, но генерировать нечего: "
+            f"потолок 5% от {need_clips} нужных клипов и суточный лимит "
+            f"({magnific.used_today('video')}/{magnific.DAILY_VIDEO_LIMIT}) "
+            f"не оставляют места")
+        return 0
+    n = min(missing, budget)
+    prompts = job.get("video_prompts") or [
+        f"{q}, slow cinematic camera move, natural light, no text, "
+        f"no people facing camera, photoreal, 16:9"
+        for q in job.get("footage_queries", [])
+    ]
+    if not prompts:
+        log("  ! нечем догенерировать видео: нет ни video_prompts, "
+            "ни footage_queries")
+        return 0
+
+    out = work / "footage"
+    out.mkdir(parents=True, exist_ok=True)
+    rng = random.Random(style_seed(job["id"]))
+    log(f"  ! футажа не хватает {missing}; генерирую {n} вставок по 2-3 с "
+        f"(потолок {budget})")
+
+    got, rows = 0, []
+    for k in range(n):
+        # Номера с 900, как и у добора картинок: основная нумерация
+        # принадлежит скачанному, и перебивать её нельзя — на неё
+        # ссылаются номера в листах отбора.
+        dst = out / f"clip_{900 + k:03d}_magnific.mp4"
+        p = prompts[k % len(prompts)]
+        if magnific.generate_video(p, dst, rng=rng):
+            got += 1
+            rows.append({"file": str(dst), "q": p, "url": f"magnific-gen:{k}",
+                         "src": "magnific-gen", "kind": "video"})
+    if rows:
+        # В манифест — наравне со скачанным: по полю q build.py берёт
+        # слова для смыслового подбора, иначе вставка ляжет под текст
+        # случайно, а vet.py по полю src узнаёт, что это наша генерация,
+        # и не тратит на неё зрение.
+        man = out / "_manifest.json"
+        old = []
+        if man.exists():
+            try:
+                old = json.loads(man.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                old = []
+        man.write_text(json.dumps(old + rows, indent=1, ensure_ascii=False))
+    log(f"  сгенерировано вставок: {got} из {n}. {magnific.report()}")
+    return got
+
+
 def _fill_generate(job, work: Path, missing: int, model, key):
     """
     Собственно добор генерацией. Вынесено из fill_gaps, потому что вызывать
     его нужно из двух мест: когда не хватает реального материала и когда не
     хватает самой генерации.
+
+    Первым идёт Magnific: он безлимитный по подписке, а добор — это как раз
+    тот случай, когда кадров нужно много и сразу. xAI подхватывает только
+    то, что Magnific не осилил.
     """
     # Промпты добора: из спецификации, иначе строятся из архивных запросов —
-    # они описывают ровно те предметы, которых не нашлось настоящими.
+    # они описывают ровно те предметы и места, которых не нашлось настоящими.
     base_prompts = job.get("fill_prompts") or [
-        f"{q}, authentic looking, warm lamp light, aged materials, "
-        f"shallow depth of field, photographic, cinematic, 16:9"
+        f"{q}, ancient world, weathered stone and bronze, cool moonlight, "
+        f"deep shadows, atmospheric haze, shallow depth of field, "
+        f"photoreal, cinematic, no text, 16:9"
         for q in job.get("archive_queries", [])
     ]
     if not base_prompts:
@@ -1247,6 +1626,13 @@ def _fill_generate(job, work: Path, missing: int, model, key):
             got += 1
             continue
         p = base_prompts[k % len(base_prompts)]
+        if magnific.available() and magnific.generate_image(
+                p, dst, magnific.pick_image_model(k)):
+            got += 1
+            log(f"  добор {k+1}/{missing} (magnific)")
+            continue
+        if not key:
+            continue
         r = requests.post(f"{XAI}/images/generations", timeout=180,
                           headers={"Authorization": f"Bearer {key}",
                                    "Content-Type": "application/json"},
@@ -1261,7 +1647,7 @@ def _fill_generate(job, work: Path, missing: int, model, key):
             continue
         dst.write_bytes(requests.get(url, timeout=120).content)
         got += 1
-        log(f"  добор {k+1}/{missing}")
+        log(f"  добор {k+1}/{missing} (grok)")
     # промпты добора кладутся рядом: build.py возьмёт из них слова для
     # смыслового подбора, иначе эти кадры лягут под текст случайно
     (out / "_fill_prompts.json").write_text(
@@ -1302,45 +1688,23 @@ def main(job_path, stage="all"):
     voice, marks, total = build_voice(job, work)
 
     log("── изображения")
-    key = os.environ["XAI_API_KEY"].strip()
+    key = (os.environ.get("XAI_API_KEY") or "").strip()
     model = job.get("image_model", "grok-imagine-image")
     prompts = job["image_prompts"]
-    if job.get("batch", True):
-        # Пакет вдвое дешевле, но он же вдвое ненадёжнее: он может
-        # закрыться пустым, протухнуть или потерять файл результатов.
-        # Ронять на этом ВЕСЬ прогон нельзя — озвучка к этому моменту уже
-        # сделана и уже оплачена, и потерять её из-за неудачного пакета
-        # дороже, чем добрать картинки поштучно по полной цене.
-        try:
-            images_batch(prompts, work / "images", model, key)
-        except BatchFailed as e:
-            if e.alive:
-                # Пакет жив и будет выставлен в счёт. Уйти сейчас в
-                # поштучную генерацию значит оплатить одни и те же
-                # картинки дважды. Останавливаемся; состояние сохранено,
-                # перезапуск подхватит пакет там же, где бросили.
-                raise SystemExit(
-                    f"{e}\n\nПоштучную догенерацию НЕ запускаю: пакет живой "
-                    f"и всё равно будет оплачен, а поштучная стоила бы "
-                    f"вдвое дороже за те же картинки.")
-            log(f"  ! пакет не сложился: {e}")
-            log("  перехожу на поштучную генерацию (полная цена вместо "
-                "половинной) — иначе теряется уже оплаченная озвучка")
-            images_sync(prompts, work / "images", model, key)
-    else:
-        images_sync(prompts, work / "images", model, key)
+    made = build_images(job, prompts, work / "images", model, key)
 
     # ПРОВЕРКА СРАЗУ, А НЕ НА МОНТАЖЕ. Без этой строки пустая папка
     # картинок доезжала до build.py, то есть до момента, когда уже
     # отработали отбраковка зрением и добор материала, а пустой результат
     # уехал в кэш. Падать надо там, где сломалось.
-    made = len(list((work / "images").glob("img_*.jpg")))
     if not made:
         raise SystemExit(
-            "генерация не дала ни одной картинки.\n"
-            "Ни пакетом, ни поштучно — значит, дело не в пакете, а в "
-            "ключе XAI_API_KEY, в модели (" + model + ") или в самих "
-            "промптах: их мог отклонить фильтр содержания.\n"
+            "генерация не дала ни одной картинки — ни через Magnific, ни "
+            "через xAI.\n"
+            "Значит, дело не в отдельном сервисе, а в ключах "
+            "(MAGNIFIC_API_KEY, XAI_API_KEY), в адресе Magnific "
+            f"({magnific.BASE}), в модели ({model}) или в самих промптах: "
+            "их мог отклонить фильтр содержания.\n"
             "Причины по каждому промпту напечатаны выше.")
     log(f"  картинок готово: {made} из {len(prompts)}")
 

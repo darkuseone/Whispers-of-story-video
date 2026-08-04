@@ -70,7 +70,32 @@ def prepare_image(src: Path, dst: Path, framing: dict):
     im.save(dst, quality=95)
 
 
-def motion_filter(move: str, speed: float, dur: float) -> str:
+def ease_expr(kind: str, dur: float) -> str:
+    """
+    Выражение прогресса 0..1 по времени, с заданной формой кривой.
+
+    Раньше форма была одна на все движения — сглаживание 3p²−2p³. Для
+    кадра в пять секунд это правильно и незаметно. Для ДОЛГОГО ПРОЕЗДА
+    это ошибка: у такой кривой середина идёт вдвое быстрее краёв, и на
+    кадре в тридцать секунд зритель видит, как камера разгоняется к
+    середине и тормозит к концу. Проезд обязан идти равномерно.
+
+      smooth  3p²−2p³ — мягкий старт и мягкая остановка (умолчание)
+      linear  p — равномерно, для долгих проездов
+      out     1−(1−p)² — быстрый заход, долгое успокоение
+      in      p² — медленный заход, разгон к концу
+    """
+    p = f"min(t/{dur:.3f},1)"
+    if kind == "linear":
+        return f"({p})"
+    if kind == "out":
+        return f"(1-pow(1-{p},2))"
+    if kind == "in":
+        return f"pow({p},2)"
+    return f"(3*pow({p},2)-2*pow({p},3))"
+
+
+def motion_filter(move: str, speed: float, dur: float, ease: str = None) -> str:
     """Строит цепочку фильтров для одного движения камеры."""
     m = MOVES[move]
     w0, w1 = m["w0"], m["w1"]
@@ -78,9 +103,7 @@ def motion_filter(move: str, speed: float, dur: float) -> str:
     x0, x1 = m["x0"], m["x1"]
     y0, y1 = m["y0"], m["y1"]
 
-    # p — прогресс 0..1, сглаженный (ease-in-out), чтобы движение
-    # начиналось и заканчивалось плавно, а не рывком
-    p = f"(3*pow(min(t/{dur:.3f},1),2)-2*pow(min(t/{dur:.3f},1),3))"
+    p = ease_expr(ease or m.get("ease") or "smooth", dur)
 
     wexpr = f"trunc(({w0:.1f}+({w1 - w0:.1f})*{p})/2)*2"
     xexpr = f"(iw-{W})*({x0:.3f}+({x1 - x0:.3f})*{p})"
@@ -111,8 +134,8 @@ def with_effect(vf: str, effect) -> str:
 
 
 def render_clip(image: Path, out: Path, move: str, speed: float, dur: float,
-                effect=None):
-    vf = with_effect(motion_filter(move, speed, dur), effect)
+                effect=None, ease=None):
+    vf = with_effect(motion_filter(move, speed, dur, ease), effect)
     cmd = (f"ffmpeg -y -loop 1 -t {dur:.3f} -r {FPS} -i {shlex.quote(str(image))} "
            f"-vf {shlex.quote(vf)} -c:v libx264 -crf 18 -preset veryfast "
            f"-pix_fmt yuv420p -an {shlex.quote(str(out))}")
@@ -121,7 +144,7 @@ def render_clip(image: Path, out: Path, move: str, speed: float, dur: float,
 
 # Движение камеры ПО ГОТОВОМУ ВИДЕО. Отдельно от MOVES: те выставлены под
 # холст в 3000 пикселей, а сток приходит в 1920 — те же амплитуды означали бы
-# растяжение вдвое и мыло. Здесь ход мягкий, до 8%: клип и так живой, задача
+# растяжение вдвое и мыло. Здесь ход мягкий, до 9%: клип и так живой, задача
 # не «оживить», а СДЕЛАТЬ ПОВТОР НЕУЗНАВАЕМЫМ. Один и тот же кусок, взятый
 # вторым разом с медленным наездом вместо статики, читается как другой кадр.
 FOOTAGE_MOVES = {
@@ -130,13 +153,18 @@ FOOTAGE_MOVES = {
     "drift_left":  dict(z0=1.07, z1=1.07, x0=0.72, x1=0.28, y0=0.5, y1=0.5),
     "drift_right": dict(z0=1.07, z1=1.07, x0=0.28, x1=0.72, y0=0.5, y1=0.5),
     "drift_up":    dict(z0=1.07, z1=1.07, x0=0.5, x1=0.5, y0=0.70, y1=0.30),
+    # Диагонали и «оседание» добавлены под этот канал: клипов в теле мало
+    # (20-30% времени), и каждый повтор виден отчётливее, чем на канале,
+    # где сток шёл через каждые три кадра.
+    "drift_diag":  dict(z0=1.02, z1=1.09, x0=0.30, x1=0.66, y0=0.66, y1=0.34),
+    "drift_settle": dict(z0=1.09, z1=1.02, x0=0.58, x1=0.46, y0=0.40, y1=0.52),
 }
 
 
-def footage_motion(move: str, dur: float) -> str:
+def footage_motion(move: str, dur: float, ease: str = "smooth") -> str:
     """Цепочка плавного хода камеры поверх уже приведённого кадра 1920x1080."""
     m = FOOTAGE_MOVES[move]
-    p = f"(3*pow(min(t/{dur:.3f},1),2)-2*pow(min(t/{dur:.3f},1),3))"
+    p = ease_expr(ease, dur)
     w0, w1 = W * m["z0"], W * m["z1"]
     wexpr = f"trunc(({w0:.1f}+({w1 - w0:.1f})*{p})/2)*2"
     xexpr = f"(iw-{W})*({m['x0']:.3f}+({m['x1'] - m['x0']:.3f})*{p})"
@@ -146,9 +174,9 @@ def footage_motion(move: str, dur: float) -> str:
 
 
 def render_footage_clip(src: Path, out: Path, dur: float, start: float = 0.0,
-                        effect=None, move=None):
+                        effect=None, move=None, stretch: float = 0.0):
     """
-    Стоковый футаж: обрезка, приведение к 1920x1080/25fps, без звука.
+    Стоковый футаж: обрезка, приведение к 1920x1080/30fps, без звука.
 
     stream_loop обязателен. Клипы со стоков часто короче кадра (10-15 секунд
     против кадра до 22), и без петли на выходе получается файл короче
@@ -158,13 +186,31 @@ def render_footage_clip(src: Path, out: Path, dur: float, start: float = 0.0,
     move — необязательный ход камеры. Ставится на ПОВТОРНЫХ показах клипа,
     см. FOOTAGE_MOVES: материала по узким темам мало, повтор неизбежен, и
     дешевле сделать его незаметным, чем оставить дыру в ролике.
+
+    stretch — ЗАМЕДЛЕНИЕ вместо петли, множитель времени. Нужен ровно для
+    сгенерированных вставок: модели видео отдают 2-3 секунды, а кадр в
+    теле ролика длится от четырёх. Петля из трёхсекундного клипа на
+    восьмисекундном кадре читается как заедание — движение доходит до
+    конца и прыгает назад, причём дважды. Замедление втрое на канале, где
+    всё и так идёт медленно, не читается вовсе; более того, оно ровно то,
+    что монтажёр сделал бы руками.
+
+    Множитель считает вызывающий (build.py) и присылает только когда он в
+    разумных пределах: при замедлении сильнее чем вчетверо картинка
+    становится слайд-шоу из дублированных кадров, и лучше честная петля.
     """
     base = (f"scale={W}:{H}:force_original_aspect_ratio=increase,"
             f"crop={W}:{H}")
     if move:
         base += "," + footage_motion(move, dur)
-    vf = with_effect(f"{base},fps={FPS},setsar=1", effect)
-    cmd = (f"ffmpeg -y -stream_loop -1 -ss {start:.2f} -i {shlex.quote(str(src))} "
+    head = f"setpts=PTS*{stretch:.3f}," if stretch and stretch > 1.001 else ""
+    vf = with_effect(f"{head}{base},fps={FPS},setsar=1", effect)
+    # При замедлении петля не нужна и вредна: -stream_loop -1 вместе с
+    # setpts даёт файл в разы длиннее заказанного, и -t режет его на
+    # середине первого прохода — то есть кусок, который мы выбрали, до
+    # экрана не доходит.
+    loop = "" if head else "-stream_loop -1 "
+    cmd = (f"ffmpeg -y {loop}-ss {start:.2f} -i {shlex.quote(str(src))} "
            f"-vf {shlex.quote(vf)} -t {dur:.3f} "
            f"-c:v libx264 -crf 18 -preset veryfast "
            f"-pix_fmt yuv420p -an {shlex.quote(str(out))}")
@@ -220,11 +266,67 @@ def duck_expression(points, depth: float) -> str:
     return "*".join(parts)
 
 
+# Длина перехода между двумя подложками. Шесть секунд: короче слышно как
+# склейку, длиннее — как кашу из двух треков, играющих одновременно.
+BED_CROSSFADE = 6.0
+
+
+def build_bed(beds, out: Path, total: float, switch_at: float = 0.55) -> Path:
+    """
+    Готовая дорожка подложки на весь ролик: петля, а при двух треках —
+    смена в середине.
+
+    ЗАЧЕМ ДВЕ ПОДЛОЖКИ. Ролик идёт сорок пять минут. Подложка длится две-
+    три минуты и зацикливается пятнадцать-двадцать раз; к двадцатой петле
+    зритель знает её наизусть, и она перестаёт быть фоном — начинает
+    раздражать. Смена трека в районе середины сбрасывает это ощущение
+    целиком, стоит ноль и делается один раз при сведении.
+
+    Переход — acrossfade, а не встык: встык слышно как обрыв, даже когда
+    оба трека тихие.
+
+    beds — список путей. Один элемент — обычная петля, как было раньше.
+    """
+    beds = [Path(b) for b in (beds if isinstance(beds, (list, tuple)) else [beds])]
+    beds = [b for b in beds if b and b.exists()]
+    if not beds:
+        raise ValueError("build_bed без единой существующей подложки")
+
+    fade_out = max(0.5, min(8.0, total / 5))
+    fade_in = max(0.3, min(4.0, total / 8))
+    st_out = max(0.0, total - fade_out)
+    shape = (f"afade=t=in:d={fade_in:.2f},"
+             f"afade=t=out:st={st_out:.2f}:d={fade_out:.2f}")
+
+    if len(beds) == 1 or total < BED_CROSSFADE * 4:
+        run(f"ffmpeg -y -stream_loop -1 -i {shlex.quote(str(beds[0]))} "
+            f"-t {total:.2f} -af {shlex.quote(shape)} "
+            f"-c:a aac -b:a 160k {shlex.quote(str(out))}")
+        return out
+
+    # Длины подобраны так, чтобы после перекрытия вышло РОВНО total:
+    # (a + xf) + b - xf = total. Ошибка здесь тише всего остального в
+    # конвейере: дорожка окажется короче ролика, amix её дотянет тишиной,
+    # и последние минуты просто останутся без музыки.
+    xf = BED_CROSSFADE
+    a = max(xf * 2, total * float(switch_at))
+    b = max(xf * 2, total - a)
+    run(f"ffmpeg -y -stream_loop -1 -t {a + xf:.2f} -i {shlex.quote(str(beds[0]))} "
+        f"-stream_loop -1 -t {b:.2f} -i {shlex.quote(str(beds[1]))} "
+        f"-filter_complex "
+        f"{shlex.quote(f'[0:a][1:a]acrossfade=d={xf:.2f}:c1=tri:c2=tri,{shape}[a]')} "
+        f"-map [a] -t {total:.2f} -c:a aac -b:a 160k {shlex.quote(str(out))}")
+    return out
+
+
 def build_audio(voice: Path, bed, out: Path, total: float,
-                bed_gain_db: float = -26.0, duck_points=None,
-                duck_depth: float = 0.0):
+                bed_gain_db: float = -27.0, duck_points=None,
+                duck_depth: float = 0.0, switch_at: float = 0.55):
     """
     Голос + фоновая подложка. bed=None — только голос.
+
+    bed — путь либо СПИСОК путей: при двух подложках вторая заходит около
+    середины ролика через перекрёстное затухание, см. build_bed.
 
     Подложка зацикливается на весь ролик, независимо от своей длины.
     Заход и уход сглажены, иначе на старте и в финале слышен обрыв.
@@ -250,17 +352,10 @@ def build_audio(voice: Path, bed, out: Path, total: float,
             f"{fmt} {shlex.quote(str(out))}")
         return
 
-    # У короткого ролика хвост ухода не помещается: st не может быть
-    # отрицательным, иначе afade молча не сработает вовсе.
-    fade_out = max(0.5, min(6.0, total / 4))
-    fade_in = max(0.3, min(3.0, total / 6))
-    st_out = max(0.0, total - fade_out)
-
-    tmp = out.parent / "bed_loop.m4a"
-    run(f"ffmpeg -y -stream_loop -1 -i {shlex.quote(str(bed))} "
-        f"-t {total:.2f} -af 'afade=t=in:d={fade_in:.2f},"
-        f"afade=t=out:st={st_out:.2f}:d={fade_out:.2f}' "
-        f"-c:a aac -b:a 160k {shlex.quote(str(tmp))}")
+    # Заход и уход подложки, а при двух треках ещё и смена в середине —
+    # всё это внутри build_bed. Там же зажат st у afade: отрицательным он
+    # быть не может, иначе фильтр молча не срабатывает вовсе.
+    tmp = build_bed(bed, out.parent / "bed_loop.m4a", total, switch_at)
 
     # Ямы подложки. eval=frame обязателен: без него выражение посчитается
     # один раз на нулевой секунде, и вместо ям получится ровный уровень —

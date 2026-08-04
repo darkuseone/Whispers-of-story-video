@@ -9,15 +9,24 @@ build.py — собирает ролик из готовых материало�
   4. Финальная сшивка без перекодирования, звук, субтитры.
 
 Два цветокора работают одновременно и осознанно:
-  тёплая семья → сгенерированные кадры и стоковое видео
-  архивный     → подлинные фото и хроника из архивов
+  холодная семья → сгенерированные кадры и стоковое видео
+  архивный       → подлинные фото, гравюры и музейная съёмка
 Так зритель на уровне ощущения отличает документ от всего остального.
-Стоковое видео идёт по семейному, а не по архивному: современный сток в
-сепии читается как подделка под старину, а не как хроника.
+Стоковое видео идёт по семейному, а не по архивному: современный сток,
+покрашенный под отпечаток, читается как подделка под старину.
 
-Материал смешивается в заданной пропорции: по умолчанию 30% экранного
-ВРЕМЕНИ отдаётся генерации, остальные 70% — стоковому видео и подлинным
-фото. Держит пропорцию MaterialMix, проверяется замером в конце сборки.
+ДВЕ ФАЗЫ РОЛИКА, и это главное отличие от канала о находках.
+
+    вступление, 3-5 минут   70-80% видео кусками по 3-8 секунд,
+                            изображения по 7-15
+    тело, остальные 40      70-80% изображений по 10-40 секунд с
+                            обязательным движением, 20-30% видео
+
+Обе доли считаются по экранному ВРЕМЕНИ и держатся на любом отрезке, а не
+в среднем: зритель, включивший с двадцатой минуты, видит ту же пропорцию.
+Держит их MaterialMix, проверяется замером в конце сборки и печатается
+всегда — если материала не хватило и пропорция поехала, это видно в логе,
+а не при просмотре.
 """
 
 import json
@@ -43,21 +52,40 @@ from editorial import rails, textcard, edl
 ROOT = Path(__file__).parent.parent
 LUTS = ROOT / "assets" / "luts"
 OVERLAYS = ROOT / "assets" / "overlays"
-# Подложка по умолчанию. Своя для ролика задаётся полем music в
-# спецификации — у каждого канала она обычно разная.
-MUSIC = ROOT / "assets" / "music" / "bed.mp3"
+# Папка подложек. Их пять: bed1..bed5, выбор и смена — на движке стиля,
+# см. beds_for(). Своя подложка для ролика задаётся полем music в
+# спецификации, тогда жребий не бросается вовсе.
+MUSIC_DIR = ROOT / "assets" / "music"
 
 SEG_SIZE = 12          # кадров в одной группе склейки
 
 # Движения для фотографий во вступлении: только скольжение и наезд.
 # Наклоны там читаются вяло, а статики быть не должно вовсе.
-INTRO_MOVES = ["push_in", "pan_right", "pan_left",
-               "sweep_in", "push_right", "push_left"]
+INTRO_MOVES = style_mod.INTRO_MOVES
 
-# Сток длиннее этого в кадр не ставим: клип приходит на 10-20 секунд, и на
-# кадре в 20+ он уходит на второй круг петли — видно как рывок назад.
-# Долгий кадр всегда достаётся фотографии.
-CLIP_MAX_SECONDS = 15.0
+# Сток длиннее этого в кадр не ставим: клип приходит на 10-25 секунд, и на
+# кадре длиннее он уходит на второй круг петли — видно как рывок назад.
+# Долгий кадр всегда достаётся фотографии — благо изображений здесь и так
+# 70-80% времени.
+#
+# 18 секунд, а не 15 как на канале о находках. Причина в арифметике доли:
+# здесь кадры в теле длинные (в среднем 12-15 секунд), и при потолке 15
+# под видео не подходит бОльшая часть слотов — замер дал 8.9% времени при
+# заказанных 20-30%. Потолок в 18 при обрезке стока на 25 секунд
+# (assets.MAX_CLIP_SECONDS) означает, что клип по-прежнему покрывает кадр
+# целиком, без второго круга.
+CLIP_MAX_SECONDS = 18.0
+
+# Короткий клип на длинном кадре ЗАМЕДЛЯЕТСЯ, а не зацикливается.
+# Сгенерированные вставки приходят на 2-3 секунды (см. magnific.py), и
+# петля из них на восьмисекундном кадре читается как заедание: движение
+# доходит до конца и прыгает назад, причём дважды. Замедление втрое на
+# канале, где всё и так идёт медленно, не читается вовсе.
+#
+# Сильнее чем вчетверо не растягиваем: дальше начинается слайд-шоу из
+# дублированных кадров, и честная петля выглядит лучше.
+CLIP_STRETCH_MAX = 4.0
+CLIP_STRETCH_SOURCE_MAX = 6.0    # растягиваем только заведомо короткие
 
 # Потолок повторов ОДНОГО стокового клипа. На ff-ep03 отбраковка (vet.py)
 # оставила от 35 скачанных клипов только 3 годных, а ритм «через каждые три
@@ -74,7 +102,19 @@ MAX_CLIP_REPEATS = 3
 # ClipCutter к этому моменту уже отдаёт другой КУСОК файла, так что вместе
 # это разные план и движение: узнать в них один исходник трудно.
 CLIP_REPEAT_MOVES = ["drift_in", "drift_left", "drift_out", "drift_right",
-                     "drift_up"]
+                     "drift_up", "drift_diag", "drift_settle"]
+
+# Затемнение в самом конце ролика. Ролик смотрят перед сном, и обрыв
+# картинки на полном свете будит — а именно так кончались все сборки до
+# сих пор: последний кадр просто переставал существовать. Шесть секунд
+# ухода в чёрное стоят ноль (это фильтр на последней группе склейки) и
+# делают финал финалом.
+TAIL_FADE_SECONDS = 6.0
+
+# Кадр короче этого не показывают — его вливают в предыдущий. Причина не
+# эстетическая: переход длиной полторы секунды не помещается в кадр
+# длиной треть секунды, и xfade молча обрывает всю группу склейки.
+MIN_SHOT_ON_SCREEN = 1.2
 
 
 def log(*a):
@@ -111,13 +151,17 @@ class ClipCutter:
     def duration(self, path: Path) -> float:
         key = str(path)
         if key not in self.length:
-            r = subprocess.run(
-                ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-                 "-of", "csv=p=0", key], capture_output=True, text=True)
             try:
+                r = subprocess.run(
+                    ["ffprobe", "-v", "error", "-show_entries",
+                     "format=duration", "-of", "csv=p=0", key],
+                    capture_output=True, text=True)
                 self.length[key] = float(r.stdout.strip())
-            except ValueError:
-                self.length[key] = 0.0       # не прочиталось — берём с начала
+            except (ValueError, OSError):
+                # не прочиталось — берём кусок с начала и не растягиваем.
+                # Ноль здесь безопасен: take_start вернёт 0, clip_timing
+                # не включит замедление, а ffmpeg сам дотянет петлёй.
+                self.length[key] = 0.0
         return self.length[key]
 
     def take_start(self, path: Path, dur: float) -> float:
@@ -284,41 +328,65 @@ class ShotPicker:
 
 class MaterialMix:
     """
-    Держит долю сгенерированного в ролике — по ВРЕМЕНИ, а не по числу кадров.
+    Держит ДВЕ пропорции сразу и обе по ВРЕМЕНИ, а не по числу кадров:
 
-    Зачем вообще: сюжет про находку — это рассказ про КОНКРЕТНЫЙ предмет.
-    Вот эта монета, вот этот сервиз. Генератор такую монету не найдёт, он её
-    нарисует, и рисунок выдаёт себя за фотографию реального предмета. Под
-    предмет идёт только настоящее — архивное фото или сток. Генерация
-    закрывает общие планы, руки крупно, интерьер лавки, атмосферу.
+      1. видео против изображений, СВОЯ В КАЖДОЙ ФАЗЕ ролика
+         вступление  70-80% видео
+         тело        20-30% видео
+      2. сгенерированное против настоящего — одна на весь ролик, 40-50%
 
-    Почему по времени, а не по кадрам: кадры разной длины. Двадцать
-    двухсекундных кусков во вступлении и двадцать десятисекундных в теле —
-    это одинаковое число кадров и впятеро разное экранное время. Зритель
-    считает время.
+    Почему по времени, а не по кадрам: кадры разной длины, и здесь разница
+    предельная. Двадцать кусков видео по четыре секунды и двадцать
+    изображений по двадцать пять — это одинаковое число кадров и разное в
+    шесть раз экранное время. Зритель считает время, а не кадры; счёт по
+    кадрам дал бы ролик, где «половина видео» означает восемь минут из
+    сорока пяти.
 
-    Почему на ходу, а не заранее списком: длительность кадра известна только
-    в момент раскладки, она зависит от границ предложений. Поэтому решение
-    принимается по накопленному счёту — «генерации пока меньше заказанного,
-    следующий кадр её». Так к концу ролика доля сходится к заданной, и она же
-    выдержана НА ЛЮБОМ отрезке, а не только в среднем: зритель, включивший с
-    двадцатой минуты, видит ту же пропорцию.
+    Почему на ходу, а не заранее списком: длительность кадра известна
+    только в момент раскладки, она зависит от границ предложений. Поэтому
+    решение принимается по накопленному счёту — «видео пока меньше
+    заказанного, следующий кадр ему». Так доля сходится к заданной и
+    выдержана НА ЛЮБОМ отрезке, а не в среднем.
+
+    Почему доля генерации здесь выше, чем у канала о находках (45% против
+    30%): там сюжет был про конкретный предмет, и рисунок выдавал бы себя
+    за фотографию настоящей вещи. Здесь речь про мир, которого не
+    сфотографировал никто, — Фивы при жизни, ночь перед битвой, Атлантида.
+    Под каждое НАЗВАННОЕ место и каждый предмет по-прежнему идёт подлинное
+    изображение; генерация закрывает то, чего не сохранилось.
 
     Случайность здесь не используется намеренно: доля материала — это не
     стилевой жребий, а требование к ролику, и она не должна плавать от id.
     """
 
-    def __init__(self, target: float, gen: bool, arch: bool, clips: bool):
+    def __init__(self, target: float, gen: bool, arch: bool, clips: bool,
+                 clip_intro: float = 0.75, clip_body: float = 0.25):
         self.target = max(0.0, min(1.0, float(target)))
+        self.clip_target = {"intro": max(0.0, min(1.0, float(clip_intro))),
+                            "body": max(0.0, min(1.0, float(clip_body)))}
         self.have = {"gen": bool(gen), "arch": bool(arch), "clip": bool(clips)}
         self.sec = {"gen": 0.0, "arch": 0.0, "clip": 0.0}
         self.shots = {"gen": 0, "arch": 0, "clip": 0}
+        # свой счёт по фазам: доля видео во вступлении и в теле разная,
+        # и общий счётчик их бы смешал
+        self.phase = {"intro": {"clip": 0.0, "image": 0.0},
+                      "body": {"clip": 0.0, "image": 0.0}}
 
-    def pick(self, allowed):
+    def clip_behind(self, phase: str) -> bool:
+        """Отстаёт ли видео от своей доли в этой фазе."""
+        p = self.phase.get(phase) or self.phase["body"]
+        total = p["clip"] + p["image"]
+        if total <= 0:
+            return True
+        return (p["clip"] / total) < self.clip_target.get(phase, 0.25)
+
+    def pick(self, allowed, phase: str = "body"):
         """
-        Чем закрыть очередной кадр. allowed — что тут вообще уместно:
-        под якорный (длинный) кадр сток не годится, во вступлении есть свои
-        слоты под видео и под фото.
+        Чем закрыть очередной кадр.
+
+        allowed — что тут вообще уместно. Под долгий кадр сток не годится
+        (он уйдёт на второй круг петли), под развязку — тоже, там на
+        экране должно быть конкретное место, а не абстрактное движение.
         """
         can = [k for k in allowed if self.have[k]]
         if not can:
@@ -329,21 +397,32 @@ class MaterialMix:
         if len(can) == 1:
             return can[0]
 
+        # ── сначала: видео или изображение ──
+        if "clip" in can:
+            if self.clip_behind(phase):
+                return "clip"
+            can = [k for k in can if k != "clip"] or ["clip"]
+            if can == ["clip"]:
+                return "clip"
+
+        # ── потом: сгенерированное или настоящее ──
         total = sum(self.sec.values())
         behind = total <= 0 or (self.sec["gen"] / total) < self.target
-
-        # Генерация — только когда она отстаёт от заказанной доли.
-        # На пустом счёте (total == 0) behind истинно, но первым кадром
-        # ролика генерацию ставить не хочется: открывать историю про
-        # настоящую находку рисунком — ровно то, чего мы избегаем.
+        # На пустом счёте behind истинно, но первым кадром ролика
+        # генерацию ставить не хочется: открывать рассказ о реальном
+        # месте рисунком — ровно то, чего мы избегаем.
         if "gen" in can and behind and total > 0:
             return "gen"
-        real = [k for k in ("clip", "arch") if k in can]
+        real = [k for k in ("arch", "clip") if k in can]
         return real[0] if real else can[0]
 
-    def charge(self, kind: str, seconds: float):
-        self.sec[kind] += max(seconds, 0.0)
+    def charge(self, kind: str, seconds: float, phase: str = "body"):
+        seconds = max(seconds, 0.0)
+        self.sec[kind] += seconds
         self.shots[kind] += 1
+        p = self.phase.get(phase)
+        if p is not None:
+            p["clip" if kind == "clip" else "image"] += seconds
 
     def report(self):
         total = sum(self.sec.values()) or 1.0
@@ -351,6 +430,19 @@ class MaterialMix:
                         share=round(self.sec[k] / total, 3),
                         shots=self.shots[k])
                 for k in ("gen", "arch", "clip")}
+
+    def phase_report(self):
+        """Доля видео по фазам — для лога. Заказанное против вышедшего."""
+        rows = []
+        for name, ru in (("intro", "вступление"), ("body", "тело")):
+            p = self.phase[name]
+            total = p["clip"] + p["image"]
+            if total <= 0:
+                continue
+            rows.append(f"  {ru:<12} видео {p['clip']/total*100:5.1f}% "
+                        f"(заказано {self.clip_target[name]*100:.0f}%), "
+                        f"{total/60:.1f} мин")
+        return rows
 
 
 # ───────────────────────── ПЛАН КАДРОВ ─────────────────────────
@@ -493,8 +585,23 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     лист, чтобы не считать одно и то же дважды.
     """
     def keep(paths, kind, rejected):
-        """Выкидывает забракованное — роботом в vet.py или руками в reject."""
-        out = [p for p in paths if int(p.name.split("_")[1]) not in rejected]
+        """
+        Выкидывает забракованное — роботом в vet.py или руками в reject.
+
+        Номер читается ТЕРПИМО. Штатное имя выглядит как
+        arch_007_met.jpg, но файл, положенный в папку руками под именем
+        arch_007.jpg, здесь раньше ронял всю сборку на int() — причём в
+        начале монтажа, то есть после всего этапа материала. Файл без
+        разбираемого номера просто остаётся в работе: отбраковать его
+        всё равно нечем, а падать из-за имени незачем.
+        """
+        def num(p):
+            try:
+                return int(p.name.split("_")[1].split(".")[0])
+            except (IndexError, ValueError):
+                return None
+
+        out = [p for p in paths if num(p) not in rejected]
         if rejected:
             log(f"  {kind}: отклонено {len(paths) - len(out)} из {len(paths)}")
         return out
@@ -602,12 +709,34 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         return False
 
     mix = MaterialMix(st.generated_share, bool(images), bool(archive),
-                      bool(clips))
+                      bool(clips),
+                      clip_intro=st.intro_clip_share,
+                      clip_body=st.body_clip_share)
     if not archive:
-        log("  ! подлинных фото нет — под предметы пойдёт генерация; "
+        log("  ! подлинных фото нет — под места и предметы пойдёт генерация; "
             "добери архив этапом material")
     if not clips:
         log("  ! стокового видео нет — вступление будет из одних фотографий")
+
+    def clip_timing(src: Path, dur: float):
+        """
+        Откуда брать кусок клипа и надо ли его замедлять.
+
+        Возвращает (секунда начала, множитель замедления). Множитель ноль
+        означает обычный путь: кусок из середины файла плюс петля, если
+        кадр длиннее остатка.
+
+        Замедление включается только для ЗАВЕДОМО КОРОТКИХ исходников —
+        сгенерированных вставок на 2-3 секунды. Для стока на пятнадцать
+        секунд петля лучше: он снят с нормальной скоростью движения, и
+        замедлять его незачем.
+        """
+        total = cutter.duration(src)
+        if 0 < total <= CLIP_STRETCH_SOURCE_MAX and dur > total * 1.05:
+            k = min(CLIP_STRETCH_MAX, dur / max(total - 0.15, 0.5))
+            if k > 1.05:
+                return 0.0, round(k, 3)
+        return cutter.take_start(src, dur), 0.0
 
     def put_image(kind, t_pos, said="", **extra):
         """Ставит кадр-картинку нужной семьи и записывает его в счёт."""
@@ -653,16 +782,39 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
 
     run_kind, run_len = None, 0
     while t < intro_end:
-        # чередуем видео и фото, но не даём трём одинаковым идти подряд
-        want_clip = st.rng.random() < st.intro_clip_share and clip_available()
-        if run_len >= 2:
-            want_clip = run_kind != "clip" and clip_available()
+        # ЧЕМ ЗАКРЫТЬ СЛОТ, РЕШАЕТ ДОЛЯ ПО ВРЕМЕНИ, а не жребий.
+        #
+        # Раньше здесь бросалась монетка с вероятностью intro_clip_share, и
+        # для канала с кусками по 2-4 секунды это работало: куски видео и
+        # фото были почти одной длины, доля по кадрам совпадала с долей по
+        # времени. Здесь не так — видео идёт по 3-8 секунд, фотография по
+        # 7-15, то есть вдвое дольше. Монетка с вероятностью 0.75 дала бы
+        # три четверти КАДРОВ и примерно половину ВРЕМЕНИ, а заказаны
+        # 70-80% именно экранного времени.
+        allowed = (["clip"] if clip_available() else []) + ["gen", "arch"]
+        # ДЛИНА РЯДА. Правило «не больше двух одинаковых подряд» пришло с
+        # канала о находках и здесь арифметически несовместимо с заказом.
+        # Там куски видео и фотографии были почти одной длины, и ряд
+        # «видео, видео, фото» давал две трети времени видео. Здесь видео
+        # идёт по 3-8 секунд, а фотография по 7-15, то есть вдвое дольше:
+        # тот же ряд даёт ровно половину времени, а заказано 70-80%.
+        # Замер на синтетическом ролике: 50.9% при заказанных 81%.
+        #
+        # Поэтому ряд видео допускается до шести кусков (шесть по пять
+        # секунд — это полминуты перебивки, ровно то, чего ждут от первых
+        # минут), а ряд изображений ограничен двумя: две фотографии подряд
+        # это уже двадцать секунд без движения материала.
+        if run_len >= 6 and run_kind == "clip":
+            allowed = ["gen", "arch"]
+        elif run_len >= 2 and run_kind == "image" and clip_available():
+            allowed = ["clip"]
         # hard_in открывает стоковым видео: ролик стартует движением, а не
         # фотографией. Если стока нет, правило молча уступает — вступление
         # из одних фотографий лучше, чем отсутствие вступления.
         if idx == 0 and op["first_is_clip"] and clip_available():
-            want_clip = True
-        kind = "clip" if want_clip else "image"
+            allowed = ["clip"]
+        got = mix.pick(allowed, phase="intro")
+        kind = "clip" if got == "clip" else "image"
         run_len = run_len + 1 if kind == run_kind else 1
         run_kind = kind
 
@@ -685,18 +837,14 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
             dur = round(hi - (hi - lo) * min(1.0, k), 3)
 
         tr, trd = st.pick_transition(short=True)
-        # переход во вступлении короткий: длинное растворение съедает
-        # весь смысл быстрой перебивки
-
-        # Слот выбран (видео или фото), но чем именно его закрыть — решает
-        # пропорция. Во вступлении она работает так же, как в теле: иначе
-        # первые три минуты, самые смотримые, съезжали бы в генерацию.
-        got = mix.pick(["clip"] if kind == "clip" else ["gen", "arch"])
+        # переход во вступлении короче обычного: полуторасекундное
+        # растворение съедает весь смысл перебивки
 
         if got == "clip":
             src, _ = clip_pick.take(t, said_at(t, dur))
+            src_start, stretch = clip_timing(src, dur)
             shots.append(dict(kind="clip", file=src, tag="clip",
-                              src_start=cutter.take_start(src, dur),
+                              src_start=src_start, stretch=stretch,
                               move=repeat_move(clip_pick.last_repeat),
                               start=round(t, 3), duration=dur,
                               transition=tr, transition_dur=trd,
@@ -709,14 +857,15 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
             # перевыбиралось здесь своим жребием, если не подошло, — мимо
             # счётчика семей. Проверка плана нашла на этом девять наездов
             # подряд в первых трёх минутах.
-            mv, sp = st.pick_move(1.05, allow_hold=False, only=INTRO_MOVES)
+            mv, sp, ez = st.pick_move(1.05, allow_hold=False, only=INTRO_MOVES,
+                                      duration=dur)
             shots.append(put_image(
                 got, t, said=said_at(t, dur), start=round(t, 3), duration=dur,
-                move=mv, speed=sp,
+                move=mv, speed=sp, ease=ez,
                 transition=tr, transition_dur=trd,
                 effect=st.effect(),
                 beat_kind="hook", why=f"вступление ({st.opening})"))
-        mix.charge(got, dur)
+        mix.charge(got, dur, phase="intro")
         t += dur
         idx += 1
 
@@ -746,9 +895,34 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     est_body_shots = max(8, int(body_seconds / max(st.base_dur, 1.0)))
     body_idx = 0
 
+    # ГРАНИЦЫ ГЛАВ. Смена главы сценария — единственное место, где склейка
+    # имеет право быть заметной: это конец мысли, а не середина. Туда
+    # ставится самый долгий переход ролика, а иногда и уход в чёрное.
+    #
+    # Границы берутся из долей: у каждой доли записан номер блока
+    # сценария, из которого она вышла (см. beats.Beat.block), и смена
+    # номера и есть смена главы. Считать их заново по тексту не нужно —
+    # разбор это уже сделал.
+    edges = [b.start for a, b in zip(story, story[1:]) if b.block != a.block
+             and b.start > intro_end]
+    edges = sorted(edges)
+    log(f"  границ глав в теле: {len(edges)}")
+
     while i < len(marks):
         start_probe = marks[i]["start"]
         bi, beat = beat_at(start_probe)
+        # кадр, который НАЧИНАЕТСЯ на границе главы: длинный переход
+        # ставится на предыдущий кадр, потому что переход в ffmpeg
+        # принадлежит кадру, ПОСЛЕ которого он стоит, см. join()
+        at_edge = bool(edges) and start_probe >= edges[0] - 0.01
+        if at_edge:
+            edges.pop(0)
+            if len(shots) >= 1:
+                ctr, ctrd = st.pick_transition(chapter=True)
+                shots[-1]["transition"] = ctr
+                shots[-1]["transition_dur"] = ctrd
+                shots[-1]["why"] = (shots[-1].get("why", "") +
+                                    " · закрывает главу")
         if beat is not None:
             cfg = st.shot_for(beat, pace, bi, start_probe)
             is_anchor = False        # выдохи из pacing делают ту же работу
@@ -802,24 +976,54 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         # секунд, а сток редко бывает длиннее пятнадцати и уходил бы в петлю.
         # Долгий кадр — это всегда изображение.
         dur = round(end - start, 3)
-        # Доля решает, уместен ли здесь сток вообще. Под развязку сток почти
-        # не идёт: там на экране должен быть конкретный предмет, а не
-        # абстрактные руки в темноте из чужого стока. Под нагнетание,
-        # наоборот, идёт охотно — там нужно движение.
-        beat_wants_clip = (st.rng.random() < pace.clip_share(beat) * 2.0
+        # ГДЕ видео уместно, решает доля сценария; СКОЛЬКО его будет —
+        # решает MaterialMix по экранному времени. Разделение важное:
+        # под развязку сток почти не идёт, там на экране должно быть
+        # конкретное место, а не абстрактное движение из чужого стока;
+        # под нагнетание, наоборот, идёт охотно.
+        # Множитель 3, а не 2, как на канале о находках. Причина та же,
+        # что и с длиной ряда во вступлении: там сток и картинка были
+        # одной длины, и вероятность по КАДРАМ совпадала с долей по
+        # ВРЕМЕНИ. Здесь клип вдвое короче изображения, и чтобы набрать
+        # заказанные 20-30% времени, слотов под него нужно вдвое больше.
+        # Замер на синтетическом ролике при множителе 2: 12.8% времени
+        # при заказанных 21%.
+        beat_wants_clip = (st.rng.random() < pace.clip_share(beat) * 3.0
                            if beat is not None else True)
-        clip_ok = (not is_anchor and since_clip >= next_gap
-                   and beat_wants_clip
+        # ЗАМЫСЕЛ ДОЛИ УСТУПАЕТ ДОЛЕ ПО ВРЕМЕНИ, но не везде.
+        #
+        # Слоты под видео здесь дефицитны по построению: клип нельзя
+        # ставить на кадр длиннее пятнадцати секунд (он уйдёт на второй
+        # круг петли), а таких кадров в теле треть. Если поверх этого
+        # ещё и жребий доли отказывает в каждом четвёртом слоте, доля
+        # видео не добирает до заказанной — замер дал 15.7% при 21%.
+        #
+        # Поэтому когда видео отстаёт от своей доли, отказ доли
+        # перебивается — кроме развязок. Там сток не просто нежелателен,
+        # там он вреден: на развязке зритель должен видеть конкретное
+        # место или предмет, а не абстрактное движение из чужого стока.
+        behind = mix.clip_behind("body")
+        beat_ok = beat_wants_clip or (
+            behind and (beat is None or beat.kind != "revelation"))
+        # Шаг между вставками тоже уступает доле, но не до нуля: между
+        # двумя клипами обязана стоять хотя бы одна картинка. Иначе при
+        # нехватке доли пошёл бы ряд из клипов подряд, а это уже другой
+        # канал — здесь изображение главный материал тела ролика.
+        gap_needed = 1 if behind else next_gap
+        clip_ok = (not is_anchor and since_clip >= gap_needed
+                   and beat_ok
                    and dur <= CLIP_MAX_SECONDS and clip_available())
-        got = mix.pick((["clip"] if clip_ok else []) + ["gen", "arch"])
+        got = mix.pick((["clip"] if clip_ok else []) + ["gen", "arch"],
+                       phase="body")
 
         said = " ".join(m["text"] for m in marks[first:best + 1])
         meta = dict(why=cfg.get("why", ""), beat_kind=cfg.get("beat_kind"))
 
         if got == "clip":
             src, _ = clip_pick.take(start, said)
+            src_start, stretch = clip_timing(src, dur)
             shots.append(dict(kind="clip", file=src, tag="clip",
-                              src_start=cutter.take_start(src, dur),
+                              src_start=src_start, stretch=stretch,
                               move=repeat_move(clip_pick.last_repeat),
                               start=start, duration=dur, **meta,
                               **{k: cfg[k] for k in
@@ -832,9 +1036,9 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
             shots.append(put_image(
                 got, start, said=said, start=start, duration=dur, **meta,
                 **{k: cfg[k] for k in
-                   ("move", "speed", "transition", "transition_dur",
+                   ("move", "speed", "ease", "transition", "transition_dur",
                     "effect")}))
-        mix.charge(got, dur)
+        mix.charge(got, dur, phase="body")
         idx += 1
         body_idx += 1
 
@@ -847,6 +1051,59 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     # хвост: последний кадр дотягиваем до конца звука
     if shots:
         shots[-1]["duration"] = round(max(total - shots[-1]["start"], 0.1), 3)
+
+    # ── КАДРЫ-ВСПЫШКИ ──
+    #
+    # Длительность кадра приходит из разницы начал соседних кадров, и на
+    # стыке вступления с телом она изредка выходит смешной: на замере
+    # попался кадр в 0.3 секунды. На экране это вспышка, а в склейке —
+    # авария: переход длиной полторы секунды не помещается в кадр длиной
+    # треть секунды, xfade просит кадры за концом клипа и МОЛЧА обрывает
+    # всю группу (см. пункт 3 задания). Такие кадры вливаются в
+    # предыдущий: материал теряется, время — нет.
+    merged, dropped = [], 0
+    for sh in shots:
+        if merged and sh["duration"] < MIN_SHOT_ON_SCREEN:
+            merged[-1]["duration"] = round(
+                merged[-1]["duration"] + sh["duration"], 3)
+            dropped += 1
+            continue
+        merged.append(sh)
+    if dropped:
+        log(f"  склеено {dropped} кадров короче {MIN_SHOT_ON_SCREEN} с — "
+            f"на экране это вспышка, а в переходе авария")
+    shots = merged
+
+    # ── ПЕРЕСМОТР ДВИЖЕНИЯ НА ВЫРОСШИХ КАДРАХ ──
+    #
+    # Движение выбиралось под ЗАПРОШЕННУЮ длительность, а окончательная
+    # приходит от границ предложений и от строчек выше: кадр, задуманный
+    # на четырнадцать секунд, легко становится двадцатидвухсекундным.
+    # Обычный наезд на таком кадре отрабатывает за первую треть, и дальше
+    # зритель пятнадцать секунд смотрит стоп-кадр — то есть ровно то,
+    # ради чего заказаны «долгие проезды и всегда с эффектом».
+    #
+    # Поэтому здесь второй проход по факту. Правится только движение;
+    # длительности, материал и переходы не трогаются — таймлайн уже
+    # сошёлся со звуком, и двигать его нельзя.
+    long_fix = 0
+    for sh in shots:
+        if sh["kind"] == "clip" or not sh.get("move"):
+            continue
+        if sh["duration"] >= style_mod.LONG_SHOT_SECONDS \
+                and sh["move"] not in style_mod.LONG_SHOT_MOVES:
+            mv, sp, ez = st.pick_move(1.0, allow_hold=True,
+                                      duration=sh["duration"])
+            sh["move"], sh["speed"], sh["ease"] = mv, sp, ez
+            long_fix += 1
+    if long_fix:
+        log(f"  движение пересмотрено на {long_fix} кадрах: они вышли "
+            f"длиннее {style_mod.LONG_SHOT_SECONDS:.0f} с, и короткий ход "
+            f"на них закончился бы до середины")
+
+    # Граница фаз нужна снаружи: по ней считается доля видео во
+    # вступлении и в теле отдельно.
+    st.intro_end = intro_end
 
     # Попадание по смыслу — величина, которую надо видеть. Низкая доля
     # означает, что запросы к стокам написаны словами, которых нет в
@@ -889,11 +1146,12 @@ def material_report(shots):
 # Список закрытый намеренно: опечатка в имени должна быть замечена, а не
 # молча проигнорирована.
 OVERRIDABLE = {
-    "haze_enabled":              "haze_enabled",
-    "sparks_enabled":            "sparks_enabled",
-    "spark_opacity":             "spark_opacity",
-    "spark_speed_px_sec":        "spark_speed_px_sec",
-    "spark_flicker":             "spark_flicker",
+    "overlay_enabled":           "overlay_enabled",
+    "overlay_kind":              "overlay_kind",
+    "overlay_variant":           "overlay_variant",
+    "overlay_opacity":           "overlay_opacity",
+    "overlay_speed_px_sec":      "overlay_speed_px_sec",
+    "overlay_flicker":           "overlay_flicker",
     "grain":                     "grain",
     "vignette":                  "vignette",
     "transitions":               "transitions",
@@ -914,6 +1172,17 @@ OVERRIDABLE = {
     "archive_lut":               "archive_lut",
     # Доля экранного времени под генерацию. Остальное — сток и архив.
     "generated_share":           "generated_share",
+    # Доля экранного времени под видео В ТЕЛЕ ролика (во вступлении своя,
+    # intro_clip_share выше). Заказано 20-30%.
+    "body_clip_share":           "body_clip_share",
+    # Потолок длительности одного кадра. Заказаны 10-40 секунд на
+    # изображение, потолок стоит чуть выше — 42.
+    "max_shot_seconds":          "max_shot_seconds",
+    # Подложки: имена файлов без расширения, из assets/music.
+    "bed":                       "bed",
+    "bed_second":                "bed_second",
+    "bed_switch_at":             "bed_switch_at",
+    "bed_gain_db":               "bed_gain_db",
     # Сжатие: упирается в лимит GitHub Releases в 2 ГБ, см. style.py.
     "crf":                       "crf",
     "preset":                    "preset",
@@ -950,6 +1219,7 @@ ENUMS = {
     "framing_bias": tuple(style_mod.FRAMING_BIAS),
     "text_style": ("none",) + textcard.STYLES,
     "duck_style": ("revelation", "beats", "sparse", "breath"),
+    "overlay_kind": style_mod.OVERLAY_KINDS,
 }
 
 # Поля, которые не присваиваются напрямую, а перебрасывают жребий.
@@ -960,7 +1230,7 @@ REDRAW = {
     "deceleration_range":  "decel",
 }
 
-PAIRS = {"spark_speed_px_sec", "spark_flicker", "transition_duration_range",
+PAIRS = {"overlay_speed_px_sec", "overlay_flicker", "transition_duration_range",
          "intro_clip_duration_range", "intro_photo_duration_range",
          "intro_transition_duration_range"}
 
@@ -1024,6 +1294,11 @@ def apply_style_override(st, job):
                 f"style_override.{key}: значение {val!r} недопустимо"
                 f"\nесть: " + ", ".join(map(str, ENUMS[key])))
         setattr(st, field, val)
+        # Слой поверх кадра описан двумя полями, и они обязаны сходиться:
+        # «kind: none» и «enabled: true» одновременно означало бы попытку
+        # наложить файл none_2.mp4, которого нет и не будет.
+        if key == "overlay_kind":
+            st.overlay_enabled = val != "none"
         log(f"  {key} -> {val}")
     return st
 
@@ -1073,7 +1348,23 @@ def set_render_durations(shots):
     Хвост запаса не виден: xfade отбрасывает всё, что осталось от кадра
     после перехода. У последнего кадра группы перехода нет (группы сшиваются
     встык), поэтому и запаса нет — иначе он оказался бы на экране.
+
+    ПЕРЕХОД НЕ ДЛИННЕЕ КАДРОВ, которые он склеивает. Здесь это не
+    придирка: переходы на канале длинные (до 2.6 секунды, а на границах
+    глав до 2.8), кадры во вступлении короткие (от трёх секунд), и
+    переход, который длиннее своего кадра, — это тот самый молчаливый
+    обрыв группы из пункта 3 задания. Зажимается 70% меньшего из двух
+    соседей: при таком запасе нахлёст гарантированно помещается.
     """
+    for k, sh in enumerate(shots):
+        if sh["transition"] == "cut":
+            continue
+        limit = sh["duration"] * 0.7
+        if k + 1 < len(shots):
+            limit = min(limit, shots[k + 1]["duration"] * 0.7)
+        if sh["transition_dur"] > limit:
+            sh["transition_dur"] = round(max(0.25, limit), 2)
+
     for gi in range(0, len(shots), SEG_SIZE):
         group = shots[gi:gi + SEG_SIZE]
         for k, sh in enumerate(group):
@@ -1092,12 +1383,13 @@ def render_one(args):
         render.render_footage_clip(Path(sh["file"]), out, sh["render_dur"],
                                    start=sh.get("src_start", 0.0),
                                    effect=sh.get("effect"),
-                                   move=sh.get("move"))
+                                   move=sh.get("move"),
+                                   stretch=sh.get("stretch", 0.0))
     else:
         prep = tmp / f"prep_{n:04d}.jpg"
         render.prepare_image(Path(sh["file"]), prep, sh["framing"])
         render.render_clip(prep, out, sh["move"], sh["speed"], sh["render_dur"],
-                           effect=sh.get("effect"))
+                           effect=sh.get("effect"), ease=sh.get("ease"))
         prep.unlink(missing_ok=True)
     return out
 
@@ -1107,8 +1399,8 @@ def grade_for(shot, st):
     Цветокор ОДНОГО кадра.
 
     Архивный грейд получает только подлинное фото из архива. Генерация и
-    стоковое видео идут по семейному, тёплому: современный сток, покрашенный
-    в сепию, читается не как хроника, а как подделка под старину.
+    стоковое видео идут по семейному: современный сток, покрашенный под
+    отпечаток, читается не как документ, а как подделка под старину.
 
     Раньше эта функция вызывалась один раз на группу из двенадцати кадров и
     красила всю группу по ПЕРВОМУ кадру. Пока генерации было большинство,
@@ -1131,13 +1423,16 @@ def film_look():
     телефона». Верх подтянут вниз, чтобы белое не выбивало.
     eq снимает насыщенность: атмосфера приглушённая, а не открыточная.
 
-    РАЗВОДКА ПЕРЕВЁРНУТА против исходного проекта. Там красный поднимался
-    слабее синего, тень уходила в холод и получалась синяя тень с тёплым
-    светом — правильная картинка для сонного исторического канала. Здесь
-    наоборот: тень тёплая, коричневая, а холод не появляется нигде. Лавка
-    древностей освещена лампой накаливания, у неё синих теней не бывает.
-    Насыщенность приспущена слабее прежнего (0.88 против 0.82): тёплая
-    картинка при 0.82 выцветает в грязно-бежевую.
+    РАЗВОДКА ХОЛОДНАЯ. У канала о находках тень поднималась в коричневое:
+    там лавка, дерево и лампа накаливания, у которой синих теней не
+    бывает. Здесь всё наоборот — синий поднимается вдвое сильнее
+    красного, тень уходит в лунный холод, а тепла не появляется нигде,
+    кроме одного цветокора и двух эффектов, где оно поставлено намеренно.
+
+    Числа: b поднят до 0.076 против r 0.038, то есть тень синее света
+    примерно на четыре процента шкалы. Больше нельзя — при b выше 0.09
+    чёрное перестаёт быть чёрным и картинка выглядит выцветшей, а не
+    ночной.
 
     ПОРЯДОК ЗДЕСЬ ВАЖЕН и стоил отдельного замера. Сначала eq, потом curves.
     Наоборот не работает: contrast у eq утягивает тени вниз сильнее, чем
@@ -1149,10 +1444,10 @@ def film_look():
     число у r и опускаем у b, глубже тени — уменьшаем оба.
     """
     return (
-        "eq=saturation=0.88:contrast=0.97,"
-        "curves=r='0/0.072 0.5/0.508 1/0.972'"
-        ":g='0/0.058 0.5/0.500 1/0.962'"
-        ":b='0/0.042 0.5/0.492 1/0.934'"
+        "eq=saturation=0.90:contrast=0.98,"
+        "curves=r='0/0.038 0.5/0.487 1/0.945'"
+        ":g='0/0.050 0.5/0.497 1/0.958'"
+        ":b='0/0.076 0.5/0.516 1/0.985'"
     )
 
 
@@ -1178,10 +1473,10 @@ def text_for_group(group, moments):
     return out
 
 
-def join(group, out: Path, st, sparks, first=False, moments=None):
+def join(group, out: Path, st, overlay, first=False, moments=None, last=False):
     ins = " ".join(f'-i "{c["file"]}"' for c in group)
-    if sparks is not None:
-        ins += f' -stream_loop -1 -i "{sparks}"'
+    if overlay is not None:
+        ins += f' -stream_loop -1 -i "{overlay}"'
     sp = len(group)
 
     # Цветокор ложится НА КАЖДЫЙ ВХОД до склейки, а не на готовую группу
@@ -1206,20 +1501,22 @@ def join(group, out: Path, st, sparks, first=False, moments=None):
 
     # Плёночная база — общая на ролик, поэтому лежит уже на склеенном.
     fc.append(f'[{prev}]' + film_look() + '[graded]')
-    # Слой один — искры, и его может не быть вовсе. Дымку с канала убрали:
-    # атмосферность уже в LUT через подъём чёрного, второй слой её только мылил.
-    if sparks is not None:
-        flip = ",hflip" if st.spark_flip else ""
-        # setpts здесь нет: скорость искр задана в пикселях в секунду и
+    # Слой поверх кадра: пылинки, звёзды, угли или дымка. Его может не
+    # быть вовсе — примерно у трети роликов, см. ось overlay_kind:
+    # приём, который виден в каждой загрузке, перестаёт быть подписью
+    # канала и становится шаблоном.
+    if overlay is not None:
+        flip = ",hflip" if st.overlay_flip else ""
+        # setpts здесь нет: скорость частиц задана в пикселях в секунду и
         # запечена прямо в петлю. Растягивать её ещё и по времени значило бы
         # умножать одно на другое и терять контроль над числом.
         fc.append(f'[{sp}:v]scale={W}:{H}{flip},setsar=1[spv]')
         # all_opacity — единственная ручка силы наложения
         fc.append(f'[graded][spv]blend=all_mode=screen:'
-                  f'all_opacity={st.spark_opacity}:shortest=1[h2]')
-        last = "h2"
+                  f'all_opacity={st.overlay_opacity}:shortest=1[h2]')
+        tail = "h2"
     else:
-        last = "graded"
+        tail = "graded"
 
     post = []
     if st.grain:
@@ -1240,9 +1537,16 @@ def join(group, out: Path, st, sparks, first=False, moments=None):
         post.append(f"vignette=PI/{safe:.2f}")
     # Открытие из чёрного. Стоит ПОСЛЕ цветокора и зерна, иначе чёрное
     # перестаёт быть чёрным: LUT поднимает нулевой уровень до 0.05, и
-    # проявление идёт не из черноты, а из коричневой мути.
-    if first and st.opening == "black_card":
-        post.append("fade=t=in:st=0:d=1.4")
+    # проявление идёт не из черноты, а из синеватой мути.
+    if first and st.opening in ("black_card", "starlit"):
+        post.append(f"fade=t=in:st=0:d={2.6 if st.opening == 'starlit' else 1.4}")
+    # УХОД В ЧЁРНОЕ В САМОМ КОНЦЕ. Ролик смотрят перед сном, и обрыв
+    # картинки на полном свете будит. Считается от длины группы: время
+    # внутри неё идёт от нуля, а сколько её осталось — знаем только здесь.
+    if last:
+        seg = sum(sh["duration"] for sh in group)
+        st_fade = max(0.0, seg - TAIL_FADE_SECONDS)
+        post.append(f"fade=t=out:st={st_fade:.2f}:d={TAIL_FADE_SECONDS:.1f}")
     # Плашки ставятся ПОСЛЕ виньетки. Иначе виньетка гасит нижние углы, а
     # плашка стоит именно там — текст уходил бы в тень ровно у той половины
     # раскладок, где он внизу.
@@ -1250,13 +1554,62 @@ def join(group, out: Path, st, sparks, first=False, moments=None):
     if chain:
         post.append(chain)
     post.append("setsar=1")
-    fc.append(f'[{last}]' + ",".join(post) + '[out]')
+    fc.append(f'[{tail}]' + ",".join(post) + '[out]')
 
     cmd = (f'ffmpeg -y {ins} -filter_complex "{";".join(fc)}" -map "[out]" '
            f'-c:v libx264 -crf {st.crf} -preset {st.preset} '
            f'-pix_fmt yuv420p -an "{out}"')
     subprocess.run(cmd, shell=True, check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def beds_for(st, job):
+    """
+    Какие подложки играют в этом ролике. Список путей, возможно пустой.
+
+    ПЯТЬ ПОДЛОЖЕК, bed1..bed5, и в каждом ролике их звучит ДВЕ: вторая
+    заходит около середины через перекрёстное затухание (см.
+    render.build_bed). Причина арифметическая: ролик идёт сорок пять
+    минут, подложка длится две-три и зацикливается пятнадцать-двадцать
+    раз. К двадцатой петле зритель знает её наизусть, и она перестаёт
+    быть фоном.
+
+    Выбор — как у цветокора: две последние по журналу канала не
+    повторяются, см. channel.avoid(). Поле music в спецификации перебивает
+    жребий целиком: там можно задать один файл или список.
+
+    Отсутствующие файлы отсеиваются молча, но с записью в лог. Ронять
+    сборку на последнем шаге из-за ненайденного mp3 нельзя — до него сорок
+    минут рендера, и это уже случалось.
+    """
+    def resolve(name):
+        p = Path(name)
+        if not p.suffix:
+            p = MUSIC_DIR / f"{name}.mp3"
+        if not p.is_absolute():
+            p = ROOT / p if p.parts[0] in ("assets", "work") else p
+        return p
+
+    if job.get("music"):
+        want = job["music"] if isinstance(job["music"], list) else [job["music"]]
+    else:
+        want = [st.bed, st.bed_second]
+
+    out, missing = [], []
+    for name in want:
+        p = resolve(name)
+        (out if p.exists() else missing).append(p)
+    if missing:
+        log("  ! нет подложек: " + ", ".join(p.name for p in missing))
+    if out:
+        log(f"  подложка: {', '.join(p.name for p in out)}"
+            + (f", смена на {st.bed_switch_at*100:.0f}% ролика"
+               if len(out) > 1 else "")
+            + f", уровень {job.get('bed_gain_db', st.bed_gain_db)} дБ")
+    else:
+        log("  ! подложек нет вовсе — собираю только с голосом. "
+            "Положи bed1.mp3..bed5.mp3 в assets/music, см. README там же")
+    return out
 
 
 def duck_points(st, story, pace):
@@ -1310,23 +1663,24 @@ def duck_points(st, story, pace):
 
 
 def ensure_overlays(st):
-    """Готовый слой искр, либо None если искры выключены спецификацией."""
-    if not st.sparks_enabled:
-        log("  искры выключены спецификацией")
+    """
+    Готовый слой поверх кадра, либо None если у ролика его нет.
+
+    Четыре семьи: пылинки, звёзды, угли, дымка. Файлы лежат в
+    репозитории, и штатно этот код только проверяет их наличие. Ветка с
+    генерацией — страховка: считается слой минутами, и платить их каждым
+    прогоном не за что, но и падать из-за отсутствующего файла нельзя.
+    """
+    if not st.overlay_enabled or st.overlay_kind == "none":
+        log("  слой поверх кадра: нет (так выпало у этого ролика)")
         return None
     OVERLAYS.mkdir(parents=True, exist_ok=True)
-    sp = OVERLAYS / f"sparks_{st.sparks_variant}.mp4"
+    sp = OVERLAYS / f"{st.overlay_kind}_{st.overlay_variant}.mp4"
     if not sp.exists():
-        # Штатно файл лежит в репозитории и этот код не выполняется.
-        # Он остаётся страховкой: генерация трёх вариантов занимает минуты,
-        # и платить их каждым прогоном не за что.
-        log("  искр нет, генерирую (разово)")
+        log(f"  слоя {sp.name} нет, генерирую (разово, минуты)")
         import overlays
-        overlays.make_sparks(sp, seconds=20, seed=st.sparks_variant,
-                             count=overlays.SPARK_COUNTS[st.sparks_variant - 1],
-                             size_range=tuple(st.spark_size),
-                             px_sec=tuple(st.spark_speed_px_sec),
-                             flicker=tuple(st.spark_flicker))
+        overlays.make(st.overlay_kind, st.overlay_variant, sp)
+    log(f"  слой поверх кадра: {sp.name}, сила {st.overlay_opacity}")
     return sp
 
 
@@ -1358,7 +1712,8 @@ def main(job_path):
         recent_luts=job.get("recent_luts") or av["lut"],
         recent_openings=job.get("recent_openings") or av["opening"],
         recent_transitions=av["main_transition"],
-        recent_sparks=av["sparks"])
+        recent_overlays=av["overlay"],
+        recent_beds=av["bed"])
     # Цветокор можно задать и на верхнем уровне спецификации, и внутри
     # style_override. Раньше верхний уровень читался только для archive_lut,
     # а lut рядом с ним молча игнорировался — и ролик, в спецификации
@@ -1403,6 +1758,41 @@ def main(job_path):
         log(f"  ! генерации {sec['gen']/mtotal*100:.1f}% при заказанных "
             f"{want*100:.0f}% — не хватило реального материала, "
             f"добери его этапом material")
+
+    # ДОЛЯ ВИДЕО ПО ФАЗАМ. Считается по ГОТОВОМУ плану, а не по счётчикам
+    # MaterialMix: длительности правятся после раскладки (кадр тянется до
+    # начала следующего), и доли, посчитанные до этой правки, врут на
+    # секунды. Печатать надо то, что в ролике, а не то, что задумывалось.
+    for name, ru, lo, hi, target in (
+            ("intro", "вступление", 0.0, getattr(st, "intro_end", 0.0),
+             st.intro_clip_share),
+            ("body", "тело", getattr(st, "intro_end", 0.0), total,
+             st.body_clip_share)):
+        inside = [s for s in shots if lo <= s["start"] < hi]
+        span = sum(s["duration"] for s in inside)
+        if span <= 0:
+            continue
+        clip_s = sum(s["duration"] for s in inside if s["kind"] == "clip")
+        got_share = clip_s / span
+        log(f"  {ru:<12} видео {got_share*100:5.1f}% (заказано "
+            f"{target*100:.0f}%), {span/60:5.1f} мин, {len(inside)} кадров")
+        if abs(got_share - target) > 0.10:
+            # Причина у недобора почти всегда одна из двух, и они лечатся
+            # по-разному, поэтому её надо назвать, а не сообщать факт.
+            too_long = sum(1 for s in inside
+                           if s["kind"] != "clip"
+                           and s["duration"] > CLIP_MAX_SECONDS)
+            log(f"  ! доля видео в фазе «{ru}» разошлась с заказанной "
+                f"больше чем на 10 пунктов")
+            if too_long and got_share < target:
+                log(f"    {too_long} из {len(inside)} кадров длиннее "
+                    f"{CLIP_MAX_SECONDS:.0f} с — под видео они не годятся "
+                    f"(клип ушёл бы на второй круг петли). Лечится либо "
+                    f"добором стока этапом material, либо base_duration_range "
+                    f"пониже в style_override")
+            else:
+                log(f"    материала одного из видов не хватило, смотри "
+                    f"строки подбора выше")
     (out / "shots.json").write_text(json.dumps(
         [{k: str(v) for k, v in s.items() if k != 'framing'} for s in shots],
         indent=1, ensure_ascii=False))
@@ -1462,15 +1852,17 @@ def main(job_path):
         s["file"] = f
 
     log("── склейка и цветокор")
-    sparks = ensure_overlays(st)
+    overlay = ensure_overlays(st)
     segs = []
+    n_groups = math.ceil(len(shots) / SEG_SIZE)
     for gi in range(0, len(shots), SEG_SIZE):
         group = shots[gi:gi + SEG_SIZE]
         seg = tmp / f"seg_{gi//SEG_SIZE:03d}.mp4"
         if not seg.exists():
-            join(group, seg, st, sparks, first=(gi == 0), moments=moments)
+            join(group, seg, st, overlay, first=(gi == 0), moments=moments,
+                 last=(gi + SEG_SIZE >= len(shots)))
         segs.append(seg)
-        log(f"  группа {gi//SEG_SIZE + 1}/{math.ceil(len(shots)/SEG_SIZE)}")
+        log(f"  группа {gi//SEG_SIZE + 1}/{n_groups}")
 
     log("── сшивка")
     silent = tmp / "silent.mp4"
@@ -1478,25 +1870,15 @@ def main(job_path):
 
     log("── звук")
     mixed = tmp / "audio.m4a"
-    bed = Path(job["music"]) if job.get("music") else MUSIC
-    if not bed.is_absolute():
-        bed = ROOT / bed
-    # Подложки может не быть: она делается отдельно и появляется в репозитории
-    # позже кода. Раньше это роняло всю сборку на последнем шаге — после
-    # сорока минут рендера, из-за отсутствующего mp3. Теперь ролик собирается
-    # с одним голосом, а в лог уходит внятное предупреждение.
-    if bed.exists():
-        log(f"  подложка: {bed.name}")
-    else:
-        log(f"  ! подложки нет ({bed}) — собираю только с голосом")
-        bed = None
+    beds = beds_for(st, job)
     ducks = duck_points(st, getattr(st, "beats", []), getattr(st, "pacing", None))
-    if ducks and bed:
+    if ducks and beds:
         log(f"  подложка уходит в {len(ducks)} местах "
             f"({st.duck_style}, глубина {st.duck_depth})")
-    render.build_audio(assets / "voice_full.m4a", bed, mixed, total,
-                       bed_gain_db=job.get("bed_gain_db", -26.0),
-                       duck_points=ducks, duck_depth=st.duck_depth)
+    render.build_audio(assets / "voice_full.m4a", beds or None, mixed, total,
+                       bed_gain_db=job.get("bed_gain_db", st.bed_gain_db),
+                       duck_points=ducks, duck_depth=st.duck_depth,
+                       switch_at=st.bed_switch_at)
 
     log("── финал")
     final = out / "final.mp4"
