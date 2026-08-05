@@ -689,49 +689,60 @@ def probe():
 # можно перечислять сколько угодно: selftest переберёт их и скажет,
 # какое написание настоящее.
 SLUG_CANDIDATES = {
-    "flux2pro": ["flux-2-pro", "flux-2", "flux-pro-v1-1"],
-    "nano-banana2": ["nano-banana-2", "nano-banana-pro", "nano-banana",
-                     "gemini-2-5-flash-image-preview",
-                     "gemini-3-pro-image-preview",
-                     "imagen-nano-banana-2-flash", "nano-banana-2-flash"],
-    "seedream5pro": ["seedream-v5-pro", "seedream-v5", "seedream-v5-lite",
-                     "seedream-v4-5"],
-    "minimax-hailuo-2.3": ["minimax-hailuo-2-3-1080p",
-                           "minimax-hailuo-02-1080p"],
-    "seedance-1.5pro": ["seedance-pro-1-5-1080p", "seedance-1-5-pro-1080p",
-                        "seedance-v1-5-pro-1080p", "seedance-pro-1080p",
-                        "seedance-pro-720p"],
-    "kling-2.5": ["kling-v2-5-pro", "kling-v2-5", "kling-v2"],
-    "wan-2.2": ["wan-v2-2-720p", "wan-v2-2-580p", "wan-v2-2-480p"],
+    # Пять путей ниже ПОДТВЕРЖДЕНЫ прогоном: сервис ответил на них 400
+    # «негодное тело», то есть путь отозвался. Запасные им не нужны.
+    "flux2pro": ["flux-2-pro"],
+    "seedream5pro": ["seedream-v5-pro"],
+    "minimax-hailuo-2.3": ["minimax-hailuo-2-3-1080p"],
+    "kling-2.5": ["kling-v2-5-pro"],
+    "wan-2.2": ["wan-v2-2-720p"],
+    # А эти два дали честный 404 на POST — написание неверное, ищем.
+    "nano-banana2": ["nano-banana-2", "nano-banana-v2", "nano-banana-2-pro",
+                     "nano-banana-pro", "nano-banana", "google-nano-banana-2",
+                     "gemini-3-pro-image", "imagen4", "imagen3"],
+    "seedance-1.5pro": ["seedance-pro-1-5-1080p", "seedance-v1-5-pro",
+                        "seedance-1-5-pro", "seedance-pro-v1-5",
+                        "seedance-v1-5-pro-1080p", "seedance-v1-5",
+                        "seedance-pro-1080p", "seedance"],
 }
 
 
 def check_slug(category: str, slug: str):
     """
-    Существует ли путь модели. БЕСПЛАТНО и БЕЗ ПОБОЧНЫХ ДЕЙСТВИЙ.
+    Существует ли путь модели. Спрашиваем POST с заведомо НЕГОДНЫМ телом.
 
-    Спрашиваем GET, а не POST. У каждой модели по её же пути висит список
-    заданий («статус всех задач такой-то модели»), поэтому GET отвечает
-    200, если путь есть, и 404, если написание неверное, — и ничего при
-    этом не создаёт.
+    Почему именно так, а не GET: GET по пути модели есть НЕ У ВСЕХ — из
+    семи наших моделей на GET отзывается одна kling, а остальные шесть
+    отвечают 404 при живом и рабочем POST. Проверка через GET была
+    поставлена и тут же снята: она объявила несуществующими пять моделей,
+    которые на деле есть.
 
-    Прошлая версия этой проверки слала POST с пустым телом в расчёте на
-    отказ «нет prompt». Дёшево это ровно до первой модели, которая пустое
-    тело ПРИНИМАЕТ: kling ответил 200 и завёл настоящее задание на
-    генерацию видео. Проверка, которая делает то, что проверяет, — не
-    проверка.
+    Тело подобрано так, чтобы до генерации дело не дошло: пустой prompt и
+    нулевая длительность не проходят проверку параметров у любой модели.
+    Гарантии всё же нет — kling однажды принял ПУСТОЙ объект `{}` и завёл
+    настоящее задание, — поэтому 200 здесь считается «путь есть, и, судя
+    по всему, задание создано», и об этом печатается предупреждение.
 
     Возвращает (True/False/None, текст).
     """
     path = f"/ai/{category}/{slug}"
+    body = {"prompt": ""}
+    if category == VIDEO_CATEGORY:
+        body["duration"] = 0
     try:
-        r = requests.get(f"{BASE}{path}", timeout=30, headers=_headers())
+        r = requests.post(f"{BASE}{path}", timeout=30, headers=_headers(),
+                          json=body)
     except requests.RequestException as e:
         return None, f"сеть недоступна ({e})"
     if r.status_code == 404:
         return False, f"404 — такого пути нет ({path})"
-    if r.status_code == 200:
-        return True, "путь есть"
+    if r.status_code in (400, 422):
+        return True, f"путь есть (ответ {r.status_code} на негодное тело)"
+    if r.status_code == 405:
+        return True, "путь есть (метод не тот, но путь отозвался)"
+    if r.status_code in (200, 201, 202):
+        return True, ("путь есть, НО СОЗДАЛОСЬ ЗАДАНИЕ — модель приняла "
+                      "негодное тело")
     if r.status_code in (401, 403):
         return None, f"{r.status_code} — ключ не пустили сюда: {r.text[:120]}"
     return None, f"ответ {r.status_code}: {r.text[:120]}"
