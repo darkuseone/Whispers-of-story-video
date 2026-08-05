@@ -42,18 +42,36 @@ magnific.py — второй поставщик картинок, коротки
 
 Про адрес API
 -------------
-Базовый адрес и пути к методам вынесены в константы и перекрываются
-переменными окружения. Это не перестраховка: у сервисов такого рода пути
-живут своей жизнью и переживают любой код, который их угадывает — ровно на
-этом однажды сгорел первый прогон отбраковки с несуществующим именем
-модели зрения. Если Magnific отвечает по другим путям, чинится это одной
-переменной в workflow, а не правкой кода:
+Freepik в апреле 2026 переименовался в Magnific; рабочий адрес API —
+`api.freepik.com/v1`, старый `api.magnific.ai` никогда не существовал —
+это была ошибочная догадка первого прогона, и именно она уронила все
+запросы 404-й на `ancient-mini`. Подтверждено: базовый адрес
+`https://api.freepik.com/v1` (у `api.magnific.com` тот же ключ, но
+`freepik.com` — исходный и точно рабочий), заголовок авторизации —
+`x-freepik-api-key` (НЕ `Authorization: Bearer`), путь у каждой модели
+свой: `/ai/text-to-image/{slug}` и `/ai/image-to-video/{slug}`, ответ —
+асинхронная задача (`task_id` + `status`, опрос по тому же пути плюс
+`/{task_id}`), aspect_ratio — не "16:9", а именованный enum
+(`widescreen_16_9`).
 
-    MAGNIFIC_BASE=https://api.magnific.ai/v1
-    MAGNIFIC_IMAGE_PATH=/images/generations
-    MAGNIFIC_VIDEO_PATH=/videos/generations
-    MAGNIFIC_JOB_PATH=/jobs
-    MAGNIFIC_SEARCH_PATH=/assets/search
+Что здесь ДОГАДКА, а не факт: официальная документация
+(docs.freepik.com) отдаёт боту 403 на прямой заход, и точные slug'и
+только четырёх нужных этому каналу моделей (flux2pro, nano-banana2,
+seedream5pro и все четыре видео) в поисковой выдаче не встретились —
+встретились только соседние версии (seedream-v4-5, seedream-v5-lite,
+kling-v2, minimax-hailuo-02, wan v2.2 без версии в имени пути). Слуги
+ниже — лучшее приближение по образцу этих соседей. Неверный слуг НЕ
+рушит сборку: путь ответит 404, generate_image/generate_video вернут
+False, и assets.build_images откатится на xAI — ровно так это и
+сработало в первом прогоне. Поправить, когда найдётся точное имя, можно
+одной переменной окружения, без правки кода:
+
+    MAGNIFIC_BASE=https://api.freepik.com/v1
+    MAGNIFIC_IMAGE_SLUGS={"seedream5pro": "seedream-v5"}
+    MAGNIFIC_VIDEO_SLUGS={"kling-2.5": "kling-v2-5-pro"}
+
+(JSON — только те ключи, что нужно поправить, остальные останутся по
+умолчанию).
 
 Ответ разбирается НЕ по жёсткой схеме, а поиском первой ссылки на файл в
 любом месте JSON (см. _first_url). Схемы у разных сервисов разные, а
@@ -74,28 +92,87 @@ import requests
 
 ROOT = Path(__file__).parent.parent
 
-BASE = (os.environ.get("MAGNIFIC_BASE") or "https://api.magnific.ai/v1").rstrip("/")
-IMAGE_PATH = os.environ.get("MAGNIFIC_IMAGE_PATH", "/images/generations")
-VIDEO_PATH = os.environ.get("MAGNIFIC_VIDEO_PATH", "/videos/generations")
-JOB_PATH = os.environ.get("MAGNIFIC_JOB_PATH", "/jobs")
-SEARCH_PATH = os.environ.get("MAGNIFIC_SEARCH_PATH", "/assets/search")
+BASE = (os.environ.get("MAGNIFIC_BASE") or "https://api.freepik.com/v1").rstrip("/")
+IMAGE_CATEGORY = "text-to-image"
+VIDEO_CATEGORY = "image-to-video"
+SEARCH_PATH = os.environ.get("MAGNIFIC_SEARCH_PATH", "/resources")
 
 TIMEOUT = 90
 POLL_EVERY = 6
 POLL_TRIES = 40           # до четырёх минут на одно видео
 
 # Безлимитные по подписке модели изображений. Порядок значения не имеет:
-# они чередуются, а не ранжируются.
-IMAGE_MODELS = ["flux2pro", "nano-banana2", "seedream5pro"]
+# они чередуются, а не ранжируются. Ключи — внутренние имена (используются
+# в логах и job-спеке), значения — реальные slug'и в пути REST API.
+_DEFAULT_IMAGE_SLUGS = {
+    "flux2pro": "flux-2-pro",
+    "nano-banana2": "nano-banana-2",
+    "seedream5pro": "seedream-v5-pro",
+}
 
 # Модели видео. Тоже по подписке, но используются в час по чайной ложке —
 # см. VIDEO_SHARE.
-VIDEO_MODELS = ["minimax-hailuo-2.3", "seedance-1.5pro", "kling-2.5", "wan-2.2"]
+_DEFAULT_VIDEO_SLUGS = {
+    "minimax-hailuo-2.3": "minimax-hailuo-2-3-1080p",
+    "seedance-1.5pro": "seedance-pro-1-5-1080p",
+    "kling-2.5": "kling-v2-5-pro",
+    "wan-2.2": "wan-v2-2-720p",
+}
+
+
+def _load_slug_overrides(env_name: str, defaults: dict) -> dict:
+    """Слуги по умолчанию + то, что переопределено JSON'ом в переменной
+    окружения. Битый JSON не роняет сборку — просто игнорируется с
+    предупреждением в лог."""
+    merged = dict(defaults)
+    raw = os.environ.get(env_name)
+    if not raw:
+        return merged
+    try:
+        overrides = json.loads(raw)
+    except json.JSONDecodeError:
+        log(f"  ! magnific: {env_name} — не разобрать как JSON, игнорирую")
+        return merged
+    if isinstance(overrides, dict):
+        merged.update({k: v for k, v in overrides.items() if isinstance(v, str)})
+    return merged
+
+
+IMAGE_SLUGS = _load_slug_overrides("MAGNIFIC_IMAGE_SLUGS", _DEFAULT_IMAGE_SLUGS)
+VIDEO_SLUGS = _load_slug_overrides("MAGNIFIC_VIDEO_SLUGS", _DEFAULT_VIDEO_SLUGS)
+
+IMAGE_MODELS = list(_DEFAULT_IMAGE_SLUGS)
+VIDEO_MODELS = list(_DEFAULT_VIDEO_SLUGS)
+
+# Freepik принимает не "16:9", а именованный enum. Соответствие —
+# подтверждённое (imagen3/seedream в документации), полный список шире,
+# но каналу нужны только эти два кадра.
+_ASPECT_RATIOS = {
+    "16:9": "widescreen_16_9",
+    "9:16": "social_story_9_16",
+    "1:1": "square_1_1",
+}
+
+
+def _aspect(a: str) -> str:
+    return _ASPECT_RATIOS.get(a, "widescreen_16_9")
+
 
 # Сколько СЕКУНД просить у видеомодели. Только короткая вставка: длинный
 # сгенерированный план разваливается сам — у моделей плывут руки, буквы и
-# архитектура, и чем дольше кадр, тем виднее.
+# архитектура, и чем дольше кадр, тем виднее. НО ни одна из четырёх видео
+# моделей не принимает 2-3 секунды буквально (у всех есть минимальная
+# длительность в самом API, 4-6 с) — заказывается минимально возможная, а
+# до нужных 2-3 с на экране кадр обрезает та же нарезка, что и обычный
+# скачанный клип: она не смотрит, откуда файл, и обрезает любой источник
+# под план кадра.
 VIDEO_SECONDS = (2, 3)
+_MIN_API_DURATION = {
+    "minimax-hailuo-2.3": 6,
+    "seedance-1.5pro": 4,
+    "kling-2.5": 5,
+    "wan-2.2": 5,
+}
 
 # Потолок доли сгенерированного видео от всего видео ролика.
 VIDEO_SHARE = 0.05
@@ -130,7 +207,7 @@ def available() -> bool:
 
 
 def _headers():
-    return {"Authorization": f"Bearer {key()}",
+    return {"x-freepik-api-key": key(),
             "Content-Type": "application/json"}
 
 
@@ -263,12 +340,18 @@ def _state(payload) -> str:
 DEAD = ("failed", "error", "cancelled", "canceled", "rejected")
 
 
-def _wait_for(job: str, what: str) -> str:
-    """Опрашивает задание, пока не появится ссылка. Пусто — не дождались."""
+def _wait_for(create_path: str, job: str, what: str) -> str:
+    """
+    Опрашивает задание, пока не появится ссылка. Пусто — не дождались.
+
+    create_path — тот же путь, которым задание создавалось
+    (/ai/{category}/{slug}); у Freepik статус задания живёт по тому же
+    пути с /{task_id} на конце, отдельного /jobs/{id} у сервиса нет.
+    """
     for _ in range(POLL_TRIES):
         time.sleep(POLL_EVERY)
         try:
-            r = requests.get(f"{BASE}{JOB_PATH}/{job}", timeout=TIMEOUT,
+            r = requests.get(f"{BASE}{create_path}/{job}", timeout=TIMEOUT,
                              headers=_headers())
         except requests.RequestException as e:
             log(f"  ! magnific: опрос задания {job} не прошёл: {e}")
@@ -364,15 +447,16 @@ def generate_image(prompt: str, dst: Path, model: str = None,
     if dst.exists():
         return True
     model = model or IMAGE_MODELS[0]
-    data = _post(IMAGE_PATH, {"model": model, "prompt": prompt, "n": 1,
-                              "aspect_ratio": aspect},
-                 f"картинка моделью {model}")
+    slug = IMAGE_SLUGS.get(model, model)
+    path = f"/ai/{IMAGE_CATEGORY}/{slug}"
+    data = _post(path, {"prompt": prompt, "aspect_ratio": _aspect(aspect)},
+                 f"картинка моделью {model} ({slug})")
     if data is None:
         return False
     url = _first_url(data)
     if not url:
         job = _job_id(data)
-        url = _wait_for(job, f"картинка моделью {model}") if job else ""
+        url = _wait_for(path, job, f"картинка моделью {model}") if job else ""
     if not url:
         log(f"  ! magnific: в ответе нет ссылки — {json.dumps(data)[:240]}")
         return False
@@ -393,7 +477,7 @@ def video_budget(clips_needed: int) -> int:
     return max(0, min(by_share, remaining("video"), 3))
 
 
-def generate_video(prompt: str, dst: Path, seconds: int = None,
+def generate_video(prompt: str, dst: Path,
                    model: str = None, rng: random.Random = None) -> bool:
     """
     Одна короткая вставка. Правда, если файл лёг на диск.
@@ -410,27 +494,57 @@ def generate_video(prompt: str, dst: Path, seconds: int = None,
         return False
     rng = rng or random
     model = model or rng.choice(VIDEO_MODELS)
-    seconds = int(seconds or rng.choice(VIDEO_SECONDS))
-    data = _post(VIDEO_PATH, {"model": model, "prompt": prompt,
-                              "duration": seconds, "aspect_ratio": "16:9"},
-                 f"видео моделью {model}")
+    slug = VIDEO_SLUGS.get(model, model)
+    # Заказанные 2-3 с — это то, сколько кадр держится НА ЭКРАНЕ, а не то,
+    # что примет API: у моделей есть свой минимум (см. _MIN_API_DURATION),
+    # обрезка до нужной длины — забота обычной нарезки клипа, не этой
+    # функции.
+    api_seconds = _MIN_API_DURATION.get(model, 5)
+    path = f"/ai/{VIDEO_CATEGORY}/{slug}"
+    data = _post(path, {"prompt": prompt, "duration": api_seconds,
+                        "aspect_ratio": _aspect("16:9")},
+                 f"видео моделью {model} ({slug})")
     if data is None:
         return False
     url = _first_url(data)
     if not url:
         job = _job_id(data)
-        url = _wait_for(job, f"видео моделью {model}") if job else ""
+        url = _wait_for(path, job, f"видео моделью {model}") if job else ""
     if not url:
         log(f"  ! magnific: в ответе нет ссылки — {json.dumps(data)[:240]}")
         return False
     if not _download(url, dst):
         return False
     charge("video")
-    log(f"  magnific: видео {seconds} с моделью {model} -> {dst.name}")
+    log(f"  magnific: видео {api_seconds} с моделью {model} -> {dst.name}")
     return True
 
 
 # ─────────────────────────── БИБЛИОТЕКА ───────────────────────────
+
+def _resolve_download(resource_id) -> str:
+    """
+    Поиск в /resources отдаёт только превью — лицензированная ссылка на
+    файл выдаётся отдельным вызовом на id найденного ресурса. Без этого
+    шага в манифест уезжала бы водяная ссылка на превью вместо самого
+    файла.
+    """
+    try:
+        r = requests.get(f"{BASE}/resources/{resource_id}/download",
+                         timeout=TIMEOUT, headers=_headers())
+    except requests.RequestException as e:
+        log(f"  ! magnific: скачивание ресурса {resource_id} — сеть "
+            f"недоступна ({e})")
+        return ""
+    if r.status_code != 200:
+        log(f"  ! magnific: скачивание ресурса {resource_id} — ответ "
+            f"{r.status_code} {r.text[:200]}")
+        return ""
+    try:
+        return _first_url(r.json())
+    except ValueError:
+        return ""
+
 
 def search_library(query: str, n: int, kind: str = "image"):
     """
@@ -451,11 +565,21 @@ def search_library(query: str, n: int, kind: str = "image"):
             f"({DAILY_LIBRARY_LIMIT}), пропускаю «{query}»")
         return []
     want = max(1, min(n, left))
+    # Ресурсный поиск Freepik: "term" (не "query"), ориентация и тип
+    # содержимого — вложенные ключи filters[...] в строке запроса, не
+    # плоские top-level поля. Для kind="image" тип содержимого НЕ
+    # ограничивается: фото/вектор/графика — любое сгодится, это и
+    # называется в спецификации «видео, фото, векторы, графика».
+    # Просим с запасом (× 2): не у каждого найденного ресурса резолвится
+    # скачивание с первого раза, а лимит списывается по факту, не по
+    # найденному.
+    params = {"term": query, "limit": want * 2, "order": "relevance",
+              "filters[orientation]": "landscape"}
+    if kind == "video":
+        params["filters[content_type]"] = "video"
     try:
         r = requests.get(f"{BASE}{SEARCH_PATH}", timeout=TIMEOUT,
-                         headers=_headers(),
-                         params={"query": query, "type": kind,
-                                 "limit": want, "orientation": "landscape"})
+                         headers=_headers(), params=params)
     except requests.RequestException as e:
         log(f"  ! magnific: поиск «{query}» — сеть недоступна ({e})")
         return []
@@ -476,8 +600,13 @@ def search_library(query: str, n: int, kind: str = "image"):
     rows = rows or []
 
     out = []
-    for row in rows[:want]:
-        url = _first_url(row)
+    for row in rows:
+        if len(out) >= want:
+            break
+        if not isinstance(row, dict):
+            continue
+        rid = row.get("id")
+        url = _resolve_download(rid) if rid else _first_url(row)
         if not url:
             continue
         is_video = bool(re.search(r"\.(mp4|webm|mov)(\?|$)", url, re.I)) \
@@ -512,20 +641,25 @@ def probe():
     """
     if not available():
         return None, "ключ не задан"
+    # Ресурсный поиск с limit=1 — единственный подтверждённый GET-путь без
+    # побочных эффектов (генерация — POST и тратит квоту, а /models,
+    # которым проверяли раньше, у этого API не существует вовсе — это и
+    # било 404-й на каждом прогоне).
     try:
-        r = requests.get(f"{BASE}/models", timeout=30, headers=_headers())
+        r = requests.get(f"{BASE}{SEARCH_PATH}", timeout=30,
+                         headers=_headers(),
+                         params={"term": "test", "limit": 1})
     except requests.RequestException as e:
         return None, f"сеть недоступна ({e})"
     if r.status_code == 200:
         return True, "принят"
     low = r.text.lower()
     if any(h in low for h in ("invalid_api_key", "invalid api key",
-                              "incorrect api key", "unauthorized")):
+                              "incorrect api key", "unauthorized",
+                              "forbidden")):
         return False, f"ОТКАЗ {r.status_code} — {r.text[:200]}"
-    # 404 на /models значит только, что такого пути нет: адрес методов у
-    # сервиса может быть свой, и ронять из-за этого сборку нельзя.
-    return None, (f"ответ {r.status_code} на {BASE}/models — разбираться не "
-                  f"берусь: {r.text[:160]}")
+    return None, (f"ответ {r.status_code} на {BASE}{SEARCH_PATH} — "
+                  f"разбираться не берусь: {r.text[:160]}")
 
 
 if __name__ == "__main__":
