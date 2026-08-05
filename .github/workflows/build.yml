@@ -8,7 +8,7 @@ on:
         required: true
         default: 'ancient-01'
       stage:
-        description: 'smoke / material / vet / assets / render / auto'
+        description: 'smoke / magnific / material / vet / assets / render / auto'
         required: true
         default: 'auto'
 
@@ -83,13 +83,14 @@ jobs:
           # строкой ниже.
           case "${{ steps.pick.outputs.stage }}" in
             smoke)    need="" ; want="" ;;
+            magnific) need="MAGNIFIC_API_KEY" ; want="" ;;
             material) need="" ; want="PEXELS_API_KEY PIXABAY_API_KEY MAGNIFIC_API_KEY" ;;
             vet)      need="" ; want="XAI_API_KEY" ;;
             render)   need="" ; want="" ;;
             *)        need="ELEVENLABS_API_KEY PEXELS_API_KEY PIXABAY_API_KEY" ; want="ELEVENLABS_VOICE_ID XAI_API_KEY MAGNIFIC_API_KEY" ;;
           esac
           case "${{ steps.pick.outputs.stage }}" in
-            smoke|material|vet|render) ;;
+            smoke|magnific|material|vet|render) ;;
             *)
               if [ -z "$XAI_API_KEY" ] && [ -z "$MAGNIFIC_API_KEY" ]; then
                 echo "ПУСТО: и XAI_API_KEY, и MAGNIFIC_API_KEY — рисовать картинки нечем"
@@ -156,6 +157,19 @@ jobs:
           set -e
           python pipeline/mock.py  jobs/${{ steps.pick.outputs.job }}.json
           python pipeline/smoke.py jobs/${{ steps.pick.outputs.job }}.json
+
+      # Диагностика Magnific без сборки ролика: принят ли ключ, отвечает ли
+      # библиотека и СУЩЕСТВУЮТ ЛИ пути всех восьми моделей. Ничего не
+      # генерирует и не списывает суточный лимит — POST уходит с пустым
+      # телом, и сервис отвечает «нет prompt» задолго до генерации.
+      # Нужен потому, что slug модели подобран по образцу соседних (своя
+      # документация отдаёт боту 403), а неверный slug виден иначе только
+      # как молчаливый откат на xAI посреди боевого прогона.
+      - name: Проверка путей и ключа Magnific
+        if: steps.pick.outputs.stage == 'magnific'
+        env:
+          MAGNIFIC_API_KEY: ${{ secrets.MAGNIFIC_API_KEY }}
+        run: python pipeline/magnific.py selftest
 
       - name: Только отбраковка — без скачивания
         if: steps.pick.outputs.stage == 'vet'

@@ -565,24 +565,45 @@ def search_library(query: str, n: int, kind: str = "image"):
             f"({DAILY_LIBRARY_LIMIT}), пропускаю «{query}»")
         return []
     want = max(1, min(n, left))
-    # Ресурсный поиск Freepik: "term" (не "query"), ориентация и тип
-    # содержимого — вложенные ключи filters[...] в строке запроса, не
-    # плоские top-level поля. Для kind="image" тип содержимого НЕ
-    # ограничивается: фото/вектор/графика — любое сгодится, это и
-    # называется в спецификации «видео, фото, векторы, графика».
+    # Ресурсный поиск Freepik: "term" (не "query"), а фильтры — ВЛОЖЕННЫЕ
+    # объекты, а не скалярные значения: `filters[orientation]=landscape`
+    # сервис отвергает с 400 «The filters.orientation must be an array»
+    # (проверено на живом прогоне), правильная форма —
+    # `filters[orientation][landscape]=1`.
+    #
+    # Для kind="image" тип содержимого НЕ ограничивается: фото, вектор,
+    # графика — любое сгодится, это и называется в спецификации «видео,
+    # фото, векторы, графика».
+    #
     # Просим с запасом (× 2): не у каждого найденного ресурса резолвится
     # скачивание с первого раза, а лимит списывается по факту, не по
     # найденному.
-    params = {"term": query, "limit": want * 2, "order": "relevance",
-              "filters[orientation]": "landscape"}
+    base_params = {"term": query, "limit": want * 2, "order": "relevance"}
+    params = dict(base_params, **{"filters[orientation][landscape]": "1"})
     if kind == "video":
-        params["filters[content_type]"] = "video"
-    try:
-        r = requests.get(f"{BASE}{SEARCH_PATH}", timeout=TIMEOUT,
-                         headers=_headers(), params=params)
-    except requests.RequestException as e:
-        log(f"  ! magnific: поиск «{query}» — сеть недоступна ({e})")
+        params["filters[content_type][video]"] = "1"
+
+    def ask(p):
+        try:
+            return requests.get(f"{BASE}{SEARCH_PATH}", timeout=TIMEOUT,
+                                headers=_headers(), params=p)
+        except requests.RequestException as e:
+            log(f"  ! magnific: поиск «{query}» — сеть недоступна ({e})")
+            return None
+
+    r = ask(params)
+    if r is None:
         return []
+    # 400 — это придирка к ФОРМЕ фильтра, а не отказ в поиске. Библиотека
+    # тут источник последней очереди: по этому запросу уже не нашлось
+    # ничего нигде, и вернуть пусто из-за спорного имени параметра — хуже,
+    # чем вернуть неотфильтрованное. Пробуем ещё раз голым запросом.
+    if r.status_code == 400:
+        log(f"  ! magnific: поиск «{query}» — фильтры не приняты "
+            f"({r.text[:160]}), повторяю без них")
+        r = ask(base_params)
+        if r is None:
+            return []
     if r.status_code != 200:
         log(f"  ! magnific: поиск «{query}» — ответ {r.status_code} "
             f"{r.text[:200]}")
@@ -662,7 +683,91 @@ def probe():
                   f"разбираться не берусь: {r.text[:160]}")
 
 
+def check_slug(category: str, slug: str):
+    """
+    Существует ли путь модели. БЕСПЛАТНО и ничего не создаёт.
+
+    Приём такой: POST с заведомо пустым телом. Если пути нет, сервис
+    отвечает 404 — и это единственное, что нас интересует. Если путь есть,
+    он ругается на отсутствующий prompt (400 или 422), то есть до
+    генерации дело не доходит и ни кредита, ни картинки не тратится.
+
+    Нужно это потому, что slug'и подобраны по образцу соседних моделей
+    (документация отдаёт боту 403), а неверный slug виден только как
+    молчаливый откат на xAI посреди боевого прогона.
+
+    Возвращает (True/False/None, текст).
+    """
+    path = f"/ai/{category}/{slug}"
+    try:
+        r = requests.post(f"{BASE}{path}", timeout=30, headers=_headers(),
+                          json={})
+    except requests.RequestException as e:
+        return None, f"сеть недоступна ({e})"
+    if r.status_code == 404:
+        return False, f"404 — такого пути нет ({path})"
+    if r.status_code in (400, 422):
+        return True, f"путь есть (ответ {r.status_code} на пустое тело)"
+    if r.status_code in (401, 403):
+        return None, f"{r.status_code} — ключ не пустили сюда: {r.text[:120]}"
+    return None, f"ответ {r.status_code}: {r.text[:120]}"
+
+
+def selftest():
+    """
+    Проверка Magnific без сборки ролика: принят ли ключ, отвечает ли
+    библиотека и СУЩЕСТВУЮТ ЛИ пути всех восьми моделей.
+
+    Ничего не генерирует и не тратит суточный лимит — это диагностика,
+    которую можно гонять сколько угодно. Запускается этапом `magnific`
+    в Actions.
+    """
+    ok, why = probe()
+    log(f"ключ   : {why}")
+    log(f"адрес  : {BASE}")
+    log(report())
+    if ok is False:
+        return 1
+
+    log("\n── пути моделей изображений")
+    bad = []
+    for name in IMAGE_MODELS:
+        slug = IMAGE_SLUGS[name]
+        good, note = check_slug(IMAGE_CATEGORY, slug)
+        mark = "+" if good else ("!" if good is False else "?")
+        log(f"  {mark} {name:16} -> {slug:28} {note}")
+        if good is False:
+            bad.append(f"{name} ({slug})")
+
+    log("\n── пути моделей видео")
+    for name in VIDEO_MODELS:
+        slug = VIDEO_SLUGS[name]
+        good, note = check_slug(VIDEO_CATEGORY, slug)
+        mark = "+" if good else ("!" if good is False else "?")
+        log(f"  {mark} {name:20} -> {slug:28} {note}")
+        if good is False:
+            bad.append(f"{name} ({slug})")
+
+    log("\n── библиотека")
+    rows = search_library("ancient greek temple ruins", 2, "image")
+    log(f"  найдено {len(rows)} (лимит при этом НЕ списан — не качали)")
+
+    if bad:
+        log("\nНЕВЕРНЫЕ slug'и, поправить переменной окружения "
+            "MAGNIFIC_IMAGE_SLUGS / MAGNIFIC_VIDEO_SLUGS:")
+        for b in bad:
+            log(f"  {b}")
+        log("Сборка от этого не падает — доля уходит на xAI, но "
+            "заказанные 70/30 не соблюдаются.")
+    else:
+        log("\nвсе пути на месте")
+    return 0
+
+
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "selftest":
+        raise SystemExit(selftest())
     ok, why = probe()
     log(f"ключ: {why}")
     log(report())
