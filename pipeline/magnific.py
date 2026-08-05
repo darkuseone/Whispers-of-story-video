@@ -683,34 +683,72 @@ def probe():
                   f"разбираться не берусь: {r.text[:160]}")
 
 
+# Запасные написания slug'ов. Документация отдаёт боту 403, имена
+# подбираются по образцу соседних моделей, и с первого раза угадались не
+# все. Проверка путей бесплатная (см. check_slug), поэтому кандидатов
+# можно перечислять сколько угодно: selftest переберёт их и скажет,
+# какое написание настоящее.
+SLUG_CANDIDATES = {
+    "flux2pro": ["flux-2-pro", "flux-2", "flux-pro-v1-1"],
+    "nano-banana2": ["nano-banana-2", "nano-banana-pro", "nano-banana",
+                     "gemini-2-5-flash-image-preview",
+                     "gemini-3-pro-image-preview",
+                     "imagen-nano-banana-2-flash", "nano-banana-2-flash"],
+    "seedream5pro": ["seedream-v5-pro", "seedream-v5", "seedream-v5-lite",
+                     "seedream-v4-5"],
+    "minimax-hailuo-2.3": ["minimax-hailuo-2-3-1080p",
+                           "minimax-hailuo-02-1080p"],
+    "seedance-1.5pro": ["seedance-pro-1-5-1080p", "seedance-1-5-pro-1080p",
+                        "seedance-v1-5-pro-1080p", "seedance-pro-1080p",
+                        "seedance-pro-720p"],
+    "kling-2.5": ["kling-v2-5-pro", "kling-v2-5", "kling-v2"],
+    "wan-2.2": ["wan-v2-2-720p", "wan-v2-2-580p", "wan-v2-2-480p"],
+}
+
+
 def check_slug(category: str, slug: str):
     """
-    Существует ли путь модели. БЕСПЛАТНО и ничего не создаёт.
+    Существует ли путь модели. БЕСПЛАТНО и БЕЗ ПОБОЧНЫХ ДЕЙСТВИЙ.
 
-    Приём такой: POST с заведомо пустым телом. Если пути нет, сервис
-    отвечает 404 — и это единственное, что нас интересует. Если путь есть,
-    он ругается на отсутствующий prompt (400 или 422), то есть до
-    генерации дело не доходит и ни кредита, ни картинки не тратится.
+    Спрашиваем GET, а не POST. У каждой модели по её же пути висит список
+    заданий («статус всех задач такой-то модели»), поэтому GET отвечает
+    200, если путь есть, и 404, если написание неверное, — и ничего при
+    этом не создаёт.
 
-    Нужно это потому, что slug'и подобраны по образцу соседних моделей
-    (документация отдаёт боту 403), а неверный slug виден только как
-    молчаливый откат на xAI посреди боевого прогона.
+    Прошлая версия этой проверки слала POST с пустым телом в расчёте на
+    отказ «нет prompt». Дёшево это ровно до первой модели, которая пустое
+    тело ПРИНИМАЕТ: kling ответил 200 и завёл настоящее задание на
+    генерацию видео. Проверка, которая делает то, что проверяет, — не
+    проверка.
 
     Возвращает (True/False/None, текст).
     """
     path = f"/ai/{category}/{slug}"
     try:
-        r = requests.post(f"{BASE}{path}", timeout=30, headers=_headers(),
-                          json={})
+        r = requests.get(f"{BASE}{path}", timeout=30, headers=_headers())
     except requests.RequestException as e:
         return None, f"сеть недоступна ({e})"
     if r.status_code == 404:
         return False, f"404 — такого пути нет ({path})"
-    if r.status_code in (400, 422):
-        return True, f"путь есть (ответ {r.status_code} на пустое тело)"
+    if r.status_code == 200:
+        return True, "путь есть"
     if r.status_code in (401, 403):
         return None, f"{r.status_code} — ключ не пустили сюда: {r.text[:120]}"
     return None, f"ответ {r.status_code}: {r.text[:120]}"
+
+
+def find_slug(category: str, name: str, current: str):
+    """
+    Перебирает кандидатов, пока не найдётся существующий путь. Отдаёт
+    (рабочий slug или "", строки для лога).
+    """
+    tried = []
+    for slug in dict.fromkeys([current] + SLUG_CANDIDATES.get(name, [])):
+        good, note = check_slug(category, slug)
+        tried.append(f"      {slug:34} {note}")
+        if good:
+            return slug, tried
+    return "", tried
 
 
 def selftest():
@@ -729,38 +767,46 @@ def selftest():
     if ok is False:
         return 1
 
-    log("\n── пути моделей изображений")
-    bad = []
-    for name in IMAGE_MODELS:
-        slug = IMAGE_SLUGS[name]
-        good, note = check_slug(IMAGE_CATEGORY, slug)
-        mark = "+" if good else ("!" if good is False else "?")
-        log(f"  {mark} {name:16} -> {slug:28} {note}")
-        if good is False:
-            bad.append(f"{name} ({slug})")
+    bad, fixed = [], {}
 
-    log("\n── пути моделей видео")
-    for name in VIDEO_MODELS:
-        slug = VIDEO_SLUGS[name]
-        good, note = check_slug(VIDEO_CATEGORY, slug)
-        mark = "+" if good else ("!" if good is False else "?")
-        log(f"  {mark} {name:20} -> {slug:28} {note}")
-        if good is False:
-            bad.append(f"{name} ({slug})")
+    for title, models, slugs, category in (
+            ("изображений", IMAGE_MODELS, IMAGE_SLUGS, IMAGE_CATEGORY),
+            ("видео", VIDEO_MODELS, VIDEO_SLUGS, VIDEO_CATEGORY)):
+        log(f"\n── пути моделей {title}")
+        for name in models:
+            current = slugs[name]
+            good, note = check_slug(category, current)
+            if good:
+                log(f"  + {name:20} -> {current}")
+                continue
+            # Основное написание не отозвалось — перебираем запасные.
+            found, tried = find_slug(category, name, current)
+            if found:
+                log(f"  ~ {name:20} -> {current} НЕ существует, "
+                    f"но подошло: {found}")
+                fixed[name] = found
+            else:
+                log(f"  ! {name:20} -> рабочего написания не нашлось")
+                bad.append(name)
+            for line in tried:
+                log(line)
 
     log("\n── библиотека")
     rows = search_library("ancient greek temple ruins", 2, "image")
-    log(f"  найдено {len(rows)} (лимит при этом НЕ списан — не качали)")
+    log(f"  найдено {len(rows)} (лимит НЕ списан: считается по скачанному)")
 
+    if fixed:
+        log("\nНАШЛОСЬ рабочее написание — вписать в magnific.py "
+            "(или переменной окружения):")
+        for name, slug in fixed.items():
+            log(f"  {name}: {slug}")
     if bad:
-        log("\nНЕВЕРНЫЕ slug'и, поправить переменной окружения "
-            "MAGNIFIC_IMAGE_SLUGS / MAGNIFIC_VIDEO_SLUGS:")
-        for b in bad:
-            log(f"  {b}")
-        log("Сборка от этого не падает — доля уходит на xAI, но "
-            "заказанные 70/30 не соблюдаются.")
-    else:
+        log("\nНИ ОДИН кандидат не подошёл: " + ", ".join(bad))
+        log("Дописать кандидатов в SLUG_CANDIDATES и прогнать этап заново.")
+    if not fixed and not bad:
         log("\nвсе пути на месте")
+    log("\nНеверный путь сборку НЕ роняет: доля уходит на xAI. Но "
+        "заказанные 70/30 при этом не соблюдаются.")
     return 0
 
 

@@ -51,8 +51,21 @@ jobs:
           # имени файла: они могут не совпадать, и тогда кэш и выкладка
           # смотрят в несуществующую папку.
           ID=$(python -c "import json,sys; print(json.load(open(sys.argv[1]))['id'])" "jobs/$JOB.json")
+          # ДИАГНОСТИЧЕСКИЙ этап — тот, который ничего не собирает и ничем
+          # не рискует: отработал свою проверку и на этом всё. Флаг заведён
+          # одной строкой ровно потому, что раньше каждый шаг конвейера
+          # перечислял исключения сам («не render и не material и не vet и
+          # не smoke»), и добавленный этап проваливался мимо всех этих
+          # перечислений прямиком в сборку — на этом уже сгорел один
+          # запуск. Новый диагностический этап дописывается СЮДА, и ниже
+          # менять нечего.
+          case "$STAGE" in
+            smoke|magnific) DIAG=true ;;
+            *)              DIAG=false ;;
+          esac
           echo "job=$JOB"     >> $GITHUB_OUTPUT
           echo "stage=$STAGE" >> $GITHUB_OUTPUT
+          echo "diag=$DIAG"   >> $GITHUB_OUTPUT
           echo "id=$ID"       >> $GITHUB_OUTPUT
           echo "Собираю: $JOB (папка work/$ID), этап: $STAGE"
 
@@ -231,7 +244,7 @@ jobs:
           fail_on_unmatched_files: true
 
       - name: Этап 1 — озвучка, изображения, материал
-        if: steps.pick.outputs.stage != 'render' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'smoke'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         env:
           XAI_API_KEY:        ${{ secrets.XAI_API_KEY }}
           # 70% картинок, редкие вставки видео и библиотека графики.
@@ -248,7 +261,7 @@ jobs:
       # сегодня к библиотеке не обращались, файла нет и шаг тихо ничего не
       # сохраняет — это нормально.
       - name: Кладём суточный счётчик Magnific обратно
-        if: steps.pick.outputs.stage != 'smoke' && hashFiles('channel/magnific_usage.json') != ''
+        if: steps.pick.outputs.diag != 'true' && hashFiles('channel/magnific_usage.json') != ''
         uses: actions/cache/save@v4
         with:
           path: channel/magnific_usage.json
@@ -256,23 +269,23 @@ jobs:
 
       # Только если что-то качали. На чистом перерендере папка не менялась.
       - name: Кладём материалы в кэш
-        if: steps.pick.outputs.stage != 'render' && steps.pick.outputs.stage != 'smoke'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render'
         uses: actions/cache/save@v4
         with:
           path: work/${{ steps.pick.outputs.id }}/assets
           key: assets-${{ steps.pick.outputs.id }}-v1-${{ github.run_id }}
 
       - name: Этап 2 — монтаж
-        if: steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'smoke'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         run: python pipeline/build.py jobs/${{ steps.pick.outputs.job }}.json
 
       - name: Этап 3 — комплект для YouTube
-        if: steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'smoke'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         run: python pipeline/youtube.py jobs/${{ steps.pick.outputs.job }}.json
 
       - name: Находим готовое
         id: out
-        if: steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'smoke'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         run: |
           set -e
           DIR=work/${{ steps.pick.outputs.id }}/out
@@ -281,7 +294,7 @@ jobs:
           ls -la "$DIR"
 
       - name: Выдаём ролик
-        if: steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'smoke'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: final-${{ steps.pick.outputs.job }}
@@ -292,7 +305,7 @@ jobs:
           fail_on_unmatched_files: true
 
       - name: Комплект для выкладки отдельно
-        if: steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'smoke'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         uses: actions/upload-artifact@v4
         with:
           name: youtube-${{ steps.pick.outputs.job }}
