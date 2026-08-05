@@ -159,11 +159,50 @@ def main(job_path):
     print(f"   самый долгий кадр {longest:.1f} с, все долгие идут "
           f"долгим ходом")
 
+    # ПОДБОР ПО СМЫСЛУ — ПОРОГОМ, а не глазами по логу. Ноль процентов
+    # попаданий значит, что подбор упал на имена файлов: манифест не
+    # написан или запросы из другого словаря. Ролик при этом собирается
+    # без единой ошибки — просто кадры не имеют отношения к словам.
+    # Именно так смоук месяц «проверял» не тот путь, что работает в бою.
+    print("── подбор по смыслу")
+    for src, (hits, calls) in (getattr(st, "match_report", {}) or {}).items():
+        if not calls:
+            continue
+        rate = hits / calls * 100
+        print(f"   {src:<5} {hits}/{calls} ({rate:.0f}%)")
+        if calls >= 12 and rate < 5.0:
+            raise SystemExit(
+                f"подбор «{src}»: {rate:.0f}% попаданий по смыслу — материал "
+                f"раздаётся вслепую. Проверь _manifest.json рядом с файлами "
+                f"и совпадение запросов со спецификацией")
+
+    # НОВЫЕ СЛОИ КАДРА. Считаются бесплатно, поэтому проверяются здесь же:
+    # карточки-прерывания не должны налезать друг на друга, титулы глав —
+    # выходить за число глав.
+    print("── карточки и титулы")
+    from editorial import textcard
+    cards = textcard.interrupts(getattr(st, "beats", []), marks, st.rng, total)
+    for a, b in zip(cards, cards[1:]):
+        if b["t"] - a["t"] < textcard.INTERRUPT_GAP:
+            raise SystemExit("карточки-прерывания ближе "
+                             f"{textcard.INTERRUPT_GAP:.0f} с друг к другу")
+    titles = textcard.chapter_titles(
+        (job.get("youtube") or {}).get("chapters") or [],
+        getattr(st, "chapter_edges", []), st.rng)
+    print(f"   карточек {len(cards)}, титулов глав {len(titles)}")
+
     print("── подложки")
-    beds = build.beds_for(st, job)
+    beds = build.beds_for(st, job, total)
     if not beds:
         print("   ! ни одной подложки не найдено — ролик соберётся, но "
               "с одним голосом")
+    switches = build.bed_switch_points(st, total, len(beds))
+    if len(beds) > 1:
+        if len(switches) != len(beds) - 1:
+            raise SystemExit(f"подложек {len(beds)}, а смен {len(switches)} — "
+                             f"смотри bed_switch_points")
+        print(f"   треков {len(beds)}, смены на "
+              + ", ".join(f"{p/60:.1f} мин" for p in switches))
 
     print("\nСМОУК-ПРОГОН ПРОЙДЕН")
 

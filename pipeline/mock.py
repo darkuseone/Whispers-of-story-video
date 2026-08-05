@@ -122,6 +122,41 @@ def make_images(out: Path, prompts, tag: str):
     return made
 
 
+def write_manifest(out: Path, prefix: str, queries):
+    """
+    Манифест для синтетики — ТОТ ЖЕ формат, что пишет assets.gather.
+
+    Без него подбор по смыслу в build.keywords_for падает на имена файлов
+    («clip 003 mock»), и смоук показывал 0% попаданий по архиву и стоку —
+    то есть проверял не тот путь, который работает в бою. Запросы берутся
+    из спецификации и раздаются файлам по кругу: тот же файл всегда
+    получает тот же запрос, прогон воспроизводим.
+    """
+    if not queries:
+        return
+    man = out / "_manifest.json"
+    rows = []
+    if man.exists():
+        try:
+            rows = json.loads(man.read_text())
+        except json.JSONDecodeError:
+            rows = []
+    known = {Path(r.get("file", "")).name for r in rows}
+    added = 0
+    for p in sorted(out.glob(f"{prefix}_*")):
+        if p.name in known:
+            continue
+        try:
+            n = int(p.name.split("_")[1].split(".")[0])
+        except (IndexError, ValueError):
+            continue
+        rows.append({"file": str(p), "q": queries[n % len(queries)],
+                     "src": "mock", "kind": "mock"})
+        added += 1
+    if added:
+        man.write_text(json.dumps(rows, indent=1, ensure_ascii=False))
+
+
 def make_clips(out: Path, count: int, seconds=14.0):
     """
     testsrc2 вместо стока. Длина 14 секунд — как у настоящего стока, чтобы
@@ -141,6 +176,11 @@ def make_clips(out: Path, count: int, seconds=14.0):
 
 
 def main(job_path):
+    try:
+        import PIL  # noqa: F401
+    except ImportError:
+        raise SystemExit("нет Pillow — поставь зависимости: "
+                         "pip install -r requirements.txt")
     job = json.loads(Path(job_path).read_text(encoding="utf-8"))
     work = Path("work") / job["id"] / "assets"
     work.mkdir(parents=True, exist_ok=True)
@@ -168,15 +208,22 @@ def main(job_path):
 
     # Архивных фото нужно ощутимо больше, чем генерации: на них уходит
     # основная часть ролика. Считаем от доли генерации, заданной стилем.
+    # Подписи карточек — НАСТОЯЩИЕ запросы из спецификации, по кругу: по
+    # ним же пишется манифест, и подбор по смыслу проверяется тем же
+    # путём, что и в бою, а не по именам файлов.
     share = ((job.get("style_override") or {}).get("generated_share")) or 0.30
     want_arch = max(4, int(len(job["image_prompts"]) * (1 - share) / max(share, 0.05) * 0.6))
+    arch_qs = job.get("archive_queries") or []
     n = make_images(work / "archive",
-                    [f"архивное фото по запросу {i+1}" for i in range(want_arch)],
+                    [arch_qs[i % len(arch_qs)] if arch_qs
+                     else f"archive photo {i+1}" for i in range(want_arch)],
                     "arch")
+    write_manifest(work / "archive", "arch", arch_qs)
     log(f"архив     : добавлено {n}, "
         f"всего {len(list((work / 'archive').glob('arch_*')))}")
 
     n = make_clips(work / "footage", max(6, len(job.get("footage_queries", []))))
+    write_manifest(work / "footage", "clip", job.get("footage_queries") or [])
     log(f"футаж     : добавлено {n}, "
         f"всего {len(list((work / 'footage').glob('clip_*')))}")
 
