@@ -21,6 +21,7 @@ smoke.py — прогон конвейера на настоящих файла�
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -44,6 +45,28 @@ def main(job_path):
 
     print("── темы")
     print(f"   {channel.check(job) or 'не повтор'}")
+
+    # ПРОТОКОЛ СЦЕНАРИЯ 2026. YouTube снимает монетизацию с канала за
+    # шаблонный/обезличенный контент. Поля _ / _проверить / _структура —
+    # доказательство процесса и чек-лист автора; код их не читает в
+    # монтаже, но без них ролик нельзя выпускать. Технические *-mini /
+    # *-test пропускаются: там проверяется конвейер, а не текст.
+    print("── протокол сценария")
+    jid = str(job.get("id", ""))
+    is_tech = bool(re.search(r"(^|-)(mini|test)($|-)", jid)) or \
+        str((job.get("topic") or {}).get("slug", "")).startswith("test-")
+    if is_tech:
+        print("   технический ролик — поля протокола не требую")
+    else:
+        missing = [f for f in ("_", "_проверить", "_структура")
+                   if not str(job.get(f) or "").strip()]
+        if missing:
+            raise SystemExit(
+                "в спецификации нет полей протокола сценария: "
+                + ", ".join(missing)
+                + "\nСм. docs/протокол-сценария.md — без них канал рискует "
+                "демонетизацией, а смоук это ловит ДО озвучки.")
+        print("   _, _проверить, _структура на месте")
 
     print("── главы")
     seen = set()
