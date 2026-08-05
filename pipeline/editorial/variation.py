@@ -45,40 +45,52 @@ AXES = {
     # ── ритм ──────────────────────────────────────────────────────────
     "arc":              dict(kind="pick", weight=1.6,
                              options=["accelerando", "decelerando", "wave",
-                                      "front_loaded", "terraced"]),
-    "base_duration":    dict(kind="num", weight=1.2, lo=4.2, hi=7.4),
+                                      "front_loaded", "terraced", "tidal",
+                                      "settling"]),
+    # 9-16 секунд против 4.2-7.4 у канала о находках. Это опорная
+    # длительность кадра в теле: дальше её мнут доли, арка и микроритм, и
+    # на выходе кадры расходятся от 4 до 42 секунд. Заказано прямо: одно
+    # изображение держится 10-40 секунд с плавным эффектом.
+    "base_duration":    dict(kind="num", weight=1.2, lo=9.0, hi=16.0),
     "breath_rate":      dict(kind="num", weight=0.8, lo=0.30, hi=0.85),
-    "shot_spread":      dict(kind="num", weight=0.7, lo=0.16, hi=0.34),
+    "shot_spread":      dict(kind="num", weight=0.7, lo=0.18, hi=0.38),
 
     # ── открытие ──────────────────────────────────────────────────────
     # Самая заметная зрителю ось: первые пять секунд решают, останется он
-    # или нет. Вариантов намеренно больше, чем было (три): при трёх
-    # вариантах и глубине памяти два выбирать становится не из чего.
+    # или нет.
     "opening":          dict(kind="pick", weight=2.0,
                              options=["cold_open", "long_establish",
                                       "quick_cuts", "black_card",
-                                      "slow_reveal", "hard_in"]),
-    "opening_seconds":  dict(kind="num", weight=0.9, lo=95.0, hi=235.0),
+                                      "slow_reveal", "hard_in", "starlit"]),
+    # ТРИ-ПЯТЬ МИНУТ. Заказано прямо, и это вдвое длиннее, чем у канала о
+    # находках (95-235 секунд): там вступление разгоняло, здесь оно
+    # задаёт темп рассказа на весь ролик.
+    "opening_seconds":  dict(kind="num", weight=0.9, lo=185.0, hi=300.0),
 
     # ── склейка ───────────────────────────────────────────────────────
     "main_transition":  dict(kind="pick", weight=1.4,
                              options=["smoothleft", "smoothright", "smoothup",
                                       "smoothdown", "dissolve", "hblur",
-                                      "circleopen", "fadegrays", "fade",
-                                      "fadeslow", "slideleft", "slideright",
-                                      "wipeleft"]),
+                                      "circleopen", "circleclose", "fadegrays",
+                                      "fade", "fadeslow", "slideleft",
+                                      "slideright", "wipeleft", "radial",
+                                      "horzopen", "vertopen", "diagtl",
+                                      "diagbr"]),
     # Насколько основной переход доминирует. Раньше было жёстко 0.72 у всех
     # роликов — то есть «почерк склейки» повторялся от загрузки к загрузке
     # с точностью до процента, даже когда сам переход менялся.
-    "transition_focus": dict(kind="num", weight=1.1, lo=0.38, hi=0.74),
-    "transition_dur":   dict(kind="pair", weight=0.8, lo=0.55, hi=1.95,
-                             span=(0.35, 0.95)),
+    "transition_focus": dict(kind="num", weight=1.1, lo=0.34, hi=0.68),
+    # Длиннее, чем у соседнего канала (0.55-1.95): на кадре в тридцать
+    # секунд переход — самостоятельное событие, которое зритель успевает
+    # рассмотреть, и полусекундное растворение на нём читается как обрыв.
+    "transition_dur":   dict(kind="pair", weight=0.8, lo=0.90, hi=2.60,
+                             span=(0.45, 1.20)),
 
     # ── камера ────────────────────────────────────────────────────────
-    "motion_amp":       dict(kind="num", weight=1.3, lo=0.72, hi=1.30),
+    "motion_amp":       dict(kind="num", weight=1.3, lo=0.70, hi=1.28),
     "motion_bias":      dict(kind="pick", weight=1.0,
-                             options=["push", "pan", "mixed", "mixed",
-                                      "sweep", "still_leaning"]),
+                             options=["travel", "reveal", "parallax", "push",
+                                      "mixed", "floating"]),
 
     # ── фактура ───────────────────────────────────────────────────────
     "effect_p":         dict(kind="num", weight=1.0, lo=0.12, hi=0.42),
@@ -93,12 +105,29 @@ AXES = {
     # замером, чтобы новый диапазон не отличался от проверенного по силе
     # эффекта, только по разнообразию внутри него.
     "vignette":         dict(kind="num", weight=0.6, lo=3.4, hi=6.0),
-    "sparks":           dict(kind="pick", weight=0.9,
-                             options=[0, 1, 2, 3]),
-    "spark_opacity":    dict(kind="num", weight=0.5, lo=0.28, hi=0.52),
+    # Слой поверх кадра. «none» стоит в списке дважды не по ошибке: приём,
+    # который виден в каждой загрузке, перестаёт быть подписью канала и
+    # становится шаблоном, поэтому примерно у трети роликов слоя нет вовсе.
+    "overlay_kind":     dict(kind="pick", weight=0.9,
+                             options=["none", "none", "motes", "motes",
+                                      "stars", "sparks", "mist"]),
+    "overlay_opacity":  dict(kind="num", weight=0.5, lo=0.16, hi=0.38),
 
     # ── материал ──────────────────────────────────────────────────────
-    "clip_rhythm":      dict(kind="num", weight=1.1, lo=2.4, hi=4.6),
+    # Через сколько кадров-картинок ставить вставку видео. Диапазон
+    # опущен (было 2.4-4.6 на канале о находках, потом 3.0-6.0 здесь) по
+    # прямому замеру: при шаге в четыре кадра доля видео по ВРЕМЕНИ
+    # выходила 12.8% при заказанных 20-30%. Считается это в одну строку:
+    # клип идёт шесть секунд, изображение одиннадцать, и чтобы клипы
+    # заняли четверть времени, их нужен примерно один на полтора
+    # изображения, а не один на четыре.
+    "clip_rhythm":      dict(kind="num", weight=1.1, lo=1.2, hi=2.8),
+    # ДОЛЯ ВИДЕО В ТЕЛЕ РОЛИКА по экранному времени: 20-30% заказано
+    # прямо, диапазон чуть шире, чтобы соседние ролики расходились и по
+    # этой оси тоже. Остальное — изображения с движением камеры.
+    "body_clip_share":  dict(kind="num", weight=1.2, lo=0.18, hi=0.28),
+    # А во вступлении наоборот: 70-80% видео.
+    "intro_clip_share": dict(kind="num", weight=0.9, lo=0.70, hi=0.82),
     "framing_bias":     dict(kind="pick", weight=0.9,
                              options=["wide_leaning", "tight_leaning",
                                       "balanced", "balanced"]),
@@ -107,10 +136,16 @@ AXES = {
     # Кинетический текст на числах. Ось нужна отдельно: ролик без единой
     # плашки и ролик с плашкой на каждой сумме — это разный монтаж, а не
     # разное оформление.
+    # Плашки здесь ставятся на ДАТАХ И ЭПОХАХ, а не на суммах: у канала о
+    # находках сюжет держался на цене, здесь — на времени. «2600 BC» на
+    # экране в момент, когда его произносят, зритель запоминает, на слух —
+    # нет. Стили «stamp» и «typewriter» унаследованы, но веса у них нет:
+    # удар и печатная машинка бодрят, а ролик смотрят перед сном.
     "text_style":       dict(kind="pick", weight=1.5,
-                             options=["none", "none", "stamp", "slide_up",
-                                      "typewriter", "underline_wipe"]),
-    "text_density":     dict(kind="num", weight=0.8, lo=0.15, hi=0.65),
+                             options=["none", "none", "carved", "carved",
+                                      "fade_slow", "slide_up",
+                                      "underline_wipe", "stamp"]),
+    "text_density":     dict(kind="num", weight=0.8, lo=0.10, hi=0.45),
 
     # ── звук ──────────────────────────────────────────────────────────
     "duck_depth":       dict(kind="num", weight=0.9, lo=0.30, hi=0.72),

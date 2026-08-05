@@ -44,7 +44,8 @@ LOG = ROOT / "channel" / "log.json"
 # Сколько последних роликов учитывать по каждой оси. Больше — разнообразнее,
 # но и пул быстрее кончается: цветокоров всего пять, при глубине 5 выбирать
 # станет не из чего и защита выключится сама.
-DEPTH = {"lut": 3, "opening": 2, "main_transition": 2, "sparks": 2}
+DEPTH = {"lut": 3, "opening": 2, "main_transition": 2, "overlay": 2,
+         "bed": 2}
 
 # Насколько темы должны различаться. 0.34 значит: если треть значимых слов
 # совпала, это уже та же тема. Подобрано на глаз и намеренно строго —
@@ -54,10 +55,15 @@ TOPIC_OVERLAP_LIMIT = 0.34
 TOPIC_DEPTH = 8
 
 # Слова, которые есть в каждой теме канала и потому ничего не различают.
+# Список СВОЙ У КАНАЛА: на канале о находках здесь стояли «auction» и
+# «antique», здесь — «ancient» и «mystery». Слово, которое встречается в
+# каждой второй теме, при сравнении тем работает как шум: два ролика,
+# совпавшие только на нём, объявлялись бы повтором.
 STOP = {"the", "a", "an", "of", "and", "or", "in", "on", "at", "to", "for",
         "with", "from", "that", "this", "it", "is", "was", "were", "be",
-        "story", "stories", "found", "find", "finds", "worth", "value",
-        "auction", "antique", "antiques", "old", "rare", "sold", "sale"}
+        "story", "stories", "ancient", "antiquity", "history", "historic",
+        "mystery", "mysteries", "legend", "legends", "myth", "myths",
+        "world", "old", "lost", "secret", "secrets", "whispers"}
 
 
 def log(*a):
@@ -66,7 +72,7 @@ def log(*a):
 
 def load():
     if not LOG.exists():
-        return {"channel": "pawn-stories", "aired": []}
+        return {"channel": "ancient-whispers", "aired": []}
     return json.loads(LOG.read_text(encoding="utf-8"))
 
 
@@ -171,10 +177,17 @@ def entry_from(job, style_card: dict, test=False):
         "archive_lut": style_card.get("archive_lut"),
         "opening": style_card.get("opening"),
         "main_transition": style_card.get("main_transition"),
-        "sparks": style_card.get("sparks"),
+        "overlay": style_card.get("overlay"),
+        # Подложка пишется в журнал наравне с цветокором: пять треков и
+        # глубина памяти два означают, что три ролика подряд не могут
+        # открыться одной музыкой. Для канала, который слушают фоном,
+        # это заметнее, чем половина визуальных осей.
+        "bed": style_card.get("bed"),
+        "bed_second": style_card.get("bed_second"),
         "intro_seconds": style_card.get("intro_footage_s"),
         "base_duration": style_card.get("base_duration"),
         "generated_share": style_card.get("generated_share"),
+        "body_clip_share": style_card.get("body_clip_share"),
         "thumb_style": style_card.get("thumb_style"),
         "arc": style_card.get("arc"),
         # ВЕКТОР СТИЛЯ ЦЕЛИКОМ. Главное, что здесь появилось: без него

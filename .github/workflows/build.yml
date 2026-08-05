@@ -6,9 +6,9 @@ on:
       job:
         description: 'Имя файла в jobs/ без .json'
         required: true
-        default: 'auction-01'
+        default: 'ancient-01'
       stage:
-        description: 'material / vet / assets / render / auto'
+        description: 'smoke / magnific / material / vet / assets / render / auto'
         required: true
         default: 'auto'
 
@@ -51,34 +51,65 @@ jobs:
           # имени файла: они могут не совпадать, и тогда кэш и выкладка
           # смотрят в несуществующую папку.
           ID=$(python -c "import json,sys; print(json.load(open(sys.argv[1]))['id'])" "jobs/$JOB.json")
+          # ДИАГНОСТИЧЕСКИЙ этап — тот, который ничего не собирает и ничем
+          # не рискует: отработал свою проверку и на этом всё. Флаг заведён
+          # одной строкой ровно потому, что раньше каждый шаг конвейера
+          # перечислял исключения сам («не render и не material и не vet и
+          # не smoke»), и добавленный этап проваливался мимо всех этих
+          # перечислений прямиком в сборку — на этом уже сгорел один
+          # запуск. Новый диагностический этап дописывается СЮДА, и ниже
+          # менять нечего.
+          case "$STAGE" in
+            smoke|magnific) DIAG=true ;;
+            *)              DIAG=false ;;
+          esac
           echo "job=$JOB"     >> $GITHUB_OUTPUT
           echo "stage=$STAGE" >> $GITHUB_OUTPUT
+          echo "diag=$DIAG"   >> $GITHUB_OUTPUT
           echo "id=$ID"       >> $GITHUB_OUTPUT
           echo "Собираю: $JOB (папка work/$ID), этап: $STAGE"
 
       - name: Проверка секретов
         env:
           XAI_API_KEY:        ${{ secrets.XAI_API_KEY }}
+          MAGNIFIC_API_KEY:   ${{ secrets.MAGNIFIC_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
           PEXELS_API_KEY:     ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY:    ${{ secrets.PIXABAY_API_KEY }}
           # Только факт наличия, не значения: Variables в логах НЕ маскируются.
-          SAME_NAMES_IN_VARS: ${{ vars.XAI_API_KEY != '' || vars.ELEVENLABS_API_KEY != '' || vars.PEXELS_API_KEY != '' || vars.PIXABAY_API_KEY != '' }}
+          SAME_NAMES_IN_VARS: ${{ vars.XAI_API_KEY != '' || vars.MAGNIFIC_API_KEY != '' || vars.ELEVENLABS_API_KEY != '' || vars.PEXELS_API_KEY != '' || vars.PIXABAY_API_KEY != '' }}
         run: |
           # На material и render генерация и озвучка не запускаются, их ключи
           # там не нужны — иначе бесплатный добор падал бы из-за xAI.
-          # material не требует ничего обязательного: четыре источника из
-          # семи открыты и работают без ключей (Wikimedia, Met, Library of
-          # Congress, archive.org). Без Pexels и Pixabay не будет только
-          # стокового видео — этап соберёт архивные фото и листы отбора,
-          # а не упадёт. Проверка, которая роняет работающий прогон, хуже
-          # отсутствующей.
+          # material не требует ничего обязательного: шесть источников из
+          # восьми открыты и работают без ключей (Wikimedia, Met, Openverse,
+          # Art Institute, Cleveland, Library of Congress, archive.org). Без
+          # Pexels и Pixabay не будет только стокового видео — этап соберёт
+          # архивные фото и листы отбора, а не упадёт. Проверка, которая
+          # роняет работающий прогон, хуже отсутствующей.
+          #
+          # ГЕНЕРАЦИЯ КАРТИНОК ДЕЛИТСЯ 70/30 между Magnific и xAI, и
+          # обязателен хотя бы ОДИН из двух ключей: при отсутствующем
+          # втором доля целиком уходит уцелевшему (см. assets.build_images).
+          # Поэтому оба стоят в want, а не в need, и проверяются отдельной
+          # строкой ниже.
           case "${{ steps.pick.outputs.stage }}" in
-            material) need="" ; want="PEXELS_API_KEY PIXABAY_API_KEY" ;;
+            smoke)    need="" ; want="" ;;
+            magnific) need="MAGNIFIC_API_KEY" ; want="" ;;
+            material) need="" ; want="PEXELS_API_KEY PIXABAY_API_KEY MAGNIFIC_API_KEY" ;;
             vet)      need="" ; want="XAI_API_KEY" ;;
             render)   need="" ; want="" ;;
-            *)        need="XAI_API_KEY ELEVENLABS_API_KEY PEXELS_API_KEY PIXABAY_API_KEY" ; want="ELEVENLABS_VOICE_ID" ;;
+            *)        need="ELEVENLABS_API_KEY PEXELS_API_KEY PIXABAY_API_KEY" ; want="ELEVENLABS_VOICE_ID XAI_API_KEY MAGNIFIC_API_KEY" ;;
+          esac
+          case "${{ steps.pick.outputs.stage }}" in
+            smoke|magnific|material|vet|render) ;;
+            *)
+              if [ -z "$XAI_API_KEY" ] && [ -z "$MAGNIFIC_API_KEY" ]; then
+                echo "ПУСТО: и XAI_API_KEY, и MAGNIFIC_API_KEY — рисовать картинки нечем"
+                exit 1
+              fi
+              ;;
           esac
           for k in $want; do
             eval "v=\$$k"
@@ -114,6 +145,45 @@ jobs:
           restore-keys: |
             assets-${{ steps.pick.outputs.id }}-v1-
 
+      # Суточный расход библиотеки Magnific. Лимит общий на все ролики и
+      # все пересборки, поэтому счётчик обязан пережить раннер, а раннер
+      # эфемерный. Ключ по ДАТЕ: назавтра кэша с этим ключом нет, и счёт
+      # начинается с нуля сам собой, без единой строчки кода.
+      - name: Достаём суточный счётчик Magnific
+        id: ledger
+        run: echo "day=$(date -u +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache/restore@v4
+        with:
+          path: channel/magnific_usage.json
+          key: magnific-${{ steps.ledger.outputs.day }}-${{ github.run_id }}
+          restore-keys: |
+            magnific-${{ steps.ledger.outputs.day }}-
+
+      # Прогон монтажа на синтетическом материале: ни одного ключа, ни
+      # одного запроса наружу, минуты вместо получаса. Ловит ровно то, что
+      # ловится дёшево, — рассинхрон таймлайна, доли материала, статику на
+      # долгих кадрах, длину блоков сценария.
+      - name: Смоук-прогон без ключей и без денег
+        if: steps.pick.outputs.stage == 'smoke'
+        run: |
+          set -e
+          python pipeline/mock.py  jobs/${{ steps.pick.outputs.job }}.json
+          python pipeline/smoke.py jobs/${{ steps.pick.outputs.job }}.json
+
+      # Диагностика Magnific без сборки ролика: принят ли ключ, отвечает ли
+      # библиотека и СУЩЕСТВУЮТ ЛИ пути всех восьми моделей. Ничего не
+      # генерирует и не списывает суточный лимит — POST уходит с пустым
+      # телом, и сервис отвечает «нет prompt» задолго до генерации.
+      # Нужен потому, что slug модели подобран по образцу соседних (своя
+      # документация отдаёт боту 403), а неверный slug виден иначе только
+      # как молчаливый откат на xAI посреди боевого прогона.
+      - name: Проверка путей и ключа Magnific
+        if: steps.pick.outputs.stage == 'magnific'
+        env:
+          MAGNIFIC_API_KEY: ${{ secrets.MAGNIFIC_API_KEY }}
+        run: python pipeline/magnific.py selftest
+
       - name: Только отбраковка — без скачивания
         if: steps.pick.outputs.stage == 'vet'
         env:
@@ -130,6 +200,9 @@ jobs:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           # Отбраковка на этом этапе тоже смотрит зрением, ключ ей нужен.
           XAI_API_KEY:     ${{ secrets.XAI_API_KEY }}
+          # Библиотека Magnific — последняя очередь, только по запросам,
+          # где открытые архивы не дали ничего. Суточный лимит внутри.
+          MAGNIFIC_API_KEY: ${{ secrets.MAGNIFIC_API_KEY }}
         run: |
           set -e
           python pipeline/assets.py jobs/${{ steps.pick.outputs.job }}.json material
@@ -161,8 +234,8 @@ jobs:
 
                 "reject": { "clip": [номера], "arch": [номера] }
 
-            Жёлтой рамкой обведены кадры на белом фоне: на тёплом тёмном
-            цветокоре канала они становятся бледными прямоугольниками.
+            Жёлтой рамкой обведены кадры на белом фоне: на холодном
+            тёмном цветокоре канала они становятся дырой в кадре.
             Это пометка, а не приговор — решать человеку.
 
             Файлы при отказе не удаляются: отказ отменяется удалением
@@ -171,9 +244,11 @@ jobs:
           fail_on_unmatched_files: true
 
       - name: Этап 1 — озвучка, изображения, материал
-        if: steps.pick.outputs.stage != 'render' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         env:
           XAI_API_KEY:        ${{ secrets.XAI_API_KEY }}
+          # 70% картинок, редкие вставки видео и библиотека графики.
+          MAGNIFIC_API_KEY:   ${{ secrets.MAGNIFIC_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           # Голос канала. Без этой строки секрет есть в репозитории, но до
           # процесса не доходит, и озвучка падает на «не задан голос».
@@ -182,25 +257,35 @@ jobs:
           PIXABAY_API_KEY:    ${{ secrets.PIXABAY_API_KEY }}
         run: python pipeline/assets.py jobs/${{ steps.pick.outputs.job }}.json
 
+      # Счётчик Magnific уезжает обратно тем же ключом с датой. Если
+      # сегодня к библиотеке не обращались, файла нет и шаг тихо ничего не
+      # сохраняет — это нормально.
+      - name: Кладём суточный счётчик Magnific обратно
+        if: steps.pick.outputs.diag != 'true' && hashFiles('channel/magnific_usage.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: channel/magnific_usage.json
+          key: magnific-${{ steps.ledger.outputs.day }}-${{ github.run_id }}
+
       # Только если что-то качали. На чистом перерендере папка не менялась.
       - name: Кладём материалы в кэш
-        if: steps.pick.outputs.stage != 'render'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render'
         uses: actions/cache/save@v4
         with:
           path: work/${{ steps.pick.outputs.id }}/assets
           key: assets-${{ steps.pick.outputs.id }}-v1-${{ github.run_id }}
 
       - name: Этап 2 — монтаж
-        if: steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         run: python pipeline/build.py jobs/${{ steps.pick.outputs.job }}.json
 
       - name: Этап 3 — комплект для YouTube
-        if: steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         run: python pipeline/youtube.py jobs/${{ steps.pick.outputs.job }}.json
 
       - name: Находим готовое
         id: out
-        if: steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         run: |
           set -e
           DIR=work/${{ steps.pick.outputs.id }}/out
@@ -209,7 +294,7 @@ jobs:
           ls -la "$DIR"
 
       - name: Выдаём ролик
-        if: steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: final-${{ steps.pick.outputs.job }}
@@ -220,7 +305,7 @@ jobs:
           fail_on_unmatched_files: true
 
       - name: Комплект для выкладки отдельно
-        if: steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         uses: actions/upload-artifact@v4
         with:
           name: youtube-${{ steps.pick.outputs.job }}

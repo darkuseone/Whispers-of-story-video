@@ -47,6 +47,8 @@ def main(job_path):
 
     print("── главы")
     seen = set()
+    import assets as assets_mod
+    long_blocks = []
     for i, b in enumerate(job["script_blocks"], 1):
         k = youtube.norm(b.strip().split(".")[0])[:45]
         if not k:
@@ -54,6 +56,20 @@ def main(job_path):
         if k in seen:
             raise SystemExit(f"глава {i}: начало блока не уникально")
         seen.add(k)
+        if len(b) > assets_mod.BLOCK_CHARS_WARN:
+            long_blocks.append((i, len(b)))
+    # ДЛИНА БЛОКА. ElevenLabs режет длинные запросы МОЛЧА, с кодом 200:
+    # звук приходит на первые несколько тысяч символов, хвост главы
+    # просто отсутствует, а тайм-коды честные — на озвученную часть.
+    # Обнаруживается это на готовом ролике, где глава обрывается на
+    # полуслове, то есть после всех сорока минут рендера. На канале с
+    # роликами по сорок пять минут блоки длинные, и проверка нужна.
+    if long_blocks:
+        raise SystemExit(
+            "блоки длиннее " + str(assets_mod.BLOCK_CHARS_WARN) +
+            " символов: " + ", ".join(f"{i} ({n})" for i, n in long_blocks) +
+            "\nElevenLabs обрежет их молча. Разбей на главы поменьше — "
+            "глав в описании станет больше, и это не беда.")
     n_ch = len(job.get("youtube", {}).get("chapters", []))
     if n_ch != len(job["script_blocks"]):
         raise SystemExit(f"глав {n_ch}, блоков {len(job['script_blocks'])}")
@@ -92,7 +108,8 @@ def main(job_path):
     av = channel.avoid()
     st = style_mod.StyleEngine(
         job["id"], recent_luts=av["lut"], recent_openings=av["opening"],
-        recent_transitions=av["main_transition"], recent_sparks=av["sparks"])
+        recent_transitions=av["main_transition"],
+        recent_overlays=av["overlay"], recent_beds=av["bed"])
     for k in ("lut", "archive_lut"):
         if job.get(k):
             setattr(st, k, job[k])
@@ -108,6 +125,46 @@ def main(job_path):
     if abs(end - total) > 0.5:
         raise SystemExit(f"таймлайн разошёлся со звуком на {abs(end-total):.2f} с")
     print(f"   таймлайн сходится со звуком ({abs(end-total):.3f} с)")
+
+    # ДОЛИ ВИДЕО ПО ФАЗАМ. Главное требование к монтажу этого канала, и
+    # проверять его надо здесь, а не глазами на готовом ролике: между
+    # заказанной долей и вышедшей стоит материал, и когда стока мало,
+    # вступление молча превращается в фотоальбом.
+    print("── доли материала")
+    intro_end = getattr(st, "intro_end", 0.0)
+    for ru, lo, hi, target in (("вступление", 0.0, intro_end, st.intro_clip_share),
+                               ("тело", intro_end, total, st.body_clip_share)):
+        inside = [s for s in shots if lo <= s["start"] < hi]
+        span = sum(s["duration"] for s in inside)
+        if span <= 0:
+            continue
+        clip_s = sum(s["duration"] for s in inside if s["kind"] == "clip")
+        print(f"   {ru:<12} видео {clip_s/span*100:5.1f}% "
+              f"(заказано {target*100:.0f}%), {span/60:.1f} мин")
+
+    # ДОЛГИЕ КАДРЫ БЕЗ ДОЛГОГО ХОДА. Отдельной строкой, потому что это
+    # самая дорогая ошибка канала и по логу сборки она не видна: движение
+    # у кадра есть, оно записано, оно даже разное у соседей.
+    long_bad = [s for s in shots
+                if s["kind"] != "clip" and s.get("move")
+                and s["duration"] >= style_mod.LONG_SHOT_SECONDS
+                and s["move"] not in style_mod.LONG_SHOT_MOVES]
+    if long_bad:
+        raise SystemExit(
+            f"{len(long_bad)} кадров длиннее "
+            f"{style_mod.LONG_SHOT_SECONDS:.0f} с идут коротким движением — "
+            f"ход закончится на первой трети, дальше стоп-кадр. "
+            f"Смотри пересмотр движения в build.plan_shots")
+    longest = max(s["duration"] for s in shots)
+    print(f"   самый долгий кадр {longest:.1f} с, все долгие идут "
+          f"долгим ходом")
+
+    print("── подложки")
+    beds = build.beds_for(st, job)
+    if not beds:
+        print("   ! ни одной подложки не найдено — ролик соберётся, но "
+              "с одним голосом")
+
     print("\nСМОУК-ПРОГОН ПРОЙДЕН")
 
 

@@ -1,0 +1,73 @@
+{
+  "_": "Технический тест на настоящих ключах и настоящих деньгах, а не на моках. Три коротких блока (~65 секунд озвучки), пять промптов генерации, по три запроса к футажу и архиву — минимум, но настоящее: цель проверить весь конвейер разом (озвучка, Magnific+xAI, стоки, отбраковка зрением, монтаж, YouTube-комплект) за копейки, прежде чем запускать ancient-01 целиком.",
+
+  "id": "ancient-mini",
+
+  "voice_settings": {
+    "stability": 0.66,
+    "similarity": 0.8,
+    "style": 0.0,
+    "speed": 0.9
+  },
+
+  "batch": false,
+  "magnific_share": 0.7,
+  "material_overshoot": 1.0,
+  "fill_limit": 6,
+  "vet_vision": true,
+
+  "topic": {
+    "slug": "test-alexandria-lighthouse",
+    "keywords": ["alexandria", "lighthouse", "pharos", "ptolemaic egypt"]
+  },
+
+  "script_blocks": [
+    "On a small island off the coast of Alexandria, a fire has been burning at the top of a tower for longer than anyone alive can remember. Ships steer by it from far out at sea, where the coastline itself is too low and too dark to see. The tower is built in three tiers, each one narrower than the last, and it has stood there since the third century before our era.",
+    "It was built under Ptolemy the second, and the engineer who designed it, Sostratus of Cnidus, is said to have carved his own name into the stone beneath a layer of plaster bearing the king's name instead, so that when the plaster wore away, his name would be the one that lasted. Whether that story is true or invented later, it is the kind of thing people wanted to believe about the place.",
+    "The lighthouse survived for well over a thousand years, and then a sequence of earthquakes brought it down stone by stone across several centuries, until a fifteenth century sultan built a fort on the same spot, using the fallen blocks as its foundation. Somewhere under that fort, archaeologists believe, pieces of the tower are still waiting."
+  ],
+
+  "image_prompts": [
+    "tall ancient lighthouse tower at night with a fire burning at its top, cool moonlit sky, calm sea, photoreal, cinematic, 16:9",
+    "close view of a bronze mirror mechanism reflecting firelight inside an ancient tower, cold stone walls, macro, photoreal, 16:9",
+    "ancient mediterranean harbour at night seen from the water, distant tower light, still water, photoreal, cinematic, 16:9",
+    "weathered limestone blocks scattered on a shoreline at dusk, cold overcast light, photoreal, wide, 16:9",
+    "stone fortress wall built from reused ancient masonry, cold morning light, no people, photoreal, 16:9"
+  ],
+
+  "footage_queries": [
+    "mediterranean sea waves rocks",
+    "night sky stars timelapse",
+    "ancient stone fortress walls"
+  ],
+  "archive_queries": [
+    "alexandria lighthouse pharos illustration",
+    "ptolemaic egypt harbor",
+    "ancient stone masonry blocks"
+  ],
+  "video_prompts": [
+    "slow drift over a candlelit ancient lighthouse tower at night, no text, no people, photoreal, 16:9"
+  ],
+
+  "reject": { "clip": [], "arch": [] },
+
+  "style_override": {
+    "crf": 26,
+    "fps": 30
+  },
+
+  "youtube": {
+    "title": "Test Build — Pharos of Alexandria (pipeline check)",
+    "title_alternatives": ["Pipeline test: the lighthouse"],
+    "description_intro": "Technical test build of the Ancient Whispers pipeline. Not for publication.",
+    "chapters": [
+      "The fire on the tower",
+      "Ptolemy and Sostratus",
+      "What the earthquakes left"
+    ],
+    "description_notes": "Technical test build, real API calls, minimal content.",
+    "hashtags": ["#test"],
+    "tags": ["test", "pipeline check"],
+    "thumbnail_at": 30.0
+  }
+}

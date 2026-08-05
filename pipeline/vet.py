@@ -11,13 +11,27 @@ vet.py — автоматическая отбраковка материала.
 Здесь тот же отбор делает робот, в два прохода:
 
   1. ДЕШЁВЫЙ, локальный. Ничего не стоит и ловит брак формы: почти белый кадр
-     (каталожная съёмка на белом фоне — на тёплом тёмном цветокоре канала это
-     бледный прямоугольник), проваленную темень, мелкое разрешение, и главное —
-     статичное «видео», где за десять секунд не меняется ничего.
+     (каталожная съёмка на белом фоне — на холодном тёмном цветокоре канала
+     это дыра в кадре), пустую заливку без деталей, мелкое разрешение, и
+     главное — статичное «видео», где за десять секунд не меняется ничего.
 
   2. ЗРЕНИЕ, через xAI. Модели показывается кадр и рассказывается, о чём ролик.
-     Она отвечает, годится ли кадр и почему. Это единственный способ отличить
-     монету от петуха: ни теги стока, ни имя файла этого не знают.
+     Она отвечает, годится ли кадр, ПОЧЕМУ и НАСКОЛЬКО ХОРОШО он подходит
+     именно этому ролику — оценкой от единицы до пятёрки. Это единственный
+     способ отличить храм от храма: ни теги стока, ни имя файла не знают,
+     что на кадре стоит турист с рюкзаком, а само здание построено в
+     девятнадцатом веке.
+
+Отбраковка на этом канале СТРОЖЕ, чем на соседнем, и это заказано отдельно.
+Три отличия:
+
+  — доверенных источников нет вовсе (TRUSTED_SOURCES пуст): здесь
+    отсеивается не «не тот предмет», а не та эпоха, и музейный источник от
+    этого не спасает;
+  — у видео проверяются ДВА кадра, начало и конец, а не один из середины:
+    именно на краях живут заставки оцифровщиков и титры;
+  — мало сказать «годится»: кадр с оценкой ниже трёх не берётся, потому
+    что материала всегда больше, чем нужно ролику.
 
 Второй проход НЕОБЯЗАТЕЛЕН. Нет ключа, модель недоступна, сеть легла — работает
 только первый, в лог уходит внятное предупреждение, сборка не останавливается.
@@ -96,29 +110,49 @@ def price_of(model: str):
     return PRICE_DEFAULT
 
 
-# ГЕНЕРАЦИЯ ВИДЕО НЕ ИСПОЛЬЗУЕТСЯ, и вот почему в цифрах. Grok Imagine
-# Video 1.5 стоит $0.25 за секунду в 1080p, то есть трёхсекундная перебивка
-# — 75 центов. Одна сгенерированная картинка стоит 2-5 центов, а проверка
-# кадра зрением — меньше цента. Нехватку футажа закрывает фотография с
-# движением камеры: на общем плане её от плавного стокового кадра не
-# отличить, а стоит она в тридцать раз дешевле.
+# ЧЕРЕЗ xAI ВИДЕО НЕ ГЕНЕРИРУЕТСЯ НИКОГДА — так заказано, и цифры это
+# подтверждают: Grok Imagine Video 1.5 стоит $0.25 за секунду в 1080p, то
+# есть трёхсекундная вставка равна 75 центам при цене картинки в 2-5
+# центов и проверки кадра зрением меньше цента.
+#
+# Короткие вставки, когда футажа по теме не нашлось вовсе, делает Magnific
+# по подписке, потолком в 5% и с суточным лимитом — см. pipeline/magnific.py
+# и assets.fill_video. Здесь, в отбраковке, они узнаются по источнику
+# magnific-gen и зрением не проверяются: промпт наш собственный.
 
-# Источники, которым верим без зрения. Замер по первому прогону pawn-01,
-# 40 архивных фото: Met Museum дал почти весь годный материал — это музей
-# предметов, и по предметному запросу он отдаёт предметы. Library of
-# Congress по тем же запросам отдавал обложки книг и обмеры зданий, поэтому
-# в этот список он не входит и проверяется зрением.
-TRUSTED_SOURCES = ("met",)
+# Источники, которым верим БЕЗ зрения.
+#
+# СПИСОК ПУСТ, и это осознанное ужесточение. На канале о находках здесь
+# стоял Met: музей предметов, по предметному запросу отдаёт предмет, и
+# платить за просмотр его выдачи было не за что. Здесь другая задача —
+# отсеивается не «не тот предмет», а не та ЭПОХА и не та цивилизация:
+# средневековый замок, ренессансная живопись, викинги. Музейный источник
+# от этого не спасает совсем, он честно отдаёт то, что нашёл по слову
+# «temple», включая храмы XIX века.
+#
+# Зрение стоит центы за ролик (счёт печатается в конце) и это тот случай,
+# когда платить надо: заказано «повысить качество отбраковки».
+# Восстановить прежнее поведение можно полем trusted_sources в
+# спецификации, не трогая код.
+TRUSTED_SOURCES = ()
 
-# Пороги дешёвого прохода. Подобраны по разбору первого прогона pawn-01.
+# Пороги дешёвого прохода.
 #
 # У белизны ДВА порога, и это главное в двухъярусной схеме. Выше HARD —
 # кадр отбраковывается на месте, бесплатно. Между SOFT и HARD — случай
 # непонятный: каталожное фото предмета на светлом фоне бывает и лучшим, что
 # есть по теме. Такие уходят к зрению, а не в мусор.
-PALE_HARD = 0.62       # столько белого — это каталожная карточка, а не кадр
-PALE_SOFT = 0.38       # отсюда начинается «непонятно», решает зрение
-DARK_MEAN = 16         # средняя яркость, ниже которой кадр просто чёрный
+PALE_HARD = 0.55       # ниже, чем было (0.62): грейд канала холодный и
+PALE_SOFT = 0.30       # тёмный, белый прямоугольник на нём заметнее
+# ЯРКОСТЬ. Порог опущен с 16 до 9 — и это послабление, а не ужесточение.
+# Канал ночной: снятые в сумерках руины, звёздное небо и вода под луной
+# честно имеют среднюю яркость 10-14, и прежний порог браковал ровно тот
+# материал, ради которого канал существует.
+DARK_MEAN = 9
+# Зато добавлена проверка на ПУСТОТУ: ровная заливка без деталей.
+# Тёмный кадр с фактурой — то, что нужно; тёмный кадр без фактуры —
+# просто чернота, и отличаются они разбросом яркости, а не средней.
+FLAT_STDEV = 6.0
 MIN_PIXELS = 640 * 360
 STATIC_DELTA = 1.6     # средняя разница кадров видео, ниже — стоп-кадр
 
@@ -158,15 +192,27 @@ def video_frames(path: Path, n=3):
 
 def cheap_problems(path: Path):
     """
-    Брак формы, который виден без всякого зрения. Возвращает (кадр, список бед).
-    Кадр отдаётся наружу, чтобы не декодировать файл второй раз ради модели.
+    Брак формы, который виден без всякого зрения.
+
+    Возвращает (кадр, список бед, доля белого, КАДРЫ ДЛЯ ЗРЕНИЯ). Кадры
+    отдаются наружу, чтобы не декодировать файл второй раз ради модели.
+
+    Для видео кадров ДВА, и это поправка, стоившая отдельного разбора. Со
+    стоков и особенно из архивов приходят клипы, у которых середина
+    честная, а начало или конец — заставка оцифровщика с адресом сайта,
+    титр или полностью чёрный кадр. Проверка одного кадра из середины их
+    пропускает, и в ролике на секунду появляется «archive.org». Смотрим
+    первую и последнюю треть: если любая из них не годится, клип не
+    годится целиком — резать его по кускам мы не умеем, а ClipCutter
+    берёт из файла случайное место.
     """
     bad = []
     if path.suffix.lower() in (".mp4", ".m4v"):
         frames = video_frames(path)
         if not frames:
-            return None, ["файл не открылся"], 0.0
+            return None, ["файл не открылся"], 0.0, []
         im = frames[len(frames) // 2]
+        look = [frames[0], frames[-1]] if len(frames) >= 2 else [im]
         # Статичное «видео». Сток иногда отдаёт кадр, растянутый на десять
         # секунд: формально это видео, на экране — фотография без движения,
         # и вся идея перебивки на нём ломается.
@@ -181,7 +227,8 @@ def cheap_problems(path: Path):
         try:
             im = Image.open(path).convert("RGB")
         except Exception as e:
-            return None, [f"файл не открылся: {e}"], 0.0
+            return None, [f"файл не открылся: {e}"], 0.0, []
+        look = [im]
 
     w, h = im.size
     if w * h < MIN_PIXELS:
@@ -194,69 +241,109 @@ def cheap_problems(path: Path):
         px = list(small.getdata())
     pale = sum(1 for p in px if p > 224) / len(px)
     mean = sum(px) / len(px)
+    spread = (sum((p - mean) ** 2 for p in px) / len(px)) ** 0.5
     if pale > PALE_HARD:
         bad.append(f"почти белый кадр ({pale*100:.0f}% площади)")
     if mean < DARK_MEAN:
         bad.append(f"кадр практически чёрный (яркость {mean:.0f})")
+    # ПУСТОЙ КАДР. Разброс яркости ниже порога означает заливку: ровное
+    # небо, ровная стена, титр на однотонном фоне, кадр не в фокусе
+    # целиком. На канале о находках такой проверки не было и она была не
+    # нужна — там кадр всегда предметный. Здесь половина материала это
+    # пейзаж, и пустых кадров приходит много.
+    if spread < FLAT_STDEV:
+        bad.append(f"пустой кадр без деталей (разброс яркости {spread:.1f})")
 
-    return im, bad, pale
+    return im, bad, pale, look
 
 
 # ─────────────────────── ЗРЕНИЕ ───────────────────────
 
-PROMPT = """You are selecting stock material for a documentary-style YouTube video.
+PROMPT = """You are the picture editor of a slow, atmospheric documentary \
+channel about the ancient world — Egypt, Greece, Rome, Mesopotamia, the \
+Bronze Age, Atlantis and other myths and mysteries of antiquity. The videos \
+are 40-50 minutes long, cool-toned, and meant to be watched at night. There \
+is no sensationalism: atmosphere, facts, and respect for history.
 
 THE VIDEO IS ABOUT: {topic}
 {description}
 
-Look at the attached frame and decide whether it can be used as illustrative \
-footage in this video.
+Look at the attached frame and judge it as a working editor would: not "is \
+this a nice picture" but "can this shot go into THIS video without a viewer \
+noticing that it does not belong".
 
-ACCEPT the frame if it shows: the subject matter itself, related objects, \
-period or antique items, hands handling or examining OLD or VALUABLE objects \
-(coins, jewellery, ceramics, manuscripts, relics), shop or market or auction \
-interiors, RESTORATION or conservation work on an antique object, archival \
-photographs or paintings, textures such as aged wood, metal, paper, fabric, \
-or any atmospheric shot that a viewer would accept as belonging to a video \
-about historic finds and antiques.
+ACCEPT if the frame shows: ruins, excavation sites, temples, columns, \
+statues, reliefs, hieroglyphs, cuneiform, inscriptions, mosaics, frescoes, \
+pottery, bronze and gold artefacts, coins, jewellery, papyri, manuscripts, \
+maps or engravings of antiquity, museum objects, archaeological work, \
+desert, sea, cliffs, night sky, stars, water, stone, sand, fire and other \
+elemental textures that carry atmosphere, or period-appropriate landscape \
+of the Mediterranean, Nile, Aegean or Near East.
 
-REJECT the frame if it shows: something clearly unrelated to the subject \
-(food, animals, sports, modern offices, shopping malls, vehicles, nature \
-landscapes, fireworks, cosmetics, abstract computer graphics, medical or \
-laboratory imagery), or if it is a chart, a plain book cover with no imagery, \
-a screenshot, a watermark or logo card, or an architectural survey photo of \
-a building exterior.
+REJECT if the frame shows anything that breaks the period or the mood:
 
-REJECT ALSO any frame with a website address, domain name, or URL visible \
-anywhere in it — a browser window, a computer or phone screen showing a web \
-page or app, an on-screen ".com"/".org" text, a title or credit card naming \
-a website (this includes digitisation and archive-source credit cards that \
-some old public-domain footage carries at its start or end, even when the \
-rest of the clip is genuinely period material). A single frame like this \
-breaks the documentary illusion for the whole video, so reject the frame \
-even if the surrounding footage in the same clip is otherwise usable.
+1. ANYTHING MODERN IN SHOT. Cars, roads, road signs, power lines, street \
+lamps, scaffolding, safety railings, glass and steel buildings, plastic, \
+modern clothing, backpacks, sunglasses, phones, cameras, tourists. This is \
+the single most common failure with ruins footage: the temple is genuine \
+and there is a coach party in front of it. If a tourist or a modern object \
+is clearly visible, reject even though the site itself is right.
 
-REJECT ALSO any contemporary hobby, craft, or DIY workshop scene that is not \
-about restoring or examining an antique — for example: someone sanding, \
-carving, painting or assembling a modern item such as a skateboard, \
-furniture, or sports equipment; a person in modern casual clothing (t-shirt, \
-hoodie, sneakers) using power tools; a modern garage, studio, or maker space. \
-A workshop only belongs in this video if the object being worked on is \
-visibly old, ornate, or clearly the antique/relic itself — a plain pale \
-wooden board being sanded is NOT that, even though "workshop" sounds like it \
-should fit.
+2. TEXT, LOGOS, INTERFACES. Any website address, domain, ".com", watermark, \
+channel logo, subtitle, caption, chart, diagram with labels, screenshot, \
+browser or phone screen, or an archive/digitisation credit card of the sort \
+that old public-domain footage carries at its start or end. One such frame \
+breaks the illusion for the whole video.
 
-REJECT ALSO any 3D-rendered, CGI, or motion-graphics treatment of money — \
-cryptocurrency coins (Bitcoin, Ethereum and the like), glossy CGI coin \
-stacks, floating or spinning rendered coins, animated currency symbols, \
-piggy banks, banknote graphics, stock-market or finance imagery. These read \
-as "gold coins" at a glance and are the single most common false accept: a \
-video about a buried hoard cannot show a rendered Bitcoin. Real photographed \
-historic coins are fine; anything that looks computer-generated or modern \
-financial is not.
+3. FANTASY AND GAME ART. Video game screenshots, CGI fantasy temples, \
+concept art of dragons or wizards, "ancient aliens" imagery, pyramids with \
+spaceships, glowing portals, obvious 3D renders with plastic lighting. The \
+channel is about history, and this material makes it look like the opposite.
+
+4. RE-ENACTMENT THAT LOOKS CHEAP. Costume parties, festival cosplay, plastic \
+armour, gladiator shows for tourists, film-set props. Serious museum \
+reconstruction is fine; a man in a bedsheet is not.
+
+5. WRONG CIVILISATION OR WRONG ERA presented as the subject. Medieval \
+castles, knights, Vikings, samurai, cathedrals, Renaissance painting, \
+Victorian interiors, industrial machinery. They are historical but they are \
+not the ancient world, and a viewer who knows the period will see it at once.
+
+6. STOCK FILLER. Business people, laboratories, hospitals, shopping malls, \
+offices, sports, food photography, cosmetics, fireworks, pets, weddings, \
+abstract motion graphics, particle backgrounds.
+
+7. TECHNICALLY UNUSABLE. Very blurry, heavily compressed, tiny, distorted \
+by AI artefacts (melted faces, six-fingered hands, nonsense inscriptions), \
+extremely low contrast, or a flat catalogue photograph of an object on a \
+pure white background — this channel grades everything cold and dark, and a \
+white rectangle burns a hole in the frame.
+
+Then rate the frame from 1 to 5 on how good it is for THIS video:
+  5 — could open the video
+  4 — solid, would use without hesitation
+  3 — usable but ordinary
+  2 — weak, would only use if nothing else existed
+  1 — should not be used
+
+Be strict. There is more material than the video needs, so rejecting a \
+doubtful frame costs nothing, while one wrong frame is visible to every \
+viewer for the whole 45 minutes.
 
 Answer with STRICT JSON and nothing else:
-{{"keep": true or false, "why": "at most 12 words", "what": "what you see, at most 8 words"}}"""
+{{"keep": true or false, "quality": 1-5, "why": "at most 12 words", \
+"what": "what you see, at most 8 words"}}"""
+
+# Ниже какой оценки кадр не берём, даже когда модель сказала keep=true.
+#
+# Заказано «повысить качество отбраковки», и это сделано здесь, а не
+# ужесточением слова «нет»: модель охотно отвечает keep=true на «в принципе
+# подходит», и на такой формулировке в ролик попадает всё, что не является
+# прямым мусором. Оценка задаёт вопрос иначе — «насколько это хорошо
+# ИМЕННО ДЛЯ ЭТОГО ролика», и двойка по ней означает «взяли бы, если бы
+# больше ничего не было». Материала всегда больше, чем нужно ролику,
+# поэтому такое не берём.
+MIN_QUALITY = 3
 
 
 def list_models(key):
@@ -302,7 +389,7 @@ def choose_model(im, topic, desc, key, want=None):
     if not cands:
         return None, "сервис не отдал ни одной модели"
     for name in cands[:6]:
-        keep, why, used = ask_vision(im, topic, desc, name, key, tries=1)
+        keep, why, used, _q = ask_vision(im, topic, desc, name, key, tries=1)
         if keep is not None:
             log(f"  зрение: работает модель {name}")
             return name, ""
@@ -321,9 +408,17 @@ def to_data_url(im: Image.Image) -> str:
 def ask_vision(im: Image.Image, topic: str, description: str, model: str,
                key: str, tries=2):
     """
-    Вердикт модели по одному кадру. При любой беде возвращает None —
-    «не знаю», и кадр остаётся в работе. Отбраковывать по неудавшемуся
-    запросу нельзя: так молча пропадёт весь материал при первом же сбое сети.
+    Вердикт модели по одному кадру.
+
+    Возвращает (годится, что видно, (входных токенов, выходных), оценка).
+
+    При любой беде возвращает None в первом поле — «не знаю», и кадр
+    остаётся в работе. Отбраковывать по неудавшемуся запросу нельзя: так
+    молча пропадёт весь материал при первом же сбое сети.
+
+    Оценка 1-5 — второй, более строгий вопрос поверх «годится или нет»,
+    см. MIN_QUALITY. Модель, которая её не вернула, получает 3: не
+    наказываем кадр за то, что модель ответила не полностью.
     """
     body = {
         "model": model,
@@ -345,7 +440,8 @@ def ask_vision(im: Image.Image, topic: str, description: str, model: str,
                 if attempt + 1 < tries and r.status_code in (429, 500, 502, 503):
                     time.sleep(2 * (attempt + 1))
                     continue
-                return None, f"зрение ответило {r.status_code}: {r.text[:120]}", (0, 0)
+                return (None, f"зрение ответило {r.status_code}: "
+                        f"{r.text[:120]}", (0, 0), 0)
             txt = r.json()["choices"][0]["message"]["content"].strip()
             # модель иногда оборачивает JSON в ```json ... ```
             if txt.startswith("```"):
@@ -354,15 +450,23 @@ def ask_vision(im: Image.Image, topic: str, description: str, model: str,
             u = r.json().get("usage") or {}
             used = (int(u.get("prompt_tokens") or 0),
                     int(u.get("completion_tokens") or 0))
-            return (bool(data.get("keep", True)),
-                    str(data.get("what") or data.get("why") or "")[:70],
-                    used)
+            try:
+                quality = int(round(float(data.get("quality", 3))))
+            except (TypeError, ValueError):
+                quality = 3
+            quality = max(1, min(5, quality))
+            keep = bool(data.get("keep", True))
+            why = str(data.get("what") or data.get("why") or "")[:70]
+            if keep and quality < MIN_QUALITY:
+                keep = False
+                why = f"оценка {quality}/5 — {why}"
+            return keep, why, used, quality
         except Exception as e:
             if attempt + 1 < tries:
                 time.sleep(1.5)
                 continue
-            return None, f"зрение не ответило: {e}"
-    return None, "зрение не ответило", (0, 0)
+            return None, f"зрение не ответило: {e}", (0, 0), 0
+    return None, "зрение не ответило", (0, 0), 0
 
 
 # ─────────────────────── ГЛАВНОЕ ───────────────────────
@@ -429,6 +533,10 @@ def triage(path: Path, im, bad, pale, src, query, current_queries, trusted):
     # собственная генерация: она нарисована по нашему же промпту
     if path.name.startswith("img_"):
         return "keep", "сгенерировано по промпту ролика"
+    # и сгенерированные видеовставки тоже: промпт наш, тема наша, а
+    # тратить зрение на проверку собственного заказа незачем
+    if src == "magnific-gen":
+        return "keep", "видеовставка сгенерирована по промпту ролика"
 
     # Запрос, которого в спецификации больше нет, — это материал, оставшийся
     # в кэше от прошлой версии ролика. Он не обязательно плох, но и по теме
@@ -480,7 +588,7 @@ def vet_all(job, work: Path, use_vision=True):
         probe = None
         for files in groups.values():
             for f in files:
-                im, bad, _ = cheap_problems(f)
+                im, bad, _pale, _look = cheap_problems(f)
                 if im is not None:
                     probe = im
                     break
@@ -503,8 +611,8 @@ def vet_all(job, work: Path, use_vision=True):
 
         decided, ask_list, frames = {}, [], {}
         for f in files:
-            im, bad, pale = cheap_problems(f)
-            frames[f] = im
+            im, bad, pale, look = cheap_problems(f)
+            frames[f] = look or ([im] if im is not None else [])
             src, query = meta.get(f.name, ("", ""))
             verdict, why = triage(f, im, bad, pale, src, query,
                                   current_queries, trusted)
@@ -519,8 +627,26 @@ def vet_all(job, work: Path, use_vision=True):
         vision_out = {}
         if vision_ok and ask_list:
             def one(item):
+                """
+                Вердикт по файлу. У видео СПРАШИВАЕМ ПРО ДВА КАДРА и
+                берём худший ответ: клип годится целиком или не годится
+                вовсе, потому что ClipCutter возьмёт из него случайное
+                место. Именно так в ролик и попадает заставка архива —
+                середина честная, край нет.
+                """
                 f, _why = item
-                return f, ask_vision(frames[f], topic, desc, model, key)
+                worst = None
+                for im in frames[f][:2]:
+                    res = ask_vision(im, topic, desc, model, key)
+                    if worst is None:
+                        worst = res
+                    elif res[0] is False:
+                        worst = res
+                        break
+                    elif res[0] is not None and worst[0] is None:
+                        worst = res
+                return f, worst
+
             with ThreadPoolExecutor(max_workers=WORKERS) as ex:
                 for f, res in ex.map(one, ask_list):
                     vision_out[f] = res
@@ -541,8 +667,8 @@ def vet_all(job, work: Path, use_vision=True):
             if f in decided:
                 keep, why = decided[f]
             else:
-                keep, why, _ = vision_out.get(
-                    f, (True, "зрение не спрашивалось", (0, 0)))
+                keep, why, _u, _q = vision_out.get(
+                    f, (True, "зрение не спрашивалось", (0, 0), 0))
                 if keep is None:
                     keep, why = True, f"неясный ответ зрения: {why}"
             verdicts[kind][str(n)] = {"keep": bool(keep), "why": why}
