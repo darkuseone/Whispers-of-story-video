@@ -325,18 +325,23 @@ def _to_digits(tokens):
     return total or None
 
 
-def moments(beats, marks, vector, rng):
+def moments(beats, marks, vector, rng, skip_times=None):
     """
     Где по таймлайну поставить плашки.
 
     Возвращает список словарей {t, text, style, place, hold}. Пустой список
     — нормальный результат: у ролика может не выпасть стиль либо не найтись
     ни одного числа.
+
+    skip_times — секунды, ВОКРУГ которых плашек не ставить: туда уже
+    встали карточки-прерывания (см. interrupts), и та же дата дважды
+    подряд — угловой плашкой и полным экраном — читается как заикание.
     """
     style = vector.get("text_style", "none")
     if style == "none" or not font_path():
         return []
     density = float(vector.get("text_density", 0.3))
+    skip = list(skip_times or [])
 
     # кандидаты — только доли-развязки и нагнетания: плашка на завязке
     # оформляет то, что не требует оформления
@@ -360,6 +365,8 @@ def moments(beats, marks, vector, rng):
     for t, phrase, kind in cands:
         if t - last_t < MIN_GAP:
             continue
+        if any(abs(t - s) < 30.0 for s in skip):
+            continue
         if rng.random() > density:
             continue
         picked.append(dict(
@@ -369,6 +376,100 @@ def moments(beats, marks, vector, rng):
             hold=round(rng.uniform(*HOLD), 2)))
         last_t = t
     return picked
+
+
+# ─────────────────────── КАРТОЧКИ-ПРЕРЫВАНИЯ ───────────────────────
+
+# Не чаще одной на этот интервал. Прерывание работает, потому что оно
+# редкое: три чёрных карточки за десять минут — это уже не приём, а
+# слайд-презентация.
+INTERRUPT_GAP = 480.0
+INTERRUPT_MAX = 4
+# Короче этого ролика карточки не ставятся вовсе: на тестовых сборках и
+# коротких роликах им негде быть редкими.
+INTERRUPT_MIN_TOTAL = 15 * 60.0
+
+
+def interrupts(beats, marks, rng, total: float):
+    """
+    Полноэкранные карточки на главных датах ролика.
+
+    Паттерн-прерывание в чистом виде: кадр на несколько секунд уступает
+    место чёрному полю с одной цифрой — «2600 BC». Через сорок минут
+    ровного видеоряда любое короткое НЕ-видео перезапускает внимание, и
+    это единственное место конвейера, где такое позволено. Только на
+    развязках, не чаще одной на восемь минут, не больше четырёх на ролик.
+
+    Музыка под карточкой приседает — точки для ям забирает build.py из
+    поля t этих же словарей.
+    """
+    if total < INTERRUPT_MIN_TOTAL or not font_path():
+        return []
+    cands = []
+    for b in beats:
+        if b.kind != "revelation":
+            continue
+        for m in marks[b.first_mark:b.last_mark + 1]:
+            phrase = _phrase_at(m.get("text", ""))
+            if phrase and 2 <= len(phrase) <= 16:
+                # чем «цифровее» доля, тем раньше её кандидат в очереди
+                cands.append((-b.features.get("num", 0.0), m["start"], phrase))
+    if not cands:
+        return []
+
+    cands.sort()
+    picked = []
+    for _score, t, phrase in cands:
+        if len(picked) >= INTERRUPT_MAX:
+            break
+        # к краям ролика не лепим: в первые минуты зритель ещё решает
+        # остаться, в последние карточка спорит с уходом в чёрное
+        if t < 240.0 or t > total - 90.0:
+            continue
+        if any(abs(t - p["t"]) < INTERRUPT_GAP for p in picked):
+            continue
+        picked.append(dict(t=round(t, 3), text=phrase, style="interrupt",
+                           place="lower_left",
+                           hold=round(rng.uniform(3.6, 4.6), 2)))
+    picked.sort(key=lambda p: p["t"])
+    return picked
+
+
+# ─────────────────────── ТИТУЛЫ ГЛАВ ───────────────────────
+
+# Сколько титул держится. Дольше плашки-числа: его читают не как факт, а
+# как ориентир, и он не должен исчезнуть раньше, чем зритель поднял глаза.
+CHAPTER_HOLD = (4.6, 5.6)
+CHAPTER_TEXT_MAX = 40
+
+
+def chapter_titles(names, edges, rng):
+    """
+    Титул главы в момент её начала.
+
+    Зритель этого канала слушает вполуха и часто с закрытыми глазами;
+    тот, кто смотрит, должен видеть смену главы, а не только слышать её
+    в длинном переходе. Названия уже написаны человеком для описания
+    YouTube — здесь они просто ставятся в кадр, через секунду после
+    границы, когда переход уже отработал.
+
+    names — названия глав из спецификации, edges — [(секунда, номер
+    блока)] из плана кадров. Первая глава титула не получает: ролик
+    только что открылся, и подпись поверх открытия спорит с ним.
+    """
+    if not names or not edges or not font_path():
+        return []
+    out = []
+    for t, block in edges:
+        if not 0 < block < len(names):
+            continue
+        text = str(names[block]).strip().upper()[:CHAPTER_TEXT_MAX]
+        if not text:
+            continue
+        out.append(dict(t=round(t + 1.0, 3), text=text, style="fade_slow",
+                        place="lower_left", size=40,
+                        hold=round(rng.uniform(*CHAPTER_HOLD), 2)))
+    return out
 
 
 # ─────────────────────── ЧЕМ РИСОВАТЬ ───────────────────────
@@ -401,7 +502,8 @@ def filter_chain(items, font=None, size_scale=1.0):
         hold = float(it.get("hold", 3.0))
         t1 = t0 + hold
         place = PLACES.get(it.get("place"), PLACES["lower_left"])
-        size = int(58 * size_scale)
+        # размер задаётся и на плашку: титул главы мельче цифры-факта
+        size = int(float(it.get("size", 58)) * size_scale)
         parts.append(_one(it, t0, t1, place, font, size))
     return ",".join(p for p in parts if p)
 
@@ -423,6 +525,20 @@ def _one(it, t0, t1, place, font, size):
     base = (f"fontfile={font}:text='{txt}':fontcolor=white:"
             f"fontsize={size}:borderw=4:bordercolor=black@0.85:"
             f"shadowx=2:shadowy=2:shadowcolor=black@0.5:enable='{en}'")
+
+    if style == "interrupt":
+        # ПОЛНОЭКРАННАЯ КАРТОЧКА. Кадр уступает место чёрному полю с
+        # одной цифрой по центру. Поле не до конца глухое (0.90): сквозь
+        # него едва читается движение кадра, и карточка остаётся частью
+        # ролика, а не вставленным слайдом. Позиция раскладки place здесь
+        # не используется — центр и есть смысл приёма.
+        box = (f"drawbox=x=0:y=0:w=iw:h=ih:color=black@0.90:t=fill:"
+               f"enable='{en}'")
+        big = (f"fontfile={font}:text='{txt}':fontcolor=0xF3EFE6:"
+               f"fontsize={int(size * 2.3)}:borderw=0:"
+               f"shadowx=0:shadowy=4:shadowcolor=black@0.6:"
+               f"x=(w-text_w)/2:y=(h-text_h)/2:enable='{en}'")
+        return f"{box},drawtext={big}:alpha='{alpha}'"
 
     if style == "carved":
         # ВЫСЕЧЕНО В КАМНЕ. Разрядка между буквами плюс приглушённый цвет

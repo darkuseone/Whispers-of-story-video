@@ -530,9 +530,20 @@ def opening_plan(st, intro_start, intro_end):
     """
     o = st.opening
     p = dict(first_long=None, tight_until=0.0, tight_factor=1.0,
-             ramp_until=0.0, first_is_clip=False, end=intro_end)
+             ramp_until=0.0, first_is_clip=False, end=intro_end,
+             first_move_only=None)
 
-    if o == "long_establish":
+    if o == "starlit":
+        # Из чёрного проявляется ОДИН долгий кадр с проездом, и только
+        # потом начинается перебивка. Раньше вариант существовал только
+        # как длинное проявление из чёрного в join() — то есть был
+        # неотличим от black_card, и «свой у этого канала» тип открытия
+        # существовал на бумаге. Долгий первый кадр и проезд через весь
+        # кадр — здесь, проявление остаётся в join().
+        p["first_long"] = (8.0, 12.0)
+        p["first_move_only"] = ["long_pan_right", "long_pan_left",
+                                "diag_down", "diag_up"]
+    elif o == "long_establish":
         # один установочный кадр, потом перебивка — «выдох» перед бегом
         p["first_long"] = (5.5, 8.5)
     elif o == "quick_cuts":
@@ -683,6 +694,19 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     # оставляем на движке: их заберут проверка плана и монтажный лист
     st.beats, st.pacing = story, pace
 
+    # ПРОБРОС РАЗВЯЗКИ В ХУК. Первые секунды — единственное место, где
+    # зритель решает, остаться ли, и туда должны попасть кадры, ВИЗУАЛЬНО
+    # обещающие развязку, а не случайная перебивка. Дешёвый способ этого
+    # добиться уже есть: подбор по смыслу. К тексту первых кадров
+    # подмешиваются слова долей-развязок, и ShotPicker сам предпочитает
+    # материал, скачанный и нарисованный под кульминацию.
+    tease_words = []
+    for b in story:
+        if b.kind == "revelation":
+            tease_words += [m["text"] for m in
+                            marks[b.first_mark:b.last_mark + 1]]
+    tease = " ".join(tease_words)[:1500]
+
     def beat_at(t: float):
         """Доля, накрывающая секунду t, и её номер. Хвост — последней доле."""
         for n, b in enumerate(story):
@@ -780,6 +804,16 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     intro_end = op["end"]
     log(f"  открытие: {st.opening}, вступление до {intro_end:.0f} с")
 
+    # Докуда хук подбирается под развязку. Дальше двадцатой секунды это
+    # уже не «обещание», а спойлер длиной в главу.
+    tease_until = intro_start + 20.0
+    if tease:
+        log("  хук: первые 20 секунд подбираются под текст развязки")
+
+    def intro_said(t_pos: float, span: float) -> str:
+        s = said_at(t_pos, span)
+        return (s + " " + tease) if (tease and t_pos < tease_until) else s
+
     run_kind, run_len = None, 0
     while t < intro_end:
         # ЧЕМ ЗАКРЫТЬ СЛОТ, РЕШАЕТ ДОЛЯ ПО ВРЕМЕНИ, а не жребий.
@@ -841,7 +875,7 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         # растворение съедает весь смысл перебивки
 
         if got == "clip":
-            src, _ = clip_pick.take(t, said_at(t, dur))
+            src, _ = clip_pick.take(t, intro_said(t, dur))
             src_start, stretch = clip_timing(src, dur)
             shots.append(dict(kind="clip", file=src, tag="clip",
                               src_start=src_start, stretch=stretch,
@@ -857,11 +891,15 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
             # перевыбиралось здесь своим жребием, если не подошло, — мимо
             # счётчика семей. Проверка плана нашла на этом девять наездов
             # подряд в первых трёх минутах.
-            mv, sp, ez = st.pick_move(1.05, allow_hold=False, only=INTRO_MOVES,
+            # starlit сужает ПЕРВЫЙ кадр до проездов: долгий кадр открытия
+            # обязан ехать всю свою длительность, а не наехать и встать.
+            only = (op["first_move_only"]
+                    if idx == 0 and op["first_move_only"] else INTRO_MOVES)
+            mv, sp, ez = st.pick_move(1.05, allow_hold=False, only=only,
                                       duration=dur)
             shots.append(put_image(
-                got, t, said=said_at(t, dur), start=round(t, 3), duration=dur,
-                move=mv, speed=sp, ease=ez,
+                got, t, said=intro_said(t, dur), start=round(t, 3),
+                duration=dur, move=mv, speed=sp, ease=ez,
                 transition=tr, transition_dur=trd,
                 effect=st.effect(),
                 beat_kind="hook", why=f"вступление ({st.opening})"))
@@ -903,9 +941,13 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     # сценария, из которого она вышла (см. beats.Beat.block), и смена
     # номера и есть смена главы. Считать их заново по тексту не нужно —
     # разбор это уже сделал.
-    edges = [b.start for a, b in zip(story, story[1:]) if b.block != a.block
-             and b.start > intro_end]
-    edges = sorted(edges)
+    edge_pairs = sorted((b.start, b.block) for a, b in zip(story, story[1:])
+                        if b.block != a.block and b.start > intro_end)
+    edges = [t for t, _b in edge_pairs]
+    # Границы уезжают на движок целиком: по ним ставятся титулы глав,
+    # ямы подложки и смены музыкального трека — всё это происходит после
+    # плана, когда локальный список edges уже разобран.
+    st.chapter_edges = edge_pairs
     log(f"  границ глав в теле: {len(edges)}")
 
     while i < len(marks):
@@ -1038,6 +1080,15 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
                 **{k: cfg[k] for k in
                    ("move", "speed", "ease", "transition", "transition_dur",
                     "effect")}))
+            # КАНДИДАТ В ЗУМ-АКЦЕНТЫ. Кадр под поворотной фразой («but»,
+            # «until», «suddenly» первым словом) в сильной доле помечается;
+            # кому из кандидатов достанется усиленный ход — решается ниже,
+            # по готовому плану, с прореживанием по времени.
+            if (beat is not None
+                    and beat.kind in ("escalation", "revelation")):
+                head = [w.strip(",.!?…").lower() for w in said.split()[:3]]
+                if any(w in beats_mod.TURN_MARKERS for w in head):
+                    shots[-1]["accent"] = True
         mix.charge(got, dur, phase="body")
         idx += 1
         body_idx += 1
@@ -1101,6 +1152,31 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
             f"длиннее {style_mod.LONG_SHOT_SECONDS:.0f} с, и короткий ход "
             f"на них закончился бы до середины")
 
+    # ── ЗУМ-АКЦЕНТЫ НА ПОВОРОТНЫХ ФРАЗАХ ──
+    #
+    # Живой монтажёр под фразой-поворотом двигает камеру решительнее.
+    # Здесь то же самое: у нескольких кадров-кандидатов (см. пометку
+    # accent выше) амплитуда хода поднимается на треть. Движение НЕ
+    # подменяется — только скорость: подмена результата ходит мимо
+    # счётчика семей, и на этом однажды уже ловили девять наездов подряд.
+    # Прореживание по времени обязательно: акцент на каждом «but» — это
+    # ритм, а не приём.
+    ACCENT_GAP = 90.0
+    accents, last_acc = 0, -1e9
+    for sh in shots:
+        if not sh.pop("accent", False):
+            continue
+        if sh["start"] - last_acc < ACCENT_GAP or not sh.get("speed"):
+            continue
+        sh["speed"] = round(min(style_mod.SPEED_CLAMP[1],
+                                sh["speed"] * 1.35), 3)
+        sh["why"] = (sh.get("why", "") + " · акцент на повороте")
+        last_acc = sh["start"]
+        accents += 1
+    if accents:
+        log(f"  зум-акценты: {accents} кадров под поворотными фразами "
+            f"идут с усиленным ходом")
+
     # Граница фаз нужна снаружи: по ней считается доля видео во
     # вступлении и в теле отдельно.
     st.intro_end = intro_end
@@ -1111,6 +1187,10 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     log(f"  подбор: генерация — {gen_pick.report()}")
     log(f"  подбор: архив     — {arch_pick.report()}")
     log(f"  подбор: сток      — {clip_pick.report()}")
+    # Числа отдельно от строк: смоук проверяет их порогом, а не парсит лог
+    st.match_report = {"gen": (gen_pick.hits, gen_pick.calls),
+                       "arch": (arch_pick.hits, arch_pick.calls),
+                       "clip": (clip_pick.hits, clip_pick.calls)}
 
     # Что показано и сколько раз — уедет в журнал канала, чтобы следующий
     # ролик начал подбор с гандикапом на эти файлы. Генерация не считается:
@@ -1181,8 +1261,12 @@ OVERRIDABLE = {
     # Подложки: имена файлов без расширения, из assets/music.
     "bed":                       "bed",
     "bed_second":                "bed_second",
+    "bed_third":                 "bed_third",
     "bed_switch_at":             "bed_switch_at",
     "bed_gain_db":               "bed_gain_db",
+    # Титулы глав плашкой и вероятность склейки встык под нагнетанием.
+    "chapter_titles":            "chapter_titles",
+    "escalation_cut_probability": "escalation_cut_probability",
     # Сжатие: упирается в лимит GitHub Releases в 2 ГБ, см. style.py.
     "crf":                       "crf",
     "preset":                    "preset",
@@ -1563,16 +1647,18 @@ def join(group, out: Path, st, overlay, first=False, moments=None, last=False):
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def beds_for(st, job):
+def beds_for(st, job, total: float = 0.0):
     """
     Какие подложки играют в этом ролике. Список путей, возможно пустой.
 
-    ПЯТЬ ПОДЛОЖЕК, bed1..bed5, и в каждом ролике их звучит ДВЕ: вторая
-    заходит около середины через перекрёстное затухание (см.
-    render.build_bed). Причина арифметическая: ролик идёт сорок пять
+    ПЯТЬ ПОДЛОЖЕК, bed1..bed5. В длинном ролике (от 20 минут) их звучит
+    ТРИ, в коротком — две: следующая заходит через перекрёстное затухание
+    (см. render.build_bed), и смены падают на границы глав — см.
+    bed_switch_points. Причина арифметическая: ролик идёт сорок пять
     минут, подложка длится две-три и зацикливается пятнадцать-двадцать
     раз. К двадцатой петле зритель знает её наизусть, и она перестаёт
-    быть фоном.
+    быть фоном; на двух треках вторая половина ролика всё ещё крутит
+    свой трек десять с лишним раз.
 
     Выбор — как у цветокора: две последние по журналу канала не
     повторяются, см. channel.avoid(). Поле music в спецификации перебивает
@@ -1594,6 +1680,10 @@ def beds_for(st, job):
         want = job["music"] if isinstance(job["music"], list) else [job["music"]]
     else:
         want = [st.bed, st.bed_second]
+        if total >= 20 * 60 and getattr(st, "bed_third", None):
+            want.append(st.bed_third)
+        # один и тот же трек дважды в списке смысла не имеет
+        want = list(dict.fromkeys(want))
 
     out, missing = [], []
     for name in want:
@@ -1603,8 +1693,7 @@ def beds_for(st, job):
         log("  ! нет подложек: " + ", ".join(p.name for p in missing))
     if out:
         log(f"  подложка: {', '.join(p.name for p in out)}"
-            + (f", смена на {st.bed_switch_at*100:.0f}% ролика"
-               if len(out) > 1 else "")
+            + (f", смен {len(out) - 1}" if len(out) > 1 else "")
             + f", уровень {job.get('bed_gain_db', st.bed_gain_db)} дБ")
     else:
         log("  ! подложек нет вовсе — собираю только с голосом. "
@@ -1612,54 +1701,29 @@ def beds_for(st, job):
     return out
 
 
-def duck_points(st, story, pace):
+def bed_switch_points(st, total: float, n_beds: int):
     """
-    Где подложка уходит под голос. Возвращает [(секунда, длительность)].
+    Секунды смен подложки: равные доли ролика, притянутые к границам глав.
 
-    Четыре манеры, ось duck_style. Разные не ради разного: место, где
-    музыка расступается, зритель запоминает, и если у всех роликов канала
-    она расступается в одинаковых местах — это такая же подпись, как
-    одинаковое открытие.
-
-      revelation  яма на каждой развязке. Самая «документальная» манера:
-                  музыка уходит ровно там, где называют сумму
-      beats       на каждой границе доли. Подложка дышит вместе с
-                  структурой, ям много и они короткие
-      sparse      три-пять ям на весь ролик, глубокие и длинные
-      breath      ямы совпадают с выдохами из pacing.py — музыка молчит
-                  там, где молчит монтаж
+    Смена музыки посреди мысли слышна как склейка чужих кусков; на границе
+    главы — как решение. Точка ищется в пределах полутора минут от «ровной»
+    доли: дальше уезжать нельзя, иначе первый трек играет полчаса, а
+    остальные делят десять минут. Для двух треков ровная доля — это ось
+    bed_switch_at, как и раньше.
     """
-    if not story:
+    if n_beds < 2:
         return []
-    style = st.duck_style
+    edges = [t for t, _b in getattr(st, "chapter_edges", [])]
+    if n_beds == 2:
+        ideal = [total * st.bed_switch_at]
+    else:
+        ideal = [total * (k + 1) / n_beds for k in range(n_beds - 1)]
     pts = []
-
-    if style == "revelation":
-        pts = [(b.start, min(b.duration, 14.0))
-               for b in story if b.kind == "revelation"]
-    elif style == "beats":
-        pts = [(b.start, 5.0) for b in story[1:]]
-    elif style == "breath":
-        pts = [(story[i].start, 8.0) for i in sorted(pace.breaths)
-               if i < len(story)]
-    else:                       # sparse
-        strong = [b for b in story
-                  if b.kind in ("revelation", "escalation", "cta")]
-        pool = strong or story[1:]
-        n = min(len(pool), st.rng.choice([3, 4, 5]))
-        pts = [(b.start, min(b.duration, 18.0))
-               for b in st.rng.sample(pool, n)] if pool else []
-
-    # Ямы ближе четырёх секунд друг к другу сливаются в одну долгую — это
-    # уже не приём, а просто тихая музыка. Схлопываем.
-    pts.sort()
-    merged = []
-    for t0, d in pts:
-        if merged and t0 - merged[-1][0] < 4.0:
-            merged[-1] = (merged[-1][0], max(merged[-1][1], t0 + d - merged[-1][0]))
-        else:
-            merged.append((t0, d))
-    return merged
+    for want in ideal:
+        near = [e for e in edges if abs(e - want) <= 90.0
+                and all(abs(e - p) > 60.0 for p in pts)]
+        pts.append(min(near, key=lambda e: abs(e - want)) if near else want)
+    return sorted(pts)
 
 
 def ensure_overlays(st):
@@ -1814,17 +1878,36 @@ def main(job_path):
         log("  ! есть замечания уровня «стоп» — ролик соберётся, но "
             "выкладывать его в таком виде не стоит")
 
-    # ── ПЛАШКИ ───────────────────────────────────────────────────────
+    # ── ПЛАШКИ, КАРТОЧКИ, ТИТУЛЫ ─────────────────────────────────────
     # Собственная графика конвейера: единственный элемент кадра, которого
-    # нет ни в одном исходном материале.
+    # нет ни в одном исходном материале. Три слоя:
+    #   interrupts — полноэкранные карточки на главных датах, редкие
+    #   moments    — угловые плашки-числа, обходят карточки стороной
+    #   титулы     — название главы через секунду после её границы
+    cards = textcard.interrupts(getattr(st, "beats", []), marks, st.rng,
+                                total)
+    if cards:
+        log(f"── карточки-прерывания: {len(cards)} шт.")
+        for m in cards:
+            log(f"  {m['t']/60:5.1f} мин  {m['text']}")
     moments = textcard.moments(getattr(st, "beats", []), marks, st.vector,
-                               st.rng)
+                               st.rng, skip_times=[m["t"] for m in cards])
     if moments:
         log(f"── плашки: {len(moments)} шт., стиль {st.text_style}")
         for m in moments:
             log(f"  {m['t']/60:5.1f} мин  {m['text']}")
     elif st.text_style != "none":
         log("── плашки: чисел в развязках не нашлось, ролик без них")
+    titles = []
+    if getattr(st, "chapter_titles", True):
+        names = (job.get("youtube") or {}).get("chapters") or []
+        titles = textcard.chapter_titles(names,
+                                         getattr(st, "chapter_edges", []),
+                                         st.rng)
+        if titles:
+            log(f"── титулы глав: {len(titles)} шт.")
+    # дальше все три слоя живут одним списком: join() различает их по стилю
+    moments = sorted(cards + moments + titles, key=lambda m: m["t"])
 
     # Карточка стиля кладётся рядом с роликом: из неё channel.py потом
     # запишет ролик в журнал. Пишется ЗДЕСЬ, а не до плана: в неё входят
@@ -1870,15 +1953,23 @@ def main(job_path):
 
     log("── звук")
     mixed = tmp / "audio.m4a"
-    beds = beds_for(st, job)
-    ducks = duck_points(st, getattr(st, "beats", []), getattr(st, "pacing", None))
-    if ducks and beds:
-        log(f"  подложка уходит в {len(ducks)} местах "
-            f"({st.duck_style}, глубина {st.duck_depth})")
+    beds = beds_for(st, job, total)
+    switches = bed_switch_points(st, total, len(beds))
+    # Ямы-события: подложка глубоко приседает на границах глав и под
+    # полноэкранными карточками. Обычный дакинг под голосом теперь делает
+    # sidechaincompress внутри build_audio — точки для него не считаются.
+    dips = ([(t, 6.0) for t, _b in getattr(st, "chapter_edges", [])]
+            + [(m["t"] - 0.5, m["hold"] + 1.5) for m in moments
+               if m.get("style") == "interrupt"])
+    dips = sorted((max(0.0, t), d) for t, d in dips)
+    if beds:
+        log(f"  дакинг: sidechain ({st.duck_style}, глубина {st.duck_depth})"
+            + (f", ям-событий {len(dips)}" if dips else ""))
     render.build_audio(assets / "voice_full.m4a", beds or None, mixed, total,
                        bed_gain_db=job.get("bed_gain_db", st.bed_gain_db),
-                       duck_points=ducks, duck_depth=st.duck_depth,
-                       switch_at=st.bed_switch_at)
+                       duck_depth=st.duck_depth, duck_style=st.duck_style,
+                       event_dips=dips, switch_at=st.bed_switch_at,
+                       switch_points=switches)
 
     log("── финал")
     final = out / "final.mp4"

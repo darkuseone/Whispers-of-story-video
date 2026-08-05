@@ -554,6 +554,14 @@ class StyleEngine:
         self.tr_dur_range = tuple(v["transition_dur"])
         self.tr_dur = round(r.uniform(*self.tr_dur_range), 2)
         self.hard_cut_probability = 0.0
+        # ЖЁСТКАЯ СКЛЕЙКА В НАГНЕТАНИИ. По умолчанию резких склеек в ролике
+        # нет вовсе (hard_cut_probability выше) — на канале под сон это
+        # правильно. Но сорок минут одних растворений сами становятся
+        # шаблоном, и у монтажёра под нагнетанием нож работает иначе.
+        # Поэтому в долях escalation и в микроритме tighten часть склеек
+        # идёт встык: там резкость — это замысел, а не сбой. Вероятность
+        # своя у каждого ролика, чтобы и этот признак не был константой.
+        self.escalation_cut_probability = round(r.uniform(0.10, 0.22), 3)
         # Переходы на границах глав — самое заметное место склейки.
         self.chapter_transitions = list(CHAPTER_TRANSITIONS)
         self.chapter_transition_dur = CHAPTER_TRANSITION_DUR
@@ -593,14 +601,24 @@ class StyleEngine:
 
         # ПОДЛОЖКА. Пять разных, bed1..bed5. Выбор — как у цветокора:
         # две последние не повторяются. На сорока минутах одна и та же
-        # петля утомляет сама по себе, поэтому подложек в ролике ДВЕ:
-        # вторая заходит во второй половине, см. bed_switch_at.
+        # петля утомляет сама по себе, поэтому подложек в длинном ролике
+        # ТРИ: смены заходят на границах глав (см. build.beds_for), на
+        # коротком — две. bed_switch_at остаётся ручкой для двухтрековой
+        # схемы и для спецификаций, которые задают музыку сами.
         self.bed_pool = [f"bed{i}" for i in range(1, 6)]
         pool = [b for b in self.bed_pool if b not in recent_beds] or self.bed_pool
         self.bed = r.choice(pool)
         self.bed_second = r.choice([b for b in pool if b != self.bed] or [self.bed])
+        third_pool = [b for b in self.bed_pool
+                      if b not in (self.bed, self.bed_second)] or [self.bed]
+        self.bed_third = r.choice(third_pool)
         self.bed_switch_at = round(r.uniform(0.48, 0.62), 3)
         self.bed_gain_db = round(r.uniform(-29.0, -25.0), 1)
+
+        # Титулы глав плашкой. Ориентир для зрителя, который слушает
+        # вполуха: смена главы видна, а не только слышна. Выключается
+        # через style_override, если под конкретный ролик они не нужны.
+        self.chapter_titles = True
 
         # Раскладка превью. YouTube показывает превью соседних загрузок в
         # одном ряду, поэтому одинаковая вёрстка подписи опознаётся как
@@ -689,7 +707,7 @@ class StyleEngine:
 
     # ---------- переходы ----------
 
-    def pick_transition(self, short=False, chapter=False):
+    def pick_transition(self, short=False, chapter=False, hard_p=None):
         """
         Переход и его длительность.
 
@@ -697,12 +715,16 @@ class StyleEngine:
         chapter  — граница главы: самый долгий и самый заметный переход
                    ролика. Единственное место, где разрешён уход в чёрное:
                    это конец мысли, а не середина.
+        hard_p   — вероятность склейки встык ДЛЯ ЭТОГО кадра. Задаёт
+                   замысел доли: под нагнетанием нож работает резче, чем
+                   ролик в среднем. None — общий hard_cut_probability.
         """
         if chapter:
             tr = self.rng.choice(self.chapter_transitions)
             d = round(self.rng.uniform(*self.chapter_transition_dur), 2)
             return tr, d
-        if self.rng.random() < self.hard_cut_probability:
+        p_cut = self.hard_cut_probability if hard_p is None else hard_p
+        if self.rng.random() < p_cut:
             return "cut", 0.0
         tr = (self.main_tr if self.rng.random() < self.transition_focus
               else self.rng.choice(self.transitions))
@@ -728,7 +750,16 @@ class StyleEngine:
                          min(want, self.max_shot_seconds)), 2)
         move, speed, ease = self.pick_move(pacing.motion_scale(beat),
                                            duration=want)
-        tr, trd = self.pick_transition(chapter=chapter_edge)
+        # Под нагнетанием и в «сжимающемся» микроритме часть склеек идёт
+        # встык: резкость там — замысел, а не сбой. Везде ещё действует
+        # общий hard_cut_probability (по умолчанию ноль).
+        tight = (beat.kind == "escalation"
+                 or pacing.micro_of.get(beat_index) == "tighten")
+        tr, trd = self.pick_transition(
+            chapter=chapter_edge,
+            hard_p=self.escalation_cut_probability if tight else None)
+        if tr == "cut":
+            why += " · склейка встык (нагнетание)"
         if chapter_edge:
             why += " · граница главы"
         return dict(duration=want, move=move, speed=speed, ease=ease,
@@ -828,6 +859,7 @@ class StyleEngine:
             "transition_dur": list(self.tr_dur_range),
             "transition_focus": self.transition_focus,
             "hard_cut_p": self.hard_cut_probability,
+            "escalation_cut_p": self.escalation_cut_probability,
             "intro_footage_s": self.intro_footage_seconds,
             "intro_clip_s": list(self.intro_clip_duration_range),
             "intro_photo_s": list(self.intro_photo_duration_range),
@@ -852,6 +884,7 @@ class StyleEngine:
             "duck_depth": self.duck_depth,
             "bed": self.bed,
             "bed_second": self.bed_second,
+            "bed_third": self.bed_third,
             "bed_switch_at": self.bed_switch_at,
             "bed_gain_db": self.bed_gain_db,
         }
