@@ -106,7 +106,7 @@ POLL_TRIES = 40           # до четырёх минут на одно вид�
 # в логах и job-спеке), значения — реальные slug'и в пути REST API.
 _DEFAULT_IMAGE_SLUGS = {
     "flux2pro": "flux-2-pro",
-    "nano-banana2": "nano-banana-2",
+    "nano-banana2": "nano-banana-pro",
     "seedream5pro": "seedream-v5-pro",
 }
 
@@ -693,17 +693,16 @@ SLUG_CANDIDATES = {
     # «негодное тело», то есть путь отозвался. Запасные им не нужны.
     "flux2pro": ["flux-2-pro"],
     "seedream5pro": ["seedream-v5-pro"],
+    "nano-banana2": ["nano-banana-pro"],
     "minimax-hailuo-2.3": ["minimax-hailuo-2-3-1080p"],
     "kling-2.5": ["kling-v2-5-pro"],
     "wan-2.2": ["wan-v2-2-720p"],
-    # А эти два дали честный 404 на POST — написание неверное, ищем.
-    "nano-banana2": ["nano-banana-2", "nano-banana-v2", "nano-banana-2-pro",
-                     "nano-banana-pro", "nano-banana", "google-nano-banana-2",
-                     "gemini-3-pro-image", "imagen4", "imagen3"],
-    "seedance-1.5pro": ["seedance-pro-1-5-1080p", "seedance-v1-5-pro",
-                        "seedance-1-5-pro", "seedance-pro-v1-5",
-                        "seedance-v1-5-pro-1080p", "seedance-v1-5",
-                        "seedance-pro-1080p", "seedance"],
+    # Единственный ненайденный. Тринадцать написаний в image-to-video дали
+    # 404; возможно, эта модель живёт в другой категории (text-to-video) —
+    # проверяется последними кандидатами с явным префиксом категории.
+    "seedance-1.5pro": ["seedance-pro-1-5", "seedance-lite-1080p",
+                        "seedance-2-0-pro", "seedance-1-5",
+                        "bytedance-seedance-pro-1-5"],
 }
 
 
