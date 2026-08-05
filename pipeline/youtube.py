@@ -282,8 +282,27 @@ def main(job_path):
     if style_card.exists():
         thumb_style = json.loads(style_card.read_text(encoding="utf-8")).get(
             "thumb_style", thumb_style)
-    thumb = thumbnail(video, out / "thumbnail.jpg", at, y["title"], thumb_style)
-    log(f"превью : раскладка {thumb_style}")
+
+    # ТРИ ПРЕВЬЮ, а не одно. У YouTube есть «Test & compare»: канал
+    # загружает до трёх вариантов, и площадка сама выясняет, какой
+    # кликают. Превью — самый дешёвый рычаг просмотров во всём конвейере
+    # (три кадра из готового ролика), и не пользоваться тестом — значит
+    # выбирать обложку вслепую. Первый вариант — прежний thumbnail.jpg,
+    # ничего в привычках не меняется; второй и третий берут другие кадры
+    # И другую раскладку: два кадра с одинаковой вёрсткой для зрителя —
+    # одна и та же обложка.
+    others = [s for s in ("lower_left", "lower_band", "upper_left",
+                          "centre_band") if s != thumb_style]
+    variants = [(at, thumb_style),
+                (total * 0.62, others[0]),
+                (total * 0.18, others[1])]
+    thumbs = []
+    for n, (t_at, v_style) in enumerate(variants, 1):
+        t_at = min(max(0.0, t_at), max(0.0, total - 1.0))
+        name = "thumbnail.jpg" if n == 1 else f"thumbnail_{n}.jpg"
+        thumbs.append(thumbnail(video, out / name, t_at, y["title"], v_style))
+        log(f"превью {n}: раскладка {v_style}, кадр с {t_at:.0f} с")
+    thumb = thumbs[0]
 
     log(f"главы  : {len(chaps)}, первая с 00:00, последняя с {stamp(chaps[-1][0])}")
     log(f"теги   : {len(tags)} символов из {TAGS_LIMIT}")
