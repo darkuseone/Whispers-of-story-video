@@ -36,7 +36,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
           python -m pip install --upgrade pip --quiet
-          python -m pip install --quiet pillow requests numpy
+          python -m pip install --quiet -r requirements.txt
           fc-list | grep -qi dejavu || sudo apt-get install -y -qq fonts-dejavu
           echo "ffmpeg: $(ffmpeg -version | head -1)"
 
@@ -283,6 +283,13 @@ jobs:
         if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         run: python pipeline/youtube.py jobs/${{ steps.pick.outputs.job }}.json
 
+      # Три вертикальных шортса из готового ролика: хук, развязка,
+      # нагнетание. Ключей и денег не тратит — режет исходники кадров и
+      # звук из final.mp4 локальным ffmpeg, поэтому пересборка бесплатна.
+      - name: Этап 4 — шортсы
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        run: python pipeline/shorts.py jobs/${{ steps.pick.outputs.job }}.json
+
       - name: Находим готовое
         id: out
         if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
@@ -302,6 +309,7 @@ jobs:
           files: |
             ${{ steps.out.outputs.dir }}/final.mp4
             ${{ steps.out.outputs.dir }}/subs.srt
+            ${{ steps.out.outputs.dir }}/shorts/short_*.mp4
           fail_on_unmatched_files: true
 
       - name: Комплект для выкладки отдельно
@@ -311,8 +319,9 @@ jobs:
           name: youtube-${{ steps.pick.outputs.job }}
           path: |
             ${{ steps.out.outputs.dir }}/youtube.txt
-            ${{ steps.out.outputs.dir }}/thumbnail.jpg
+            ${{ steps.out.outputs.dir }}/thumbnail*.jpg
             ${{ steps.out.outputs.dir }}/subs.srt
+            ${{ steps.out.outputs.dir }}/shorts/shorts.json
           retention-days: 30
 
       - name: Диагностика при падении
