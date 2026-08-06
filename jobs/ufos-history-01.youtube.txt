@@ -1,0 +1,99 @@
+========================================
+ANCIENT WHISPERS — YOUTUBE PACK
+id: ufos-history-01
+date: 2026-08-06
+========================================
+
+## TITLE
+Were There UFOs on Earth? The 500-Year Trail Nobody Talks About
+
+## TITLE ALTERNATIVES
+1. Before Roswell: What Ancient Texts Really Say About Objects in the Sky
+2. The Secret History of UFOs — From Ancient Egypt to the Pentagon's 2026 Files
+
+## DESCRIPTION
+Long before Roswell, long before the words "flying saucer" existed, people were already standing in the street, staring upward at something they had no name for. This is a slow, evidence-first walk through five hundred years of sky-mysteries — a disputed Egyptian papyrus, a Sumerian myth that got hijacked by a 1970s bestseller, a sixteenth-century woodcut that still doesn't have a clean explanation, and the U.S. government's own 2026 admission that a real stack of cases still isn't resolved. Settle in — this one is built to be listened to with your eyes closed.
+
+Chapters
+00:00  Cold Open — The Sky Over Nuremberg
+...    What We Actually Mean by "UFO"
+...    Egypt's Fiery Disks — The Tulli Papyrus
+...    Mesopotamia's Sky Gods — Anunnaki, Sitchin, and the Assyriologists
+...    India's Flying Chariots — Vimana in the Sanskrit Epics
+...    Ezekiel's Wheel — Prophecy, Theology, and a 1968 Reinterpretation
+...    Rome's Sky Prodigies — Pliny, Livy, and the Shields of Fire
+...    The Age of Broadsheets — Basel 1566 and Back to Nuremberg
+...    Painted Skies — Renaissance Art and the Objects Historians Can't Fully Explain
+...    The Airship Flap — America, 1896-97
+...    Foo Fighters — Pilots, War, and the Birth of a Term
+...    Roswell and the Summer of the Saucers — 1947
+...    Project Blue Book and the Cold War Silence
+...    Chariots of the Gods — How One 1968 Book Rewrote Ancient History
+...    What Washington Admits Now — AARO and the 2026 Hearings
+...    My Own Conclusion — What's Myth, What's Unresolved, and Why We Keep Looking Up
+(точные секунды подставит конвейер после сборки из субтитров; порядок и названия глав здесь
+ обязаны совпасть с youtube.chapters в JSON)
+
+Sources
+- Jacques Vallee & Chris Aubeck, "Wonders in the Sky" (2009) — on the Tulli Papyrus and pre-modern sky reports
+- Voynich Manuscript Wiki / Grokipedia entries on the Tulli Papyrus — provenance and authenticity discussion
+- Wikipedia, "1561 celestial phenomenon over Nuremberg" — Hans Glaser broadsheet, Zentralbibliothek Zurich
+- Public Domain Review, "Celestial Phenomenon Over Nuremberg, April 14th 1561" — sundog/fireworks discussion
+- Michael S. Heiser, critical analysis of Zecharia Sitchin's Sumerian/Akkadian translations (sitchiniswrong.com)
+- Indian Institute of Science (1974) aeronautical analysis of the Vaimanika Shastra text
+- Ronald Story (ed.), "The Space Gods Revealed" (1976) — point-by-point rebuttal of Erich von Daniken
+- U.S. Air Force, "The Roswell Report: Case Closed" (1997) — Project Mogul explanation
+- National Archives, Project Blue Book case files (declassified)
+- Office of the Director of National Intelligence / DoD AARO, annual UAP reports (2024-2026)
+- DefenseScoop reporting on AARO, the UAP Science Advisory Council and 2026 congressional hearings
+
+Notes
+A note on sources: the Tulli Papyrus has never been physically located and is treated by most Egyptologists as unauthenticated (possibly a modern hoax); it is discussed here as a documented controversy, not a confirmed ancient record. Zecharia Sitchin's Anunnaki/Nibiru theory and the Vaimanika Shastra flight manual are both rejected by mainstream Assyriology and aeronautics respectively, and are presented as cultural phenomena, not endorsed claims. The "40% unresolved" figure in the final chapter is one scientist's public characterization of ongoing AARO casework in 2026, not an official government statistic — treat it as provisional.
+
+## TAGS (10-15)
+ufo history, ancient aliens, ufo documentary, ancient astronaut theory, unidentified aerial phenomena, roswell 1947, project blue book, tulli papyrus, nuremberg 1561, erich von daniken, ezekiel's wheel, foo fighters, mystery airship 1897, AARO UAP report, ancient egypt mysteries
+
+## HASHTAGS
+#ufo #ufology #ancienthistory #unexplainedmysteries #historydocumentary
+
+## COVER PROMPT (xAI / image model)
+Dark cinematic 16:9 photoreal shot of a 16th-century European city skyline at dawn with strange overlapping circular red and gold light formations near the rising sun, medieval rooftops in silhouette below, dramatic volumetric light, ominous and mysterious mood, HUGE bold bright yellow-gold ALL-CAPS text "BEFORE ROSWELL" in the upper half, thick chunky letters, phone-readable at thumbnail size, no people facing camera, no logos, no extra small text, high detail, dramatic contrast
+
+## COVER TEXT OPTIONS
+1. BEFORE ROSWELL
+2. THE SKY REMEMBERS
+
+## YOUTUBE COMMUNITY POST
+Five hundred years before "Roswell" was a word anyone knew, the people of Nuremberg stood in the street at dawn and watched the sky do something none of them had language for. Tonight's video traces that thread all the way from ancient Egypt to the Pentagon's newest 2026 files — what's myth, what's hoax, and what's still, genuinely, unresolved. New episode is up now if you want something slow and thoughtful for tonight.
+
+## COMMUNITY IMAGE PROMPTS
+1. Photoreal cinematic square image of an old parchment-toned sky map with faint constellation lines, warm candlelight glow at the edges, no text, no people, atmospheric and calm, 1:1
+2. Cinematic photoreal image of a dark window at night with a single faint light drifting across a starry sky in the distance, cozy interior lamp glow in the foreground, no people, no text, 1:1
+
+## SHORTS
+### Short 1 — Hook
+Title: Before Roswell: The 1561 Sky Battle Nobody Can Fully Explain
+Question on screen: What did people see in the sky 500 years before Roswell?
+Pitch: Opens on the Nuremberg 1561 woodcut and the unresolved detail (something crashing in smoke) that keeps the mystery alive after 500 years — strong curiosity hook in under 10 seconds.
+
+### Short 2 — Revelation
+Title: The Pentagon Just Admitted This About UFOs in 2026
+Question on screen: Is the Pentagon's newest UFO report hiding something?
+Pitch: Uses the AARO 2026 chapter payoff — real, current, verifiable government statements — for a news-adjacent hook that drives clicks to the full video.
+
+## PINNED COMMENT (first comment under the video)
+If you're listening to this one at night — thank you for letting this channel be part of your wind-down. Quick question before you drift off: out of everything in tonight's timeline, which sighting would you most want investigators to finally solve — Nuremberg 1561, or the Pentagon's still-open cases?
+
+Every date, name and source is listed in the description if you want to dig further yourself.
+My favourite chapter tonight is the one on the 1896-97 airship flap — it's wild how closely it mirrors what's happening with UAP headlines right now.
+
+If you'd like more slow, evidence-first history like this to fall asleep to, subscribing and turning on notifications is the best way to catch the next one.
+
+## POSTING CHECKLIST
+- [ ] JSON лежит в jobs/ufos-history-01.json
+- [ ] Заголовок / описание / теги скопированы
+- [ ] Первый комментарий закреплён (PINNED COMMENT)
+- [ ] Две обложки cover_1 / cover_2 после сборки
+- [ ] Два шортса short_1 / short_2 после сборки
+- [ ] Sources указаны в описании
+- [ ] Не конфликтует с последними темами channel/log.json
