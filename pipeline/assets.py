@@ -1429,6 +1429,96 @@ def fetch_material(job, work: Path):
                       "archive", "arch", "image")
 
 
+# Доля отбраковки, после которой имеет смысл качать ЕЩЁ, а не сразу
+# закрывать дыру генерацией. Ниже — обычный запас material_overshoot
+# справился; выше — запросов мало или тема узкая, и без второй волны
+# ролик уедет в повторы одних и тех же трёх клипов.
+REFILL_REJECT_RATE = 0.40
+# Сколько минимум годного должно остаться; иначе докачиваем даже при
+# низкой доле брака (мало скачалось вовсе).
+REFILL_MIN_CLIP = 6
+REFILL_MIN_ARCH = 10
+
+
+def refill_after_vet(job, work: Path):
+    """
+    Вторая волна скачивания, когда отбраковка съела слишком много.
+
+    Симптом, который это чинит: на узкой теме vet отбросил 2/3 стока,
+    годных осталось трое на весь ролик, и MaterialMix крутил их по кругу.
+    Генерация (`fill_gaps`) закрывает дыру картинками, но видео и архив
+    она не возвращает — а зрителю как раз не хватает НАСТОЯЩЕГО материала.
+
+    gather уже умеет продолжать нумерацию (см. шапку gather), поэтому
+    повторный вызов безопасен для листов отбора: старые номера не
+    переписываются. После докачки — повторная отбраковка: иначе в ролик
+    уедет тот же брак вторым заходом.
+    """
+    rej = vet.rejected_from(work)
+
+    def counts(folder, pat, kind):
+        files = list((work / folder).glob(pat))
+        bad = set(rej.get(kind, []))
+        good = 0
+        for p in files:
+            try:
+                n = int(p.name.split("_")[1])
+            except (IndexError, ValueError):
+                continue
+            if n not in bad:
+                good += 1
+        return good, len(files)
+
+    good_c, total_c = counts("footage", "clip_*", "clip")
+    good_a, total_a = counts("archive", "arch_*", "arch")
+    rate_c = (1 - good_c / total_c) if total_c else 1.0
+    rate_a = (1 - good_a / total_a) if total_a else 1.0
+
+    need_clips = good_c < REFILL_MIN_CLIP or rate_c >= REFILL_REJECT_RATE
+    need_arch = good_a < REFILL_MIN_ARCH or rate_a >= REFILL_REJECT_RATE
+    if not (need_clips or need_arch):
+        log(f"  добор после отбраковки не нужен: "
+            f"клипов годных {good_c}/{total_c}, архива {good_a}/{total_a}")
+        return False
+
+    log(f"── вторая волна материала "
+        f"(клипы {good_c}/{total_c}, брак {rate_c*100:.0f}%; "
+        f"архив {good_a}/{total_a}, брак {rate_a*100:.0f}%)")
+    vids = sources_from(job, "video_sources", VIDEO_SOURCES)
+    phot = sources_from(job, "photo_sources", PHOTO_SOURCES)
+    over = float(job.get("material_overshoot", 1.4))
+    # качаем ещё порцию — не меньше, чем в первый заход, иначе на узкой
+    # теме вторая волна привезёт ту же горстку и отбраковка снова обнулит
+    def manifest_rows(folder):
+        man = work / folder / "_manifest.json"
+        if not man.exists():
+            return []
+        try:
+            return json.loads(man.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return []
+
+    if need_clips:
+        log("  докачиваю футаж")
+        got_v = gather(job["footage_queries"], max(2, round(5 * over)), vids,
+                       work / "footage", "clip")
+        # в fallback — всё, что уже скачано по запросам: и прошлое, и новое
+        magnific_fallback(job, work, job["footage_queries"],
+                          manifest_rows("footage") + list(got_v or []),
+                          "footage", "clip", "video")
+    if need_arch:
+        log("  докачиваю архив")
+        got_a = gather(job["archive_queries"], max(2, round(6 * over)), phot,
+                       work / "archive", "arch")
+        magnific_fallback(job, work, job["archive_queries"],
+                          manifest_rows("archive") + list(got_a or []),
+                          "archive", "arch", "image")
+
+    log("── повторная отбраковка после добора")
+    vet.vet_all(job, work, use_vision=job.get("vet_vision", True))
+    return True
+
+
 def fill_gaps(job, work: Path, total: float, model, key):
     """
     Добирает генерацией то, чего не нашлось в архивах и на стоках.
@@ -1678,6 +1768,7 @@ def main(job_path, stage="all"):
         fetch_material(job, work)
         log("── отбраковка материала роботом")
         vet.vet_all(job, work, use_vision=job.get("vet_vision", True))
+        refill_after_vet(job, work)
         log("── материал добран, озвучка и картинки не тронуты")
         return
 
@@ -1712,6 +1803,10 @@ def main(job_path, stage="all"):
 
     log("── отбраковка материала роботом")
     vet.vet_all(job, work, use_vision=job.get("vet_vision", True))
+
+    # Если отбраковка съела слишком много — вторая волна скачивания
+    # (настоящий материал), и только потом генерация закрывает остаток.
+    refill_after_vet(job, work)
 
     log("── добор генерацией того, чего не хватило")
     fill_gaps(job, work, total, model, key)

@@ -1,5 +1,5 @@
 """
-shorts.py — три вертикальных шортса из готового ролика.
+shorts.py — два вертикальных шортса из готового ролика.
 
     python pipeline/shorts.py jobs/ancient-01.json
 
@@ -7,33 +7,23 @@ shorts.py — три вертикальных шортса из готового
 сведением), shots.json (план кадров с путями ИСХОДНИКОВ) и marks.json.
 Ключей и денег не тратит вовсе — всё считается локальным ffmpeg.
 
-ЧТО ТАКОЕ ЭТИ ШОРТСЫ. Не «трейлер» и не случайная вырезка, а три разных
-захода на одну и ту же историю, каждый — своя ставка на удержание:
+ЧТО ТАКОЕ ЭТИ ШОРТСЫ. Не «трейлер» и не случайная вырезка, а ДВА разных
+захода на одну историю — ровно столько, сколько нужно для воронки:
 
   1 hook        первые фразы ролика. Сценарий уже написан так, что они —
-                самое плотное место всей начитки; резать лучший крючок
-                заново машиной было бы хуже, чем взять готовый
-  2 revelation  доля-развязка с самыми «цифровыми» предложениями: даты и
-                суммы — то, ради чего зритель дослушивает
-  3 escalation  доля-нагнетание с поворотными фразами («but», «until»...)
-                — обрыв на самом интересном, лучший мостик к длинному
-                ролику
+                самое плотное место всей начитки
+  2 revelation  доля-развязка с самыми «цифровыми» предложениями; если
+                развязки нет — нагнетание с поворотом («but», «until»…)
 
-ОТКУДА УДЕРЖАНИЕ, по пунктам — каждое решение ниже в коде:
-  - старт с первого слова, без заставки и без титула: у шортса нет трёх
-    секунд на разгон, решение «листать дальше» принимается за одну
-  - видеоряд перерезается ЗАНОВО, кадр 1.4-2.6 секунды вместо 6-12 в
-    длинном ролике: вертикальная лента приучила к этому темпу
-  - вертикаль 9:16 режется из ИСХОДНИКОВ кадров, а не апскейлится из
-    готового 16:9: чужие горизонтальные поля в шортсе — первый признак
-    ленивой нарезки, по которому его пролистывают
-  - пословные белые капшены: слово появляется ровно в момент, когда оно
-    звучит. Глазам всегда есть за чем следить, и шортс работает даже без
-    звука — а это половина просмотров ленты
-  - последние две секунды — стрелка на полный ролик: шортс здесь не
-    самоцель, а воронка на канал
+ОТКУДА УДЕРЖАНИЕ:
+  - старт с первого слова, без заставки
+  - видеоряд перерезается ЗАНОВО, кадр 1.4-2.6 с
+  - вертикаль 9:16 из ИСХОДНИКОВ кадров, не апскейл из 16:9
+  - ВОПРОС висит ВВЕРХУ кадра всю длину шортса
+  - белое слово меняется по голосу ТОЖЕ ВВЕРХУ, под вопросом
+  - последние секунды — стрелка на полный ролик
 
-Всё детерминировано от id ролика: пересборка даёт те же три шортса.
+Всё детерминировано от id ролика. Правила — docs/протокол-монтажа.md.
 """
 
 import json
@@ -52,7 +42,7 @@ from editorial import beats as beats_mod
 
 SW, SH, SFPS = 1080, 1920, 30
 
-N_SHORTS = 3
+N_SHORTS = 2
 # Вилка длины. Меньше 25 секунд история не успевает зацепить, больше 55 —
 # хвост досматривают хуже, а лимит площадки в минуту рядом.
 TARGET_LEN = 46.0
@@ -68,8 +58,16 @@ CUT_MERGED_MAX = 3.6
 # 1440/1080 — треть запаса, столько же, сколько у горизонтального рендера.
 CANVAS_W, CANVAS_H = 1440, 2560
 
+# Позиции текста на 1080x1920. ВЕРХ, не центр: центр отдан картинке,
+# низ — кнопкам Shorts. Вопрос чуть ниже системной полосы iOS/Android,
+# слово — сразу под ним.
+QUESTION_Y = 260
+WORD_Y = 420          # сразу под вопросом, верх кадра — не центр и не низ
+CTA_Y = 1680
+
 CTA_TEXT = "FULL STORY ON THE CHANNEL"
 CTA_SECONDS = 2.2
+QUESTION_MAX = 52          # длиннее — не читается одной строкой на телефоне
 
 
 def log(*a):
@@ -148,7 +146,7 @@ def words_from_marks(marks):
     return words
 
 
-# ─────────────────────── ВЫБОР ТРЁХ ОКОН ───────────────────────
+# ─────────────────────── ВЫБОР ДВУХ ОКОН ───────────────────────
 
 def window_from(marks, idx, total):
     """Окно от начала предложения idx: целые предложения, до HARD_MAX."""
@@ -165,10 +163,10 @@ def window_from(marks, idx, total):
 
 def pick_windows(story, marks, total):
     """
-    Три окна: hook, revelation, escalation. Каждое начинается с начала
-    предложения — обрезанное первое слово читается как случайная вырезка.
-    Окна не пересекаются; на коротком тестовом ролике, где не пересечься
-    негде, ограничение снимается — там проверяется механика, не выпуск.
+    Два окна: hook и revelation (или escalation). Каждое начинается с
+    начала предложения — обрезанное первое слово читается как случайная
+    вырезка. Окна не пересекаются; на коротком тестовом ролике, где не
+    пересечься негде, ограничение снимается — там проверяется механика.
     """
     wins = []
 
@@ -181,27 +179,27 @@ def pick_windows(story, marks, total):
             return False
         if overlaps(t0, t1):
             return False
-        wins.append(dict(t0=t0, t1=t1, role=role, why=why))
+        wins.append(dict(t0=t0, t1=t1, role=role, why=why,
+                         mark_idx=idx))
         return True
 
-    # 1. Хук — первое предложение. Всегда есть и всегда первым номером.
     add(0, "hook", "первые фразы ролика — готовый крючок сценария")
 
-    # 2-3. Развязка по «цифровости», нагнетание по поворотным словам.
-    # Ранги свои внутри вида, как везде в editorial: вопрос не «много ли
-    # здесь цифр», а «больше ли, чем в остальных развязках ЭТОГО ролика».
+    # Развязка по «цифровости», иначе нагнетание по поворотным словам.
+    # Ранги свои внутри вида: «больше ли, чем в остальных долях ЭТОГО
+    # ролика», а не абсолютный порог.
     for kind, feat, why in (
             ("revelation", "num", "развязка с самыми плотными датами"),
             ("escalation", "turn", "нагнетание с поворотом — обрыв на "
                                    "самом интересном")):
+        if len(wins) >= N_SHORTS:
+            break
         pool = sorted((b for b in story if b.kind == kind),
                       key=lambda b: b.features.get(feat, 0.0), reverse=True)
         for b in pool:
             if add(b.first_mark, kind, why):
                 break
 
-    # Недобор — добираем сильными долями любого вида, потом равными
-    # шагами по таймлайну. Три файла на выходе — обещание конвейера.
     if len(wins) < N_SHORTS:
         rest = sorted((b for b in story
                        if b.kind in ("revelation", "escalation", "setup")),
@@ -214,18 +212,47 @@ def pick_windows(story, marks, total):
     for k in range(20):
         if len(wins) >= N_SHORTS:
             break
-        idx = bisect_left(starts, total * (0.08 + 0.045 * k))
+        idx = bisect_left(starts, total * (0.18 + 0.08 * k))
         if idx < len(marks):
             add(idx, "extra", "добор равным шагом по таймлайну")
     while len(wins) < N_SHORTS:
-        # совсем короткий ролик: окна совпадают, и это честнее, чем упасть
         w = dict(wins[len(wins) % max(len(wins), 1)])
-        w["role"], w["why"] = "extra", "ролик короче трёх окон, окно повторено"
+        w["role"], w["why"] = "extra", "ролик короче двух окон, окно повторено"
         wins.append(w)
 
     wins.sort(key=lambda w: {"hook": 0, "revelation": 1,
                              "escalation": 2}.get(w["role"], 3))
     return wins[:N_SHORTS]
+
+
+def question_for(win, marks, job_questions, n):
+    """
+    Вопрос, который висит вверху шортса всю его длину.
+
+    Сначала — из спецификации (youtube.shorts_questions): человек знает,
+    какой крючок кликает. Иначе — первое предложение окна, ужатое и
+    превращённое в вопрос, если оно ещё не вопрос.
+    """
+    if n - 1 < len(job_questions) and str(job_questions[n - 1]).strip():
+        return str(job_questions[n - 1]).strip()[:QUESTION_MAX]
+    idx = win.get("mark_idx", 0)
+    raw = (marks[idx]["text"] if 0 <= idx < len(marks) else "").strip()
+    raw = " ".join(raw.split())
+    if not raw:
+        return "WHAT REALLY HAPPENED?"
+    if raw.endswith("?"):
+        return raw[:QUESTION_MAX]
+    # берём первую смысловую часть до запятой/тире — целиком фразу
+    # на телефон не влезет
+    cut = raw
+    for sep in (", ", " — ", " - ", "; "):
+        if sep in cut and len(cut.split(sep)[0]) >= 18:
+            cut = cut.split(sep)[0]
+            break
+    cut = cut.rstrip(".!")
+    if len(cut) > QUESTION_MAX - 1:
+        cut = cut[:QUESTION_MAX - 1].rsplit(" ", 1)[0]
+    return (cut + "?") if cut else "What really happened?"
 
 
 # ─────────────────────── ВЕРТИКАЛЬНЫЙ ВИДЕОРЯД ───────────────────────
@@ -353,18 +380,19 @@ def _ass_esc(s: str) -> str:
     return s.replace("\\", "").replace("{", "(").replace("}", ")")
 
 
-def write_ass(words, t0, dur, out: Path):
+def write_ass(words, t0, dur, out: Path, question: str):
     """
-    Капшены: ОДНО слово, белым, по центру, ровно на времени произнесения.
+    Два слоя текста ВВЕРХУ кадра:
 
-    Почему ASS, а не гора drawtext: полсотни слов = полсотни фильтров и
-    команда длиной с главу; субтитровый файл читается одним фильтром и
-    даёт анимацию появления (\\t по масштабу — слово «вспыхивает», а не
-    возникает). Слово держится до начала следующего: пустой экран между
-    словами дёргает сильнее, чем слово-долгожитель.
+      Question  висит всю длину шортса — зритель с первой секунды знает,
+                зачем досматривать. Без него шортс читается как случайная
+                вырезка, и лента листает дальше.
+      Word      ОДНО белое слово, ровно на времени произнесения, под
+                вопросом. Центр и низ кадра не трогаем: там картинка и
+                кнопки Shorts.
 
-    Цифры и даты — крупнее: это те самые «2600 BC», ради которых шортс
-    вообще нарезан из этого места.
+    Почему ASS, а не гора drawtext: полсотни слов = полсотни фильтров;
+    субтитровый файл читается одним фильтром и даёт вспышку масштаба.
     """
     head = (
         "[Script Info]\n"
@@ -374,14 +402,25 @@ def write_ass(words, t0, dur, out: Path):
         " OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut,"
         " ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow,"
         " Alignment, MarginL, MarginR, MarginV, Encoding\n"
-        "Style: Word,DejaVu Sans,132,&H00FFFFFF,&H00FFFFFF,&H00000000,"
-        "&H78000000,-1,0,0,0,100,100,1,0,1,11,4,5,60,60,0,1\n"
-        "Style: Cta,DejaVu Sans,64,&H00E6EFF3,&H00FFFFFF,&H00000000,"
-        "&H78000000,-1,0,0,0,100,100,2,0,1,8,3,5,60,60,0,1\n\n"
+        # Question — чуть мельче слова, полупрозрачная подложка через
+        # BackColour: вопрос должен читаться на любом кадре, в том числе
+        # светлом архивном фото.
+        "Style: Question,DejaVu Sans,54,&H00FFFFFF,&H00FFFFFF,&H00000000,"
+        "&H90000000,-1,0,0,0,100,100,0,0,3,0,0,8,40,40,0,1\n"
+        "Style: Word,DejaVu Sans,110,&H00FFFFFF,&H00FFFFFF,&H00000000,"
+        "&H78000000,-1,0,0,0,100,100,1,0,1,10,4,8,40,40,0,1\n"
+        "Style: Cta,DejaVu Sans,58,&H00E6EFF3,&H00FFFFFF,&H00000000,"
+        "&H78000000,-1,0,0,0,100,100,2,0,1,8,3,2,60,60,0,1\n\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR,"
         " MarginV, Effect, Text\n")
     rows = []
+    q = _ass_esc(question.strip())
+    if q:
+        # Alignment 8 = top-center; \pos всё равно фиксирует точку.
+        rows.append(
+            f"Dialogue: 0,{_ass_t(0)},{_ass_t(dur)},Question,,0,0,0,,"
+            f"{{\\pos(540,{QUESTION_Y})\\fad(200,200)}}{q}")
     inside = [w for w in words if t0 <= w["start"] < t0 + dur - 0.15]
     for k, w in enumerate(inside):
         s = w["start"] - t0
@@ -393,24 +432,25 @@ def write_ass(words, t0, dur, out: Path):
             continue
         fs = ""
         if any(ch.isdigit() for ch in txt):
-            fs = r"\fs188"          # даты и суммы — главные слова шортса
+            fs = r"\fs160"
         elif len(txt) > 12:
-            fs = r"\fs104"          # длинное слово не должно упереться в края
+            fs = r"\fs88"
         rows.append(
-            f"Dialogue: 0,{_ass_t(s)},{_ass_t(e)},Word,,0,0,0,,"
-            "{\\pos(540,1160)" + fs +
-            "\\fscx78\\fscy78\\t(0,90,\\fscx100\\fscy100)}" + txt)
-    # стрелка на полный ролик — последние секунды
+            f"Dialogue: 1,{_ass_t(s)},{_ass_t(e)},Word,,0,0,0,,"
+            f"{{\\pos(540,{WORD_Y})" + fs +
+            r"\fscx78\fscy78\t(0,90,\fscx100\fscy100)}" + txt)
     rows.append(
-        f"Dialogue: 1,{_ass_t(max(dur - CTA_SECONDS, 0))},{_ass_t(dur)},"
-        "Cta,,0,0,0,,{\\pos(540,1560)\\fad(250,0)}" + _ass_esc(CTA_TEXT))
+        f"Dialogue: 2,{_ass_t(max(dur - CTA_SECONDS, 0))},{_ass_t(dur)},"
+        f"Cta,,0,0,0,,{{\\pos(540,{CTA_Y})\\fad(250,0)}}"
+        + _ass_esc(CTA_TEXT))
     out.write_text(head + "\n".join(rows) + "\n", encoding="utf-8")
     return len(inside)
 
 
 # ─────────────────────── СБОРКА ОДНОГО ШОРТСА ───────────────────────
 
-def render_short(n, win, shots, words, final: Path, sdir: Path, seed: str):
+def render_short(n, win, shots, words, final: Path, sdir: Path, seed: str,
+                 question: str):
     rng = random.Random(f"{seed}-short-{n}")
     t0, t1 = win["t0"], win["t1"]
     dur = round(t1 - t0, 3)
@@ -431,14 +471,16 @@ def render_short(n, win, shots, words, final: Path, sdir: Path, seed: str):
         f"-c copy {shlex.quote(str(body))}")
 
     ass = tmp / "captions.ass"
-    n_words = write_ass(words, t0, dur, ass)
+    n_words = write_ass(words, t0, dur, ass, question)
 
     # Звук — из ГОТОВОГО ролика: голос, подложка, дакинг и громкость уже
     # сведены и отслушаны, второй раз сводить то же самое — способ
     # получить другой результат.
     out = sdir / f"short_{n}.mp4"
     fade_st = max(dur - 0.35, 0.0)
-    filt = (f"[0:v]ass={ass}:fontsdir=/usr/share/fonts/truetype/dejavu,"
+    # ass-путь без спецсимволов: двоеточие в filter_complex хавает путь
+    ass_esc = str(ass.resolve()).replace("\\", "/").replace(":", "\\:")
+    filt = (f"[0:v]ass={ass_esc}:fontsdir=/usr/share/fonts/truetype/dejavu,"
             f"fade=t=in:d=0.15,fade=t=out:st={fade_st:.2f}:d=0.35[v];"
             f"[1:a]afade=t=out:st={fade_st:.2f}:d=0.35[a]")
     run(f"ffmpeg -y -i {shlex.quote(str(body))} "
@@ -450,9 +492,12 @@ def render_short(n, win, shots, words, final: Path, sdir: Path, seed: str):
     shutil.rmtree(tmp, ignore_errors=True)
 
     log(f"  short_{n}: {win['role']:<10} {t0/60:5.1f}-{t1/60:5.1f} мин, "
-        f"{dur:.0f} с, {len(cuts)} кадров, {n_words} слов — {win['why']}")
+        f"{dur:.0f} с, {len(cuts)} кадров, {n_words} слов")
+    log(f"           вопрос: {question}")
+    log(f"           {win['why']}")
     return dict(file=out.name, role=win["role"], t0=t0, t1=t1,
-                seconds=dur, cuts=len(cuts), words=n_words, why=win["why"])
+                seconds=dur, cuts=len(cuts), words=n_words,
+                question=question, why=win["why"])
 
 
 def main(job_path):
@@ -489,16 +534,27 @@ def main(job_path):
             f"тайм-кодов нет — синтетика?)")
 
     wins = pick_windows(story, marks, total)
+    y = job.get("youtube") or {}
+    job_qs = list(y.get("shorts_questions") or [])
     sdir = out / "shorts"
     sdir.mkdir(parents=True, exist_ok=True)
+    # старый третий шортс от прошлой схемы не оставляем рядом — в релизе
+    # иначе уедет лишний файл и «два шортса» перестанут быть правдой
+    for stale in sdir.glob("short_*.mp4"):
+        try:
+            n = int(stale.stem.split("_")[1])
+        except (IndexError, ValueError):
+            continue
+        if n > N_SHORTS:
+            stale.unlink(missing_ok=True)
 
     log(f"── шортсы: {len(wins)} окна")
     meta = []
     for n, win in enumerate(wins, 1):
+        q = question_for(win, marks, job_qs, n)
         meta.append(render_short(n, win, shots, words, final, sdir,
-                                 job["id"]))
+                                 job["id"], q))
 
-    y = job.get("youtube") or {}
     (sdir / "shorts.json").write_text(json.dumps(dict(
         source=final.name, title=y.get("title", ""), shorts=meta),
         indent=1, ensure_ascii=False), encoding="utf-8")

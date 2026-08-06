@@ -250,6 +250,14 @@
       "history documentary",
       "sleep history"
     ],
-    "thumbnail_at": 1200.0
+    "thumbnail_at": 1200.0,
+    "cover_texts": [
+      "IT WAS NEVER SENT",
+      "1177 BC"
+    ],
+    "shorts_questions": [
+      "Why was the letter still in the kiln?",
+      "What actually ended the Bronze Age?"
+    ]
   }
 }
