@@ -9,10 +9,13 @@ Follow **`ИНСТРУКЦИЯ-ЧАТ.md` in the project root** end to end.
 
 Your deliverables are always:
 
-1. `jobs/<id>.json` — full pipeline job (schema: `jobs/ancient-example.json`)
+1. `jobs/<id>.json` — full pipeline job (schema: `jobs/ancient-example.json`).
+   Must include `_длительность` targeting **40–50 minutes** of narration
+   (~6000–8000 English words across `script_blocks`) for history /
+   mysteries / ancient-world topics.
 2. `jobs/<id>.youtube.txt` — posting pack (title, description + sources,
    tags, cover prompt with yellow text, community post + image prompts,
-   two Shorts titles/questions)
+   two Shorts titles/questions, **pinned first comment**)
 
 Also read: `docs/протокол-сценария.md`, `docs/протокол-монтажа.md`,
 `jobs/ancient-01.json`, `channel/log.json`.
