@@ -16,10 +16,12 @@ on:
       - main
     paths:
       - 'jobs/*.json'
+      - '.render/**'
 
-# Ручной запуск — как раньше. Push в main по jobs/*.json срабатывает только
-# если в коммите ПОЯВИЛСЯ новый файл (git status A), а не правка готовой
-# спецификации. Шаблоны *-example / *-test / *-mini автозапуском не трогаем.
+# Ручной запуск — как раньше. Push нового jobs/*.json → auto. Push
+# .render/<job>.retry → только монтаж (кэш озвучки/материала). Правка
+# готовой спецификации сборку не трогает. Шаблоны *-example / *-test /
+# *-mini автозапуском не трогаем.
 
 permissions:
   contents: write
@@ -55,10 +57,41 @@ jobs:
           BEFORE="${{ github.event.before }}"
           AFTER="${{ github.sha }}"
           if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            DIFF=$(git show --name-status --format= "$AFTER" -- jobs/ || true)
+            DIFF_JOBS=$(git show --name-status --format= "$AFTER" -- jobs/ || true)
+            DIFF_RENDER=$(git show --name-status --format= "$AFTER" -- .render/ || true)
           else
-            DIFF=$(git diff --name-status "$BEFORE" "$AFTER" -- jobs/ || true)
+            DIFF_JOBS=$(git diff --name-status "$BEFORE" "$AFTER" -- jobs/ || true)
+            DIFF_RENDER=$(git diff --name-status "$BEFORE" "$AFTER" -- .render/ || true)
           fi
+
+          # Пересборка монтажа: .render/<job>.retry — только stage render,
+          # озвучка и материал из кэша, токены не тратятся.
+          RENDER_JOBS=()
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            status="${line%%$'\t'*}"
+            file="${line#*$'\t'}"
+            case "$status" in A|M) ;; *) continue ;; esac
+            case "$file" in
+              .render/*.retry) ;;
+              *) continue ;;
+            esac
+            base="${file#.render/}"
+            base="${base%.retry}"
+            RENDER_JOBS+=("$base")
+          done <<< "$DIFF_RENDER"
+
+          if [ ${#RENDER_JOBS[@]} -gt 0 ]; then
+            JSON=$(printf '%s\n' "${RENDER_JOBS[@]}" | python3 -c \
+              'import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+            echo "jobs=$JSON" >> "$GITHUB_OUTPUT"
+            echo "stage=render" >> "$GITHUB_OUTPUT"
+            echo "run_build=true" >> "$GITHUB_OUTPUT"
+            echo "Пересборка монтажа (кэш): $JSON"
+            exit 0
+          fi
+
+          DIFF="$DIFF_JOBS"
 
           SKIP_SUFFIX='-(example|test|mini)$'
           JOBS=()
