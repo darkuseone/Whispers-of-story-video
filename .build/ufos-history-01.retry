@@ -1,9 +1,2 @@
-auto-retry: previous run failed at Set up job (GitHub Actions Service Unavailable)
-no assets/voice cache yet — full stage: auto
-Thu Aug  6 04:58:28 PM UTC 2026
-retry after Actions major_outage
-
-retry after source+aspect fix 2026-08-06T18:11Z
-retry 2026-08-06T18:22Z after source+aspect fix (Actions still flaky)
-retry 2026-08-06T18:39Z waiting for Actions recovery
-retry 2026-08-06T19:05Z
+auto-retry: eleven_v3 voice + better footage search/match + chapter pauses
+images from cache; voice invalidated by _voice_meta; material refill with grounded queries

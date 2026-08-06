@@ -194,7 +194,7 @@ def main(job_path):
             continue
         rate = hits / calls * 100
         print(f"   {src:<5} {hits}/{calls} ({rate:.0f}%)")
-        if calls >= 12 and rate < 5.0:
+        if calls >= 12 and rate < 12.0:
             raise SystemExit(
                 f"подбор «{src}»: {rate:.0f}% попаданий по смыслу — материал "
                 f"раздаётся вслепую. Проверь _manifest.json рядом с файлами "

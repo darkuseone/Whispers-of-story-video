@@ -187,11 +187,36 @@ STOP_WORDS = {
 }
 
 
+# Лёгкие синонимы для подбора кадра под начитку: сток качали по «temple»,
+# а диктор говорит «sanctuary» — без этого пересечение нулевое.
+THEME_SYNONYMS = {
+    "temple": {"temple", "temples", "sanctuary", "shrine", "pylon", "ruins"},
+    "pyramid": {"pyramid", "pyramids", "giza"},
+    "sky": {"sky", "skies", "celestial", "heaven", "heavens", "clouds",
+            "star", "stars", "night"},
+    "desert": {"desert", "sand", "dunes", "wasteland"},
+    "manuscript": {"manuscript", "papyrus", "parchment", "scroll", "tablet",
+                   "cuneiform"},
+    "aircraft": {"aircraft", "airplane", "plane", "propeller", "bomber"},
+    "radar": {"radar", "console", "control", "military"},
+    "library": {"library", "archive", "archives", "manuscripts", "books"},
+    "rome": {"rome", "roman", "forum", "colosseum"},
+    "egypt": {"egypt", "egyptian", "nile", "luxor", "karnak", "pharaoh"},
+    "ufo": {"ufo", "saucer", "orb", "anomaly", "uap"},
+    "ship": {"ship", "airship", "zeppelin", "balloon"},
+    "war": {"war", "wartime", "soldier", "military", "combat"},
+}
+
+
 def words_of(text: str):
-    """Значимые слова строки. Общие и служебные выброшены."""
+    """Значимые слова строки. Общие и служебные выброшены; синонимы раскрыты."""
     import re
-    return {w for w in re.findall(r"[a-zA-Z]+", (text or "").lower())
+    base = {w for w in re.findall(r"[a-zA-Z]+", (text or "").lower())
             if len(w) > 2 and w not in STOP_WORDS}
+    out = set(base)
+    for w in base:
+        out |= THEME_SYNONYMS.get(w, set())
+    return out
 
 
 class ShotPicker:
@@ -272,24 +297,14 @@ class ShotPicker:
 
         def score(j):
             path, _tag, kw = self.pool[j]
-            # показы в этом ролике плюс половина показов в прошлых
             used = self.used.get(j, 0) + self.prior.get(j, 0.0)
-            # СМЫСЛОВОЕ СОВПАДЕНИЕ ГАСНЕТ ОТ ПОКАЗОВ.
-            #
-            # Раньше overlap стоял в ключе выше счётчика показов, и файл,
-            # чьи слова совпадали с частой темой ролика, выигрывал раз за
-            # разом: на прогоне ff-ep03 одна белая ваза с птицами вышла
-            # шесть раз — «porcelain vase» звучит в этом эпизоде постоянно,
-            # и она обыгрывала всё остальное на каждом кадре.
-            #
-            # Теперь каждый показ съедает единицу совпадения. Трижды
-            # показанный файл с тремя совпавшими словами равен свежему без
-            # единого совпадения — смысл по-прежнему решает, но не даёт
-            # права на бесконечный повтор.
-            overlap = len(want & kw) - used
+            # Требуем реальное пересечение: нулевой overlap не должен
+            # побеждать за счёт позиции на таймлайне, если есть хоть один
+            # файл со смыслом. Штраф -100 за отсутствие смысла уводит
+            # «пустые» файлы в конец очереди.
+            raw = len(want & kw)
+            overlap = (raw - used) if raw else (-100 - used)
             same = 1 if path == self.last else 0
-            # порядок важен: сначала не повторяться, потом смысл (с учётом
-            # износа), потом реже показанное, потом ближе по таймлайну
             return (same, -overlap, used, abs(j - k), j)
 
         best = min(range(n), key=score)
@@ -498,7 +513,12 @@ def keywords_for(assets: Path, job):
             name = Path(row.get("file", "")).name
             n = num(name)
             if n is not None:
-                out[(name.split("_")[0], n)] = words_of(row.get("q", ""))
+                blob = " ".join(filter(None, [
+                    row.get("q", ""),
+                    row.get("tags", ""),
+                    row.get("title", ""),
+                ]))
+                out[(name.split("_")[0], n)] = words_of(blob)
 
     missing = 0
     for folder, pat in (("footage", "clip_*"), ("archive", "arch_*")):

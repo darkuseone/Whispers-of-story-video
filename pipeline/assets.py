@@ -102,25 +102,25 @@ def log(*a):
 # честные — на ту часть, что озвучена. Обнаруживается такое на готовом
 # ролике, где глава обрывается на полуслове.
 BLOCK_CHARS_WARN = 4800
+# Eleven v3 в API режет запросы около 5000 символов. Чуть ниже предупреждения
+# для multilingual_v2, чтобы не упереться в потолок молча.
+BLOCK_CHARS_WARN_V3 = 4500
+
+# Модель озвучки по умолчанию. v3 — выразительнее (эмоции, паузы в подаче);
+# job может перебить полем voice_model / voice_settings.model_id.
+DEFAULT_VOICE_MODEL = "eleven_v3"
 
 
-def tts_block(text, out_mp3: Path, voice_id, api_key, stability=0.62,
-              similarity=0.80, style=0.0, speed=None):
+def tts_block(text, out_mp3: Path, voice_id, api_key, stability=0.50,
+              similarity=0.80, style=0.20, speed=None,
+              model_id=DEFAULT_VOICE_MODEL):
     """
     Один блок текста → mp3 + выравнивание по символам.
-    Настройки голоса чуть плавают от ролика к ролику — иначе интонация
-    становится одинаковой на всём канале.
 
-    ГОЛОС ЗДЕСЬ ДРУГОЙ ПО ХАРАКТЕРУ, и настройки это отражают. Канал
-    слушают перед сном, значит нужен ровный уверенный рассказчик, а не
-    ведущий. stability поднята с 0.42 до 0.62: чем она выше, тем меньше
-    модель играет интонацией, а игра голосом — ровно то, что не даёт
-    заснуть. style опущен в ноль по той же причине.
-
-    speed передаётся ТОЛЬКО если задан в спецификации. Причина
-    техническая: поле поддерживают не все модели, а лишний ключ в
-    voice_settings отдельные из них отклоняют целиком с 422 — и вместо
-    чуть более быстрой начитки получаешь отсутствие начитки.
+    Канал слушают перед сном, но «сухой диктор» тоже теряет зрителя.
+    База сдвинута примерно на 20% в сторону живой подачи относительно
+    прежних 0.62/0.0: stability ниже, style выше. Eleven v3 это усиливает
+    сам — у неё шире эмоциональный диапазон, чем у multilingual_v2.
     """
     url = (f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
            f"/with-timestamps")
@@ -128,33 +128,46 @@ def tts_block(text, out_mp3: Path, voice_id, api_key, stability=0.62,
           "style": style, "use_speaker_boost": True}
     if speed is not None:
         vs["speed"] = float(speed)
-    r = requests.post(url, timeout=TIMEOUT,
-                      headers={"xi-api-key": api_key,
-                               "Content-Type": "application/json"},
-                      json={"text": text,
-                            "model_id": "eleven_multilingual_v2",
-                            "voice_settings": vs})
-    if r.status_code != 200:
-        # ElevenLabs пишет причину в тело ответа: истёкший ключ, исчерпанная
-        # квота, чужой voice_id, блокировка облачного IP на бесплатном тарифе.
-        # raise_for_status тело выбрасывает, и в логе остаётся голое
-        # «401 Unauthorized» без единой подсказки, что чинить.
-        msg = f"ElevenLabs {r.status_code}: {r.text[:500]}"
-        # Самая частая причина — не тот voice_id: он у каждого аккаунта свой,
-        # и чужой идентификатор из чужой спецификации не работает. Гадать по
-        # коду ответа не нужно, список голосов аккаунта отдаётся тем же ключом.
-        if "voice" in r.text.lower() or r.status_code in (400, 404):
-            msg += "\n" + available_voices(api_key)
-        raise RuntimeError(msg)
-    data = r.json()
-    import base64
-    out_mp3.write_bytes(base64.b64decode(data["audio_base64"]))
-    al = data.get("alignment") or data.get("normalized_alignment") or {}
-    return {
-        "chars": al.get("characters", []),
-        "starts": al.get("character_start_times_seconds", []),
-        "ends": al.get("character_end_times_seconds", []),
-    }
+    # v3 иногда отвергает speed — тогда повторяем без него, не роняя блок.
+    attempts = [vs]
+    if speed is not None:
+        vs2 = dict(vs)
+        vs2.pop("speed", None)
+        attempts.append(vs2)
+    last_err = None
+    for body_vs in attempts:
+        r = requests.post(url, timeout=TIMEOUT,
+                          headers={"xi-api-key": api_key,
+                                   "Content-Type": "application/json"},
+                          json={"text": text,
+                                "model_id": model_id,
+                                "voice_settings": body_vs})
+        if r.status_code == 200:
+            data = r.json()
+            import base64
+            out_mp3.write_bytes(base64.b64decode(data["audio_base64"]))
+            al = data.get("alignment") or data.get("normalized_alignment") or {}
+            return {
+                "chars": al.get("characters", []),
+                "starts": al.get("character_start_times_seconds", []),
+                "ends": al.get("character_end_times_seconds", []),
+            }
+        last_err = r
+        # Чужой/устаревший model_id — один раз откат на multilingual_v2,
+        # чтобы не сжечь весь прогон. В лог пишем явно.
+        if (model_id != "eleven_multilingual_v2"
+                and r.status_code in (400, 422)
+                and "model" in r.text.lower()):
+            log(f"  ! модель {model_id} отклонена API — пробую "
+                f"eleven_multilingual_v2")
+            model_id = "eleven_multilingual_v2"
+            continue
+        if r.status_code != 422 or "speed" not in r.text.lower():
+            break
+    msg = f"ElevenLabs {last_err.status_code}: {last_err.text[:500]}"
+    if "voice" in last_err.text.lower() or last_err.status_code in (400, 404):
+        msg += "\n" + available_voices(api_key)
+    raise RuntimeError(msg)
 
 
 def available_voices(api_key, limit=25):
@@ -207,17 +220,32 @@ def sentence_marks(text, align, offset):
     return marks
 
 
+def _silence_mp3(path: Path, seconds: float):
+    """Тишина для драматической паузы между главами."""
+    import subprocess
+    subprocess.run(
+        f'ffmpeg -y -f lavfi -i anullsrc=r=44100:cl=mono -t {seconds:.2f} '
+        f'-c:a libmp3lame -q:a 4 "{path}"',
+        shell=True, check=True,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def _voice_wanted(job, model_id: str) -> dict:
+    vs = job.get("voice_settings") or {}
+    sim = vs.get("similarity", vs.get("similarity_boost", 0.80))
+    return {
+        "model": model_id,
+        "stability": float(vs.get("stability", 0.50)),
+        "similarity": float(sim),
+        "style": float(vs.get("style", 0.20)),
+        "speed": vs.get("speed"),
+    }
+
+
 def build_voice(job, work: Path):
     # strip обязателен: при вставке в Settings к значению легко цепляется
     # перенос строки или пробел, и API отвечает 401 без объяснений
     key = os.environ["ELEVENLABS_API_KEY"].strip()
-    # Голос принадлежит КАНАЛУ, а не репозиторию. Читается из спецификации
-    # ролика; секрет остаётся запасным путём, чтобы старые спецификации без
-    # поля voice_id продолжали работать.
-    # Голос берётся из секрета ELEVENLABS_VOICE_ID: он один на канал и
-    # лежит там же, где ключи. Поле voice_id в спецификации осталось
-    # переопределением на случай, когда конкретному ролику нужен другой
-    # голос, но пустым оно теперь НЕ значит «нет голоса».
     voice = (os.environ.get("ELEVENLABS_VOICE_ID", "")
              or job.get("voice_id", "")).strip()
     if not voice:
@@ -226,28 +254,57 @@ def build_voice(job, work: Path):
             "Secrets and variables -> Actions, либо поле voice_id в "
             "спецификации ролика")
     vs = job.get("voice_settings", {})
+    model_id = (job.get("voice_model")
+                or vs.get("model_id")
+                or DEFAULT_VOICE_MODEL)
+    wanted = _voice_wanted(job, model_id)
     adir = work / "voice"
     adir.mkdir(parents=True, exist_ok=True)
+
+    # Смена модели/настроек обязана переозвучить, даже если mp3 в кэше.
+    # Иначе переход на eleven_v3 молча оставлял бы старую multilingual_v2.
+    meta_path = adir / "_voice_meta.json"
+    if meta_path.exists():
+        try:
+            old = json.loads(meta_path.read_text())
+        except json.JSONDecodeError:
+            old = None
+        if old != wanted:
+            log(f"  настройки озвучки сменились ({old} → {wanted}) — "
+                f"переозвучиваю блоки")
+            for p in adir.glob("block_*.mp3"):
+                p.unlink(missing_ok=True)
+            for p in adir.glob("block_*.json"):
+                p.unlink(missing_ok=True)
+            for p in adir.glob("pause_*.mp3"):
+                p.unlink(missing_ok=True)
+
+    stability = wanted["stability"]
+    similarity = wanted["similarity"]
+    style = wanted["style"]
+    speed = wanted["speed"]
+    warn_limit = (BLOCK_CHARS_WARN_V3 if "v3" in model_id
+                  else BLOCK_CHARS_WARN)
+
+    # Паузы 2–3 с между главами: интрига/выдох, не мёртвая тишина на минуту.
+    # Длина детерминирована от id ролика, чтобы пересборка не плясала.
+    seed = abs(hash(job.get("id", "x"))) % 1000
+    n_blocks = len(job["script_blocks"])
 
     parts, marks, offset = [], [], 0.0
     for i, block in enumerate(job["script_blocks"], 1):
         mp3 = adir / f"block_{i:02d}.mp3"
-        # тайм-коды нужны наравне с mp3: если из кэша приехал только звук,
-        # блок переозвучивается, иначе ниже падение на чтении json
         if mp3.exists() and (adir / f"block_{i:02d}.json").exists():
             log(f"  блок {i} уже озвучен, пропускаю")
         else:
-            log(f"  озвучиваю блок {i} ({len(block)} символов)")
-            if len(block) > BLOCK_CHARS_WARN:
+            log(f"  озвучиваю блок {i} ({len(block)} символов, {model_id})")
+            if len(block) > warn_limit:
                 log(f"  ! блок {i} длиной {len(block)} символов при разумном "
-                    f"потолке {BLOCK_CHARS_WARN} — ElevenLabs режет длинные "
-                    f"запросы молча, с кодом 200. Разбей главу надвое: "
-                    f"глав в описании станет больше, и это не беда")
+                    f"потолке {warn_limit} — ElevenLabs режет длинные "
+                    f"запросы молча, с кодом 200. Разбей главу надвое")
             al = tts_block(block, mp3, voice, key,
-                           vs.get("stability", 0.62),
-                           vs.get("similarity", 0.80),
-                           vs.get("style", 0.0),
-                           vs.get("speed"))
+                           stability, similarity, style, speed,
+                           model_id=model_id)
             (adir / f"block_{i:02d}.json").write_text(json.dumps(al))
         al = json.loads((adir / f"block_{i:02d}.json").read_text())
         marks += sentence_marks(block, al, offset)
@@ -255,18 +312,35 @@ def build_voice(job, work: Path):
         offset += dur
         parts.append(mp3)
 
-    # склейка блоков в одну дорожку
+        # Драматическая пауза после главы (кроме последней). Не каждый
+        # стык одинаков: часть чуть короче, часть ближе к трём секундам.
+        if i < n_blocks:
+            pause = 2.0 + ((seed + i * 7) % 11) / 10.0   # 2.0 … 3.0
+            # На особо «крючковых» концах главы — ближе к верхней границе:
+            # вопрос, многоточие, короткое ударное предложение.
+            tail = block.rstrip()[-120:].lower()
+            if ("?" in tail or tail.endswith("...")
+                    or re.search(r"\b(we don.?t know|nobody knows|"
+                                 r"still looking|hang on|listen)\b", tail)):
+                pause = min(3.0, pause + 0.4)
+            sil = adir / f"pause_{i:02d}.mp3"
+            if not sil.exists() or abs(_duration(sil) - pause) > 0.15:
+                _silence_mp3(sil, pause)
+            parts.append(sil)
+            offset += pause
+            log(f"  пауза после главы {i}: {pause:.1f} с")
+
     full = work / "voice_full.m4a"
     lst = adir / "list.txt"
     lst.write_text("".join(f"file '{p.resolve()}'\n" for p in parts))
-    # было os.system с заглушенным выводом: ошибка склейки терялась, дорожки
-    # не появлялось, и падал уже монтаж — на другом шаге и без причины
     import subprocess
     subprocess.run(f'ffmpeg -y -f concat -safe 0 -i "{lst}" -c:a aac -b:a 192k '
                    f'"{full}"', shell=True, check=True,
                    stdout=subprocess.DEVNULL)
     (work / "marks.json").write_text(json.dumps(marks, indent=1))
-    log(f"  озвучка готова: {offset:.1f} сек, {len(marks)} предложений")
+    meta_path.write_text(json.dumps(wanted, indent=1))
+    log(f"  озвучка готова: {offset:.1f} сек, {len(marks)} предложений, "
+        f"модель {model_id}")
     return full, marks, offset
 
 
@@ -631,32 +705,35 @@ def src_pexels(q, n):
     k = (os.environ.get("PEXELS_API_KEY") or "").strip()
     if not k:
         return []
+    # Берём с запасом и режем relevant(): иначе API отдаёт n «почти по теме»,
+    # а после фильтра остаётся ноль.
+    ask = min(80, max(n * 3, n + 6))
     r = requests.get("https://api.pexels.com/videos/search", timeout=TIMEOUT,
                      headers={"Authorization": k},
-                     params={"query": q, "per_page": n, "orientation": "landscape"})
+                     params={"query": q, "per_page": ask,
+                             "orientation": "landscape"})
     if not ok(r, "pexels", q):
         return []
     out, dropped, longish = [], 0, 0
     for v in r.json().get("videos", []):
-        # 720p-1080p: 4K-рендер весит вчетверо и на 1080p-выходе не виден
         files = [f for f in v["video_files"]
                  if CLIP_MIN_WIDTH <= f.get("width", 0) <= CLIP_MAX_WIDTH
                  and f.get("link")]
         if not files:
             continue
-        # у Pexels нет поля тегов, но есть человекочитаемый адрес страницы
-        # вида /video/antique-shop-interior-12345 — слова темы лежат в нём
-        if not relevant(q, (v.get("url") or "").replace("-", " ")):
+        slug = (v.get("url") or "").replace("-", " ").replace("/", " ")
+        if not relevant(q, slug):
             dropped += 1
             continue
-        # длинные ролики не берём вовсе: качать минуту ради пятисекундной
-        # перебивки — это только вес кэша
         if int(v.get("duration") or 0) > MAX_CLIP_SECONDS * 2:
             longish += 1
             continue
         best = sorted(files, key=lambda f: abs(f["width"] - 1920))[0]
         out.append({"url": best["link"], "src": "pexels",
-                    "dur": v.get("duration", 0), "kind": "video"})
+                    "dur": v.get("duration", 0), "kind": "video",
+                    "tags": slug, "title": slug})
+        if len(out) >= n:
+            break
     if longish:
         log(f"    pexels «{q}»: отсеяно {longish} длиннее "
             f"{MAX_CLIP_SECONDS * 2} с")
@@ -667,43 +744,113 @@ def src_pexels(q, n):
 
 def relevant(query: str, tags: str) -> bool:
     """
-    Есть ли у находки хоть одно значимое слово из запроса.
+    Находка должна пересекаться с запросом по смыслу.
 
-    Стоки ищут по ИЛИ и добирают выдачу чем попало, лишь бы отдать
-    запрошенное число. Замер на первом прогоне pawn-01: запрос
-    «candle lamp light on aged wood» принёс бананы, петуха с курами,
-    помаду, пиво, фейерверк и статую Свободы — двадцать четыре ролика
-    из тридцати девяти оказались не по теме, и всё это человеку потом
-    отсматривать руками на листе отбора.
-
-    Проверка нарочно мягкая: достаточно ОДНОГО совпадения. Строгая
-    (все слова) оставила бы пустую выдачу — у стоков нет столько
-    материала по узким запросам. Задача не отобрать лучшее, а отсеять
-    заведомо чужое.
+    Стоки ищут по ИЛИ и добирают выдачу чем попало. Мягкая проверка
+    (1 совпадение) пропускала бананы на запрос про свечи. Теперь:
+      • 1–2 значимых слова в запросе → достаточно одного совпадения
+      • 3+ слова → нужно хотя бы 2, либо ≥40% слов запроса
     """
     stop = {"the", "a", "an", "of", "and", "or", "in", "on", "at", "to",
-            "with", "closeup", "close", "up", "detail", "shot", "old"}
+            "with", "closeup", "close", "up", "detail", "shot", "old",
+            "cinematic", "slow", "pan", "wide", "aerial", "footage",
+            "video", "clip", "overcast", "dawn", "sunset", "night"}
     want = {w for w in re.findall(r"[a-z]+", query.lower())
             if len(w) > 2 and w not in stop}
     if not want:
         return True
     have = set(re.findall(r"[a-z]+", (tags or "").lower()))
-    return bool(want & have)
+    if not have:
+        return False
+    hit = len(want & have)
+    if len(want) <= 2:
+        return hit >= 1
+    need = max(2, int(len(want) * 0.4 + 0.999))
+    return hit >= need
+
+
+def script_grounded_queries(job, limit: int = 14) -> list:
+    """
+    Дополнительные поисковые фразы из сценария и архивных запросов.
+
+    footage_queries часто «настроением» (night sky time-lapse), а в начитке
+    звучат Nuremberg / Roswell / papyrus — сток не пересекается со словами
+    диктора. Вытаскиваем устойчивые имена (2+ слова или редкие термины) и
+    короткие формы archive_queries.
+    """
+    text = " ".join(job.get("script_blocks") or [])
+    proper = re.findall(
+        r"\b([A-Z][a-zA-Z]{3,}(?:\s+[A-Z][a-zA-Z]{3,}){0,2})\b", text)
+    skip = {"This", "That", "Then", "There", "They", "When", "What", "Which",
+            "After", "Before", "Because", "However", "Still", "Even", "Most",
+            "Some", "Many", "Both", "Here", "Just", "Also", "Only", "Into",
+            "From", "With", "Have", "Been", "Were", "Would", "Could", "About",
+            "Chapter", "Tonight", "Today", "Between", "Under", "Over", "Every",
+            "While", "Where", "Those", "These", "Their", "Other", "First",
+            "April", "Blood", "Black", "White", "Long", "Next", "Last",
+            "Same", "Such", "Once", "Never", "Always", "Perhaps", "Almost",
+            "Spheres", "Circles", "Things", "People", "Years", "Months"}
+    # якоря из темы job — одиночные имена ок, если они в keywords/slug
+    anchors = set()
+    topic = job.get("topic") or {}
+    for a in [topic.get("slug", "")] + list(topic.get("keywords") or []):
+        anchors.update(re.findall(r"[a-zA-Z]{4,}", a.lower()))
+    for aq in job.get("archive_queries") or []:
+        anchors.update(re.findall(r"[a-zA-Z]{4,}", aq.lower()))
+    anchors -= {"force", "project", "report", "video", "still", "book",
+                "case", "files", "first", "edition", "cover", "archive",
+                "photo", "press", "release", "army", "field", "office",
+                "science", "council", "department", "defense", "national"}
+
+    seen, out = set(), []
+    for phrase in proper:
+        parts = phrase.split()
+        if parts[0] in skip:
+            continue
+        key = phrase.lower()
+        if key in seen or len(key) < 5:
+            continue
+        # одно слово — только если оно в якорях темы/архива
+        if len(parts) == 1 and parts[0].lower() not in anchors:
+            continue
+        seen.add(key)
+        out.append(phrase)
+        if len(out) >= limit:
+            break
+    for aq in job.get("archive_queries") or []:
+        sq = short_query(aq, keep=3)
+        if sq and sq.lower() not in seen:
+            seen.add(sq.lower())
+            out.append(sq)
+        if len(out) >= limit + 6:
+            break
+    return out
+
+
+def focused_search_list(job, base_queries: list) -> list:
+    """Базовые запросы + grounded из сценария, без дублей."""
+    seen, out = set(), []
+    for q in list(base_queries or []) + script_grounded_queries(job):
+        k = re.sub(r"\s+", " ", (q or "").strip().lower())
+        if not k or k in seen:
+            continue
+        seen.add(k)
+        out.append(q.strip())
+    return out
 
 
 def src_pixabay(q, n):
     k = (os.environ.get("PIXABAY_API_KEY") or "").strip()
     if not k:
         return []
+    ask = min(80, max(n * 3, n + 6))
     r = requests.get("https://pixabay.com/api/videos/", timeout=TIMEOUT,
-                     params={"key": k, "q": q, "per_page": max(n, 3)})
+                     params={"key": k, "q": q, "per_page": max(ask, 3)})
     if not ok(r, "pixabay", q):
         return []
     out, dropped, longish = [], 0, 0
     for v in r.json().get("hits", []):
         vv = v.get("videos", {})
-        # medium у Pixabay это как раз 1280x720, large — 1920x1080.
-        # Берём подходящий под потолок, а не самый большой.
         pick = None
         for name in ("large", "medium", "small"):
             f = vv.get(name) or {}
@@ -713,14 +860,18 @@ def src_pixabay(q, n):
         link = (pick or {}).get("url") or (vv.get("medium") or {}).get("url")
         if not link:
             continue
-        if not relevant(q, v.get("tags", "")):
+        tags = v.get("tags", "")
+        if not relevant(q, tags):
             dropped += 1
             continue
         if int(v.get("duration") or 0) > MAX_CLIP_SECONDS * 2:
             longish += 1
             continue
         out.append({"url": link, "src": "pixabay",
-                    "dur": v.get("duration", 0), "kind": "video"})
+                    "dur": v.get("duration", 0), "kind": "video",
+                    "tags": tags, "title": tags})
+        if len(out) >= n:
+            break
     if longish:
         log(f"    pixabay «{q}»: отсеяно {longish} длиннее "
             f"{MAX_CLIP_SECONDS * 2} с")
@@ -747,22 +898,26 @@ def src_nasa(q, n, media="image"):
     return out
 
 
-def short_query(q: str, keep: int = 2) -> str:
+def short_query(q: str, keep: int = 4) -> str:
     """
-    Две-три главные слова вместо полной фразы.
+    Сжатие запроса для узких архивов (archive.org, wikimedia video).
 
-    Стоки ищут по ИЛИ и от длинной фразы только шире выдачу. Архивы —
-    наоборот, ищут полнотекстово по описанию, и фраза из пяти слов в
-    коллекции на несколько тысяч единиц не находит НИЧЕГО. Замер на
-    ff-ep03: archive_org и wikimedia_video отдали по нулю на всех
-    десяти запросах, ни разу не пожаловавшись — потому что жаловаться
-    было не на что, ответ был честный и пустой.
+    keep=2 выкидывал отличительное третье слово. Теперь: собственные имена
+    из исходной строки + до keep содержательных токенов.
     """
     stop = {"closeup", "close", "up", "detail", "shot", "old", "the", "and",
-            "with", "overcast", "dawn", "sunset"}
+            "with", "overcast", "dawn", "sunset", "cinematic", "slow",
+            "pan", "wide", "aerial", "drone", "footage", "video", "clip"}
+    proper = [w.lower() for w in re.findall(r"\b([A-Z][a-zA-Z]{2,})\b", q)
+              if w.lower() not in stop]
     ws = [w for w in re.findall(r"[a-zA-Z]+", q.lower())
           if len(w) > 3 and w not in stop]
-    return " ".join(ws[:keep]) if ws else q
+    ordered, seen = [], set()
+    for w in proper + ws:
+        if w not in seen:
+            ordered.append(w)
+            seen.add(w)
+    return " ".join(ordered[:keep]) if ordered else q
 
 
 def src_archive_org(q, n):
@@ -1433,23 +1588,24 @@ def fetch_material(job, work: Path):
     # выход куда лучше (на том же прогоне годных было две трети), поэтому
     # множитель для архива не трогаем.
     over = float(job.get("material_overshoot", 1.4))
+    footage_q = focused_search_list(job, job.get("footage_queries") or [])
+    archive_q = focused_search_list(job, job.get("archive_queries") or [])
+    if len(footage_q) > len(job.get("footage_queries") or []):
+        log(f"  поиск: +{len(footage_q) - len(job.get('footage_queries') or [])} "
+            f"запросов из сценария/архива для стока")
     log("── футажи (" + ", ".join(f.__name__[4:] for f in vids) +
         f", запас x{over:g})")
-    got_v = gather(job["footage_queries"], max(1, round(5 * over)), vids,
+    got_v = gather(footage_q, max(1, round(5 * over)), vids,
                    work / "footage", "clip")
-    # ФОТО КАЧАЕМ БОЛЬШЕ, ЧЕМ ВИДЕО, и это переворот против канала о
-    # находках: там на кадр шёл сток, а фото закрывало паузы. Здесь тело
-    # ролика на 70-80% состоит из изображений, а видео занимает 20-30%
-    # только первых минут. Множители поменялись местами ровно поэтому.
     log("── реальные фото из архивов (" +
         ", ".join(f.__name__[4:] for f in phot) + ")")
-    got_a = gather(job["archive_queries"], max(1, round(6 * over)), phot,
+    got_a = gather(archive_q, max(1, round(6 * over)), phot,
                    work / "archive", "arch")
 
     # И только теперь — библиотека Magnific, по тем запросам, где пусто.
-    magnific_fallback(job, work, job["footage_queries"], got_v,
+    magnific_fallback(job, work, footage_q, got_v,
                       "footage", "clip", "video")
-    magnific_fallback(job, work, job["archive_queries"], got_a,
+    magnific_fallback(job, work, archive_q, got_a,
                       "archive", "arch", "image")
 
 
@@ -1460,8 +1616,8 @@ def fetch_material(job, work: Path):
 REFILL_REJECT_RATE = 0.40
 # Сколько минимум годного должно остаться; иначе докачиваем даже при
 # низкой доле брака (мало скачалось вовсе).
-REFILL_MIN_CLIP = 6
-REFILL_MIN_ARCH = 10
+REFILL_MIN_CLIP = 12
+REFILL_MIN_ARCH = 14
 
 
 def refill_after_vet(job, work: Path):
@@ -1524,17 +1680,18 @@ def refill_after_vet(job, work: Path):
 
     if need_clips:
         log("  докачиваю футаж")
-        got_v = gather(job["footage_queries"], max(2, round(5 * over)), vids,
+        fq = focused_search_list(job, job.get("footage_queries") or [])
+        got_v = gather(fq, max(2, round(5 * over)), vids,
                        work / "footage", "clip")
-        # в fallback — всё, что уже скачано по запросам: и прошлое, и новое
-        magnific_fallback(job, work, job["footage_queries"],
+        magnific_fallback(job, work, fq,
                           manifest_rows("footage") + list(got_v or []),
                           "footage", "clip", "video")
     if need_arch:
         log("  докачиваю архив")
-        got_a = gather(job["archive_queries"], max(2, round(6 * over)), phot,
+        aq = focused_search_list(job, job.get("archive_queries") or [])
+        got_a = gather(aq, max(2, round(6 * over)), phot,
                        work / "archive", "arch")
-        magnific_fallback(job, work, job["archive_queries"],
+        magnific_fallback(job, work, aq,
                           manifest_rows("archive") + list(got_a or []),
                           "archive", "arch", "image")
 
