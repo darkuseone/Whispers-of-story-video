@@ -1093,17 +1093,41 @@ PHOTO_SOURCES = [src_wikimedia, src_met, src_artic, src_cleveland,
                  src_openverse, src_loc]
 
 
+# Частые опечатки / старые имена из чужих схем job. Молча подменять нельзя —
+# автор должен видеть, что написал не то; но ронять весь прогон после
+# уже готовой озвучки ещё хуже (ufos-history-01, 2026-08-06).
+SOURCE_ALIASES = {
+    "internet_archive": "archive_org",
+    "archive": "archive_org",
+    "met_museum": "met",
+    "metmuseum": "met",
+    "wikimedia_commons": "wikimedia",
+    "wiki": "wikimedia",
+}
+
+
 def sources_from(job, key, default):
-    """Источники по именам из спецификации. Опечатка роняет сразу, со списком."""
+    """Источники по именам из спецификации. Неизвестное — сразу, со списком."""
     names = job.get(key)
     if not names:
         return default
-    bad = [n for n in names if n not in ALL_SOURCES]
+    resolved = []
+    for n in names:
+        if n in ALL_SOURCES:
+            resolved.append(n)
+            continue
+        alt = SOURCE_ALIASES.get(n)
+        if alt and alt in ALL_SOURCES:
+            log(f"  ! {key}: '{n}' → '{alt}' (устаревшее/чужое имя)")
+            resolved.append(alt)
+            continue
+        resolved.append(n)
+    bad = [n for n in resolved if n not in ALL_SOURCES]
     if bad:
         raise SystemExit(
             f"{key}: нет таких источников " + ", ".join(bad) +
             "\nесть: " + ", ".join(sorted(ALL_SOURCES)))
-    return [ALL_SOURCES[n] for n in names]
+    return [ALL_SOURCES[n] for n in resolved]
 
 
 def fetch(url, dst: Path, limit=MAX_FILE_BYTES, seconds=FETCH_SECONDS):

@@ -2,3 +2,5 @@ auto-retry: previous run failed at Set up job (GitHub Actions Service Unavailabl
 no assets/voice cache yet — full stage: auto
 Thu Aug  6 04:58:28 PM UTC 2026
 retry after Actions major_outage
+
+retry after source+aspect fix 2026-08-06T18:11Z

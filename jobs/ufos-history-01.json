@@ -25,16 +25,19 @@
   "material_overshoot": 1.45,
   "fill_limit": 27,
   "photo_sources": [
-    "internet_archive",
     "wikimedia",
+    "met",
+    "artic",
+    "cleveland",
+    "openverse",
     "loc",
-    "met_museum",
     "nasa"
   ],
   "video_sources": [
     "pexels",
     "pixabay",
-    "internet_archive"
+    "archive_org",
+    "wikimedia_video"
   ],
   "lut": "starlit_lapis",
   "archive_lut": "archive_platinum",
