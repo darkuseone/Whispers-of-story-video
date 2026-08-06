@@ -1,2 +1,3 @@
 render-only: fix drawtext ASCII apostrophe (ffmpeg exit 234 on Egypt's title)
 voice/images/material from cache — do not re-run stage assets
+retry 2026-08-06T22:09Z (waiting for Actions webhook recovery)
