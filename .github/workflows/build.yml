@@ -17,11 +17,14 @@ on:
     paths:
       - 'jobs/*.json'
       - '.render/**'
+      - '.build/**'
 
 # Ручной запуск — как раньше. Push нового jobs/*.json → auto. Push
-# .render/<job>.retry → только монтаж (кэш озвучки/материала). Правка
-# готовой спецификации сборку не трогает. Шаблоны *-example / *-test /
-# *-mini автозапуском не трогаем.
+# .render/<job>.retry → только монтаж (кэш озвучки/материала). Push
+# .build/<job>.retry → полный stage: auto для УЖЕ лежащего jobs/<job>.json
+# (когда первый прогон упал до кэша, или нужен полный перезапуск без
+# удаления спецификации). Правка готовой спецификации сборку не трогает.
+# Шаблоны *-example / *-test / *-mini автозапуском не трогаем.
 
 permissions:
   contents: write
@@ -59,9 +62,11 @@ jobs:
           if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
             DIFF_JOBS=$(git show --name-status --format= "$AFTER" -- jobs/ || true)
             DIFF_RENDER=$(git show --name-status --format= "$AFTER" -- .render/ || true)
+            DIFF_BUILD=$(git show --name-status --format= "$AFTER" -- .build/ || true)
           else
             DIFF_JOBS=$(git diff --name-status "$BEFORE" "$AFTER" -- jobs/ || true)
             DIFF_RENDER=$(git diff --name-status "$BEFORE" "$AFTER" -- .render/ || true)
+            DIFF_BUILD=$(git diff --name-status "$BEFORE" "$AFTER" -- .build/ || true)
           fi
 
           # Пересборка монтажа: .render/<job>.retry — только stage render,
@@ -88,6 +93,39 @@ jobs:
             echo "stage=render" >> "$GITHUB_OUTPUT"
             echo "run_build=true" >> "$GITHUB_OUTPUT"
             echo "Пересборка монтажа (кэш): $JSON"
+            exit 0
+          fi
+
+          # Полный перезапуск: .build/<job>.retry → stage auto для уже
+          # существующей спецификации. Нужен, когда прогон упал до кэша
+          # (Set up job / сеть Actions) или автор хочет auto без удаления
+          # jobs/<job>.json. Кэш озвучки/картинок подхватится сам, если есть.
+          BUILD_JOBS=()
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            status="${line%%$'\t'*}"
+            file="${line#*$'\t'}"
+            case "$status" in A|M) ;; *) continue ;; esac
+            case "$file" in
+              .build/*.retry) ;;
+              *) continue ;;
+            esac
+            base="${file#.build/}"
+            base="${base%.retry}"
+            if [ ! -f "jobs/${base}.json" ]; then
+              echo "пропуск .build/${base}.retry — нет jobs/${base}.json"
+              continue
+            fi
+            BUILD_JOBS+=("$base")
+          done <<< "$DIFF_BUILD"
+
+          if [ ${#BUILD_JOBS[@]} -gt 0 ]; then
+            JSON=$(printf '%s\n' "${BUILD_JOBS[@]}" | python3 -c \
+              'import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+            echo "jobs=$JSON" >> "$GITHUB_OUTPUT"
+            echo "stage=auto" >> "$GITHUB_OUTPUT"
+            echo "run_build=true" >> "$GITHUB_OUTPUT"
+            echo "Полный перезапуск (stage auto): $JSON"
             exit 0
           fi
 

@@ -26,9 +26,10 @@ asks. Script + posting pack first.
 ## If the user asks to build / render / run the pipeline
 
 Use the existing pipeline (`CLAUDE.md`, `.github/workflows/build.yml`):
-push a **new** `jobs/<id>.json` to `main` for automatic `stage: auto`. If
-**only montage failed**, use `stage: render` or push `.render/<id>.retry`
-(cache — no voice/images/vet). Manual: **Build video** with `job` and
-`stage`. Local: `mock`/`smoke`/`build` as appropriate.
-Never re-run `stage: assets` just to remount — use `auto` so voice/image
-cache is reused.
+push a **new** `jobs/<id>.json` to `main` for automatic `stage: auto`. To
+**re-run auto** on an existing job (setup failed before cache, etc.), push
+`.build/<id>.retry`. If **only montage failed**, use `stage: render` or
+push `.render/<id>.retry` (cache — no voice/images/vet). Manual: **Build
+video** with `job` and `stage`. Local: `mock`/`smoke`/`build` as
+appropriate. Never re-run `stage: assets` just to remount — use `auto` so
+voice/image cache is reused.
