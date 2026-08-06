@@ -1643,8 +1643,16 @@ def join(group, out: Path, st, overlay, first=False, moments=None, last=False):
     cmd = (f'ffmpeg -y {ins} -filter_complex "{";".join(fc)}" -map "[out]" '
            f'-c:v libx264 -crf {st.crf} -preset {st.preset} '
            f'-pix_fmt yuv420p -an "{out}"')
-    subprocess.run(cmd, shell=True, check=True,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # stderr раньше глушили — из-за этого ffmpeg exit 234 на титуле с
+    # апострофом выглядел как «просто упал», без строки про граф. На ошибке
+    # хвост stderr обязан попасть в лог Actions.
+    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if r.returncode != 0:
+        tail = (r.stderr or "")[-2500:]
+        print(f"  ! ffmpeg join упал ({r.returncode}) → {out}")
+        if tail:
+            print(tail)
+        raise subprocess.CalledProcessError(r.returncode, cmd, r.stdout, r.stderr)
 
 
 def beds_for(st, job, total: float = 0.0):

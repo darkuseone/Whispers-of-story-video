@@ -1,0 +1,2 @@
+render-only: fix drawtext ASCII apostrophe (ffmpeg exit 234 on Egypt's title)
+voice/images/material from cache — do not re-run stage assets
