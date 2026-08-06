@@ -11,17 +11,99 @@ on:
         description: 'smoke / magnific / material / vet / assets / render / auto'
         required: true
         default: 'auto'
+  push:
+    branches:
+      - main
+    paths:
+      - 'jobs/*.json'
 
-# Триггера на push здесь намеренно нет. С несколькими спецификациями в
-# репозитории правка любой из них запускала бы полную сборку не того ролика.
+# Ручной запуск — как раньше. Push в main по jobs/*.json срабатывает только
+# если в коммите ПОЯВИЛСЯ новый файл (git status A), а не правка готовой
+# спецификации. Шаблоны *-example / *-test / *-mini автозапуском не трогаем.
 
 permissions:
   contents: write
 
 jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      jobs: ${{ steps.find.outputs.jobs }}
+      stage: ${{ steps.find.outputs.stage }}
+      run_build: ${{ steps.find.outputs.run_build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Какие ролики собирать
+        id: find
+        run: |
+          set -euo pipefail
+          EVENT="${{ github.event_name }}"
+
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            JOB="${{ github.event.inputs.job }}"
+            STAGE="${{ github.event.inputs.stage }}"
+            echo "jobs=[\"$JOB\"]" >> "$GITHUB_OUTPUT"
+            echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+            echo "run_build=true" >> "$GITHUB_OUTPUT"
+            echo "Ручной запуск: $JOB, этап $STAGE"
+            exit 0
+          fi
+
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            DIFF=$(git show --name-status --format= "$AFTER" -- jobs/ || true)
+          else
+            DIFF=$(git diff --name-status "$BEFORE" "$AFTER" -- jobs/ || true)
+          fi
+
+          SKIP_SUFFIX='-(example|test|mini)$'
+          JOBS=()
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            status="${line%%$'\t'*}"
+            file="${line#*$'\t'}"
+            [ "$status" = "A" ] || continue
+            case "$file" in
+              jobs/*.json) ;;
+              *) continue ;;
+            esac
+            base="${file#jobs/}"
+            base="${base%.json}"
+            if [[ "$base" =~ $SKIP_SUFFIX ]]; then
+              echo "пропуск шаблона: $base"
+              continue
+            fi
+            JOBS+=("$base")
+          done <<< "$DIFF"
+
+          if [ ${#JOBS[@]} -eq 0 ]; then
+            echo "Новых спецификаций нет — только правка существующих jobs/*.json"
+            echo "jobs=[]" >> "$GITHUB_OUTPUT"
+            echo "stage=auto" >> "$GITHUB_OUTPUT"
+            echo "run_build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          JSON=$(printf '%s\n' "${JOBS[@]}" | python3 -c \
+            'import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+          echo "jobs=$JSON" >> "$GITHUB_OUTPUT"
+          echo "stage=auto" >> "$GITHUB_OUTPUT"
+          echo "run_build=true" >> "$GITHUB_OUTPUT"
+          echo "Автозапуск: $JSON (этап auto)"
+
   build:
+    needs: detect
+    if: needs.detect.outputs.run_build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 330      # лимит GitHub 360, оставляем запас на выкладку
+    strategy:
+      fail-fast: false
+      matrix:
+        job: ${{ fromJson(needs.detect.outputs.jobs) }}
 
     steps:
       - uses: actions/checkout@v4
@@ -44,8 +126,8 @@ jobs:
         id: pick
         run: |
           set -e
-          JOB="${{ github.event.inputs.job }}"
-          STAGE="${{ github.event.inputs.stage }}"
+          JOB="${{ matrix.job }}"
+          STAGE="${{ needs.detect.outputs.stage }}"
           test -f "jobs/$JOB.json" || { echo "Нет файла jobs/$JOB.json"; exit 1; }
           # Папка работ называется по полю id ВНУТРИ спецификации, а не по
           # имени файла: они могут не совпадать, и тогда кэш и выкладка
