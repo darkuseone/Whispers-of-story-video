@@ -34,9 +34,11 @@ PREP_H = PREP_W * H // W          # 1687 -> ниже округляется до
 
 
 def run(cmd, quiet=True):
-    return subprocess.run(cmd, shell=True, check=True,
-                          stdout=subprocess.DEVNULL if quiet else None,
-                          stderr=subprocess.DEVNULL if quiet else None)
+    r = subprocess.run(cmd, shell=True, capture_output=quiet, text=quiet)
+    if r.returncode != 0:
+        if quiet and r.stderr:
+            print(r.stderr, flush=True)
+        raise subprocess.CalledProcessError(r.returncode, cmd, r.stdout, r.stderr)
 
 
 def prepare_image(src: Path, dst: Path, framing: dict):
@@ -105,7 +107,10 @@ def motion_filter(move: str, speed: float, dur: float, ease: str = None) -> str:
 
     p = ease_expr(ease or m.get("ease") or "smooth", dur)
 
-    wexpr = f"trunc(({w0:.1f}+({w1 - w0:.1f})*{p})/2)*2"
+    # Холст после scale не может быть уже/ниже кадра 1920×1080 — иначе
+    # crop берёт несуществующие пиксели и ffmpeg падает (exit 134). Так
+    # ломался reveal_out с w1=2000 на длинных кадрах вроде clip_0112.
+    wexpr = f"max({W},trunc(({w0:.1f}+({w1 - w0:.1f})*{p})/2)*2)"
     xexpr = f"(iw-{W})*({x0:.3f}+({x1 - x0:.3f})*{p})"
     yexpr = f"(ih-{H})*({y0:.3f}+({y1 - y0:.3f})*{p})"
 

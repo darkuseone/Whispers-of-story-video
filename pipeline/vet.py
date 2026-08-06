@@ -177,7 +177,7 @@ def video_frames(path: Path, n=3):
     out = []
     for k in range(1, n + 1):
         at = dur * k / (n + 1)
-        tmp = path.with_suffix(f".probe{k}.png")
+        tmp = path.parent / f"_{path.stem}_probe{k}.png"
         subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{at:.2f}",
                         "-i", str(path), "-frames:v", "1", "-y", str(tmp)],
                        check=False)
