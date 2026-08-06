@@ -26,7 +26,8 @@ asks. Script + posting pack first.
 ## If the user asks to build / render / run the pipeline
 
 Use the existing pipeline (`CLAUDE.md`, `.github/workflows/build.yml`):
-push the job JSON, then `workflow_dispatch` with `job=<id>` and
-`stage=auto` (or run local `mock`/`smoke`/`build` as appropriate).
+push a **new** `jobs/<id>.json` to `main` for automatic `stage: auto`, or
+trigger **Build video** manually with `job=<id>` and `stage=auto` (or run
+local `mock`/`smoke`/`build` as appropriate).
 Never re-run `stage: assets` just to remount — use `auto` so voice/image
 cache is reused.
