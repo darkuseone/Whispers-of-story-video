@@ -470,13 +470,42 @@ def duration_of(path: Path, stream: str = "v") -> float:
         return 0.0
 
 
-def write_srt(segments, out: Path):
+def clip_srt_segments(segments, max_end: float):
+    """
+    Обрезает субтитры по фактической длине ролика.
+
+    marks/total_audio бывают длиннее final.mp4: нахлёст xfade укорачивает
+    картинку, mux -shortest срезает хвост звука, а SRT раньше писался из
+    полного marks — хвост «висел» после конца видео на минуты. Здесь
+    оставляем только то, что реально есть на экране.
+    """
+    if max_end is None or max_end <= 0:
+        return list(segments)
+    out = []
+    for seg in segments:
+        start = float(seg["start"])
+        end = float(seg["end"])
+        if start >= max_end:
+            continue
+        clipped = dict(seg)
+        clipped["start"] = start
+        clipped["end"] = min(end, max_end)
+        if clipped["end"] - clipped["start"] < 0.05:
+            continue
+        out.append(clipped)
+    return out
+
+
+def write_srt(segments, out: Path, max_end: float | None = None):
     """Субтитры из тайм-кодов ElevenLabs. Распознавание речи не нужно."""
+    segs = clip_srt_segments(segments, max_end) if max_end is not None else list(segments)
+
     def ts(sec):
         h, r = divmod(sec, 3600)
         m, s = divmod(r, 60)
         return f"{int(h):02d}:{int(m):02d}:{int(s):02d},{int((s % 1) * 1000):03d}"
     lines = []
-    for i, seg in enumerate(segments, 1):
+    for i, seg in enumerate(segs, 1):
         lines.append(f"{i}\n{ts(seg['start'])} --> {ts(seg['end'])}\n{seg['text']}\n")
     out.write_text("\n".join(lines), encoding="utf-8")
+    return len(segs)

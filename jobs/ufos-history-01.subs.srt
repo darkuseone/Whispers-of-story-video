@@ -1,0 +1,1063 @@
+1
+00:00:00,000 --> 00:00:08,730
+At five in the morning on April 14th, 1561, the people of Nuremberg looked up and saw the sky catch fire.
+
+2
+00:00:08,730 --> 00:00:15,429
+Not literally - or at least, that's what I keep telling myself when I read the account.
+
+3
+00:00:15,429 --> 00:00:20,062
+Blood-red arcs bent across the face of the rising sun.
+
+4
+00:00:20,062 --> 00:00:26,888
+Black spheres appeared in clusters of three and four, crossing each other's paths like they were fighting.
+
+5
+00:00:26,888 --> 00:00:39,463
+A dark, spear-shaped object hung motionless in the middle of it, longer than anything else in the sky, until - according to the men and women who watched it happen - it fell.
+
+6
+00:00:39,463 --> 00:00:50,978
+A local engraver named Hans Glaser sat down and did the only thing a print-maker in a Free Imperial City knew how to do with an event like that.
+
+7
+00:00:50,978 --> 00:00:53,161
+He carved it into wood.
+
+8
+00:00:53,161 --> 00:01:04,691
+He printed it on a broadsheet, the sixteenth century's version of a news alert, and sold it on the street corners of a city that had just watched something it had no words for.
+
+9
+00:01:04,691 --> 00:01:07,337
+The woodcut survives.
+
+10
+00:01:07,337 --> 00:01:11,727
+You can go and look at it today, in a library in Zurich.
+
+11
+00:01:11,727 --> 00:01:13,177
+Spheres.
+
+12
+00:01:13,177 --> 00:01:14,305
+Crosses.
+
+13
+00:01:14,305 --> 00:01:15,430
+Tubes.
+
+14
+00:01:15,430 --> 00:01:26,691
+A giant black shape at the center of it all, drawn with more care than the rest, like the artist wanted you to know: this one, I'm not exaggerating.
+
+15
+00:01:26,691 --> 00:01:31,534
+Historians have a reasonably good answer for what happened that morning.
+
+16
+00:01:31,534 --> 00:01:48,447
+It's called a sun dog - or more precisely, a rare cluster of parhelia and halo arcs, ice crystals in the upper atmosphere bending sunlight into exactly the kind of geometric, multiplying shapes Glaser described.
+
+17
+00:01:48,447 --> 00:01:49,819
+It's beautiful.
+
+18
+00:01:49,819 --> 00:01:51,072
+It's real.
+
+19
+00:01:51,072 --> 00:01:53,266
+It's been photographed since.
+
+20
+00:01:53,266 --> 00:01:58,188
+And it would explain almost everything in the woodcut - almost.
+
+21
+00:01:58,188 --> 00:02:01,882
+What it doesn't fully explain is the crash.
+
+22
+00:02:01,882 --> 00:02:07,569
+The report says the objects came down outside the city walls, in smoke.
+
+23
+00:02:07,569 --> 00:02:10,055
+Sun dogs don't do that.
+
+24
+00:02:10,055 --> 00:02:19,342
+Neither do sun pillars, or circumhorizontal arcs, or any of the optical tricks the atmosphere is capable of on a clear morning.
+
+25
+00:02:19,342 --> 00:02:26,681
+Whatever the good people of Nuremberg were looking at, it ended with something falling out of the sky and hitting the ground.
+
+26
+00:02:26,681 --> 00:02:30,639
+I'm not going to tell you tonight that this was a spacecraft.
+
+27
+00:02:30,639 --> 00:02:32,579
+I don't think it was.
+
+28
+00:02:32,579 --> 00:02:54,902
+But I want to start here, on a spring morning nearly five hundred years ago, because it's a perfect small model of everything this story is going to be about: an object nobody had a word for, watched by dozens of ordinary people, and a five-hundred-year-old argument about whether the explanation is in the sky or in us.
+
+29
+00:02:54,902 --> 00:03:08,230
+Because here's the thing that surprised me when I actually went looking - people have been describing things in the sky that don't behave like the sky is supposed to behave for as long as we've been writing anything down at all.
+
+30
+00:03:08,230 --> 00:03:10,786
+Long before Roswell.
+
+31
+00:03:10,786 --> 00:03:14,895
+Long before the phrase "flying saucer" existed.
+
+32
+00:03:14,895 --> 00:03:22,722
+And some of the oldest accounts come from places you'd never expect: a scorched papyrus once kept in the Vatican.
+
+33
+00:03:22,722 --> 00:03:26,239
+A Sanskrit epic three thousand years old.
+
+34
+00:03:26,239 --> 00:03:29,722
+A prophet's vision by a river in Babylon.
+
+35
+00:03:29,722 --> 00:03:31,905
+So let's go back.
+
+36
+00:03:31,905 --> 00:03:33,449
+All the way back.
+
+37
+00:03:33,449 --> 00:03:39,150
+And let's see what's actually there, and what we've quietly added along the way.
+
+38
+00:03:41,991 --> 00:03:48,854
+Before we go further, I want to be precise about a word, because precision is going to matter a lot tonight.
+
+39
+00:03:48,854 --> 00:03:51,792
+"UFO" is a young word.
+
+40
+00:03:51,792 --> 00:03:52,986
+The U.S.
+
+41
+00:03:52,986 --> 00:04:04,354
+Air Force officer Edward Ruppelt coined "unidentified flying object" in 1952, specifically because "flying saucer" had become a punchline.
+
+42
+00:04:04,354 --> 00:04:11,668
+Technically, a UFO is just that: something in the sky that the observer can't identify.
+
+43
+00:04:11,668 --> 00:04:14,419
+It says nothing about origin.
+
+44
+00:04:14,419 --> 00:04:20,213
+A weather balloon is a UFO for exactly as long as nobody knows it's a weather balloon.
+
+45
+00:04:20,213 --> 00:04:27,399
+I mention this because most of what we're about to look at wasn't written by anyone using that framework.
+
+46
+00:04:27,399 --> 00:04:43,165
+The Egyptian scribes who may or may not have written about fiery disks weren't thinking "extraterrestrial." Neither was the prophet Ezekiel, or the poets who wrote the Ramayana, or Hans Glaser in Nuremberg.
+
+47
+00:04:43,165 --> 00:04:53,603
+They had their own vocabulary for the unexplained - omens, portents, chariots of the gods, wonders sent to bring a city to repentance.
+
+48
+00:04:53,603 --> 00:05:00,475
+It's us, centuries later, who took that vocabulary and translated it into ours.
+
+49
+00:05:00,475 --> 00:05:15,963
+That translation is where I think a lot of "ancient astronaut" content goes wrong, and I want to say that clearly at the start, because I'm going to spend a good chunk of tonight in territory that gets treated pretty carelessly by other channels.
+
+50
+00:05:15,963 --> 00:05:30,511
+When a bestselling book looks at an ancient carving and calls it "clearly a rocket," it isn't reading the artifact - it's reading a modern idea back into a culture that already had its own coherent explanation.
+
+51
+00:05:30,511 --> 00:05:39,949
+But - and this is the part that keeps me interested rather than dismissive - that doesn't mean every ancient sky-account is nothing.
+
+52
+00:05:39,949 --> 00:05:44,687
+Some of them describe things that are hard to explain even generously.
+
+53
+00:05:44,687 --> 00:05:49,749
+Some of them were probably invented centuries after the fact they claim to record.
+
+54
+00:05:49,749 --> 00:06:01,069
+And some of them, like Nuremberg, seem to be honest descriptions of an event nobody quite has language for, filtered through whatever framework the observer had on hand.
+
+55
+00:06:01,069 --> 00:06:19,040
+So here's the discipline I'm going to try to hold to for the rest of this: I'll tell you what the source actually says, I'll tell you what mainstream historians and scientists think it means, and I'll tell you, honestly, when nobody actually knows.
+
+56
+00:06:19,040 --> 00:06:28,723
+Where a claim is contested - and a lot of what's coming is contested - I'll say so out loud, not bury it in a footnote.
+
+57
+00:06:28,723 --> 00:06:30,463
+That's the deal.
+
+58
+00:06:30,463 --> 00:06:37,442
+Let's start at the beginning, or as close to the beginning as anyone has a record for.
+
+59
+00:06:37,442 --> 00:06:48,076
+Egypt, roughly 3,400 years ago, under a pharaoh who conquered more of the ancient world than almost anyone before him.
+
+60
+00:06:50,516 --> 00:07:05,504
+The story starts - if it starts anywhere - with a Vatican museum official named Alberto Tulli, sometime in the 1930s, apparently acquiring or copying a papyrus fragment in a Cairo antiquities shop.
+
+61
+00:07:05,504 --> 00:07:19,389
+According to what survives of the account tied to his name, the text described an event from the reign of Thutmose III, one of Egypt's most powerful pharaohs, somewhere around 1480 BC.
+
+62
+00:07:19,389 --> 00:07:26,877
+Circles of fire, brighter than the sun, appeared in the sky and held their position for days.
+
+63
+00:07:26,877 --> 00:07:29,141
+The army watched.
+
+64
+00:07:29,141 --> 00:07:35,980
+The pharaoh himself watched, and afterward ordered incense burned to calm the anger of Amun-Re.
+
+65
+00:07:35,980 --> 00:07:52,908
+Then the fiery disks rose higher and flew south - and, strangest of all, fish and birds reportedly fell out of the sky afterward, an event the scribe supposedly called something never seen since the founding of the country.
+
+66
+00:07:52,908 --> 00:07:55,879
+That's a genuinely striking passage.
+
+67
+00:07:55,879 --> 00:08:04,516
+It's also, I have to tell you, almost impossible to verify, and the reasons why matter more than the story itself.
+
+68
+00:08:04,516 --> 00:08:06,956
+Tulli died.
+
+69
+00:08:06,956 --> 00:08:15,512
+The original papyrus - if it ever existed - has never been located, not in the Vatican's collection, not anywhere.
+
+70
+00:08:15,512 --> 00:08:27,158
+What survives is a transcription, later translated by an Italian nobleman named Boris de Rachewiltz, who said he found it among Tulli's papers after his death.
+
+71
+00:08:27,158 --> 00:08:30,408
+The Vatican has no official record of it.
+
+72
+00:08:30,408 --> 00:08:43,759
+No independent Egyptologist has ever examined the source document, because there is no source document to examine, only a copy of a copy, filtered through two men who are both gone.
+
+73
+00:08:43,759 --> 00:08:56,648
+The ufologists Jacques Vallee and Chris Aubeck, who take historical accounts like this more seriously than most skeptics, still describe this one as a probable hoax.
+
+74
+00:08:56,648 --> 00:09:16,452
+Egyptologists are, if anything, harsher: without provenance, without the original object, without a second independent record of an event this dramatic from a civilization that documented almost everything, most consider it unauthenticated at best.
+
+75
+00:09:16,452 --> 00:09:23,873
+I want to sit with that for a second, because I think it's actually more interesting than a simple real-or-fake verdict.
+
+76
+00:09:23,873 --> 00:09:40,682
+Whoever produced this text - whether it's a genuine ancient account or a very good modern forgery - understood exactly what would make a UFO story compelling: royal witnesses, an unexplained object, a physical aftermath.
+
+77
+00:09:40,682 --> 00:09:43,909
+If it's a hoax, it's a well-constructed one.
+
+78
+00:09:43,909 --> 00:09:50,480
+If it's real, it's the oldest sky-mystery on tonight's list by nearly a thousand years.
+
+79
+00:09:50,480 --> 00:09:56,182
+Either way, it isn't the settled evidence some corners of the internet want it to be.
+
+80
+00:09:56,182 --> 00:10:05,678
+It's a story about a story, about how easily an unverifiable account gets treated as fact once enough people want it to be true.
+
+81
+00:10:05,678 --> 00:10:13,691
+That's a pattern we're going to see again and again tonight, long before we get anywhere near 1947.
+
+82
+00:10:15,721 --> 00:10:21,759
+If Egypt gives us one contested document, Mesopotamia gives us an entire industry.
+
+83
+00:10:21,759 --> 00:10:33,392
+The Sumerians and their successors left behind tens of thousands of clay tablets - king lists, myths, astronomical records, receipts for beer.
+
+84
+00:10:33,392 --> 00:10:53,965
+Among the gods described in these texts are the Anunnaki, a name usually translated as something close to "those of royal blood" or "princely offspring." In the original myths they're divine judges and underworld deities, not visitors from another planet.
+
+85
+00:10:53,965 --> 00:11:04,019
+That isn't a matter of interpretation, it's what the cuneiform says, according to every trained Assyriologist who has published on the subject.
+
+86
+00:11:04,019 --> 00:11:13,899
+In 1976, a writer named Zecharia Sitchin proposed something very different in a book called The 12th Planet.
+
+87
+00:11:13,899 --> 00:11:30,514
+His claim, in short: the Anunnaki were real extraterrestrials from a supposed hidden planet, who came to Earth hundreds of thousands of years ago to mine gold and genetically engineered early humans as a workforce.
+
+88
+00:11:30,514 --> 00:11:47,149
+It's a genuinely audacious piece of storytelling, and it became the foundation for a huge amount of what people now call "ancient astronaut theory," including a fair share of what you'll find under Egypt's pyramids elsewhere on this platform.
+
+89
+00:11:47,149 --> 00:11:58,447
+Here's where I have to be blunt, because trust is the whole reason this channel exists, and this is a place I think a lot of similar channels quietly cut a corner.
+
+90
+00:11:58,447 --> 00:12:04,447
+Sitchin's translations are not accepted by mainstream Assyriology.
+
+91
+00:12:04,447 --> 00:12:21,283
+Scholars who've gone through his work line by line, most notably the biblical-languages specialist Michael Heiser, have documented case after case where Sitchin's Sumerian and Akkadian readings simply don't match what the cuneiform says.
+
+92
+00:12:21,283 --> 00:12:40,950
+The Sumerians didn't distinguish planets from stars the way his theory requires, and the term he reads as a hidden tenth planet appears elsewhere in the texts tied to the god Marduk and to celestial movement in general, not to a specific undiscovered world.
+
+93
+00:12:40,950 --> 00:12:43,772
+So why tell you about it at all?
+
+94
+00:12:43,772 --> 00:13:03,740
+Because Sitchin's version of Mesopotamia has had a genuinely enormous cultural afterlife - you'll find its fingerprints in documentaries, in forums, in the "ancient aliens built the pyramids" framework that most people who repeat it have never traced back to its actual source.
+
+95
+00:13:03,740 --> 00:13:10,974
+Understanding where an idea comes from is, I think, its own kind of archaeology.
+
+96
+00:13:10,974 --> 00:13:34,995
+What the real Sumerian texts contain, without any embellishment needed, is still strange enough to sit with: a civilization that watched the sky with obsessive precision, that believed its gods physically descended to earth in vehicles of a kind, and that never once described those vehicles the way a paperback from the 1970s would.
+
+97
+00:13:37,735 --> 00:13:49,716
+Travel a few thousand kilometers east, and the flying machines get far less ambiguous, because the texts describing them were never meant to be read as literal history in the first place.
+
+98
+00:13:49,716 --> 00:14:13,065
+The Ramayana and the Mahabharata, the two great Sanskrit epics of ancient India, are full of vimana - flying chariots and palaces, some pulled by mythical birds, some described as self-propelled and humming, capable of traveling not just across the sky but, in a few passages, between worlds entirely.
+
+99
+00:14:13,065 --> 00:14:26,196
+Ravana, the demon king of the Ramayana, owns a vimana called the Pushpaka, stolen from his half-brother, large enough to carry an army and said to change size at will.
+
+100
+00:14:26,196 --> 00:14:40,625
+In the twentieth century, a document called the Vaimanika Shastra started circulating, claiming to be an ancient technical manual for building these aircraft, complete with fuel formulas and engine designs.
+
+101
+00:14:40,625 --> 00:14:50,240
+It's frequently cited online as proof that ancient India had literal, working flying machines millennia before the Wright brothers.
+
+102
+00:14:50,240 --> 00:15:10,139
+There's a real problem with that claim, though, and it's one that's been demonstrated rather than just argued: a team at the Indian Institute of Science studied the text's actual specifications in the 1970s and found the described craft would be aerodynamically incapable of flight.
+
+103
+00:15:10,139 --> 00:15:28,726
+More importantly, scholars of the manuscript's language date its composition to the early twentieth century, not the ancient period it claims - it appears to have been written or channeled by a Sanskrit scholar sometime around 1900 to 1922.
+
+104
+00:15:28,726 --> 00:15:35,471
+So that particular smoking gun turns out to be a modern document dressed in ancient clothing.
+
+105
+00:15:35,471 --> 00:15:47,118
+But I don't think that closes the case on vimana entirely, and here's why: the flying chariots in the actual ancient epics were never presented as engineering.
+
+106
+00:15:47,118 --> 00:16:01,490
+They're divine machines, gifts and weapons of gods and demons, operating by the same rules as everything else in a Sanskrit epic, which is to say mythic rules, not mechanical ones.
+
+107
+00:16:01,490 --> 00:16:09,860
+Reading them as a literal spacecraft blueprint is the same category error we talked about a few minutes ago with Egypt.
+
+108
+00:16:09,860 --> 00:16:36,750
+What I find genuinely interesting isn't whether vimana were real machines - almost certainly they weren't - but what it says about human imagination that a culture three thousand years ago independently arrived at the idea of controllable, self-propelled aerial vehicles, described with enough consistent internal logic that people are still arguing about their "specifications" today.
+
+109
+00:16:36,750 --> 00:16:40,466
+We didn't need alien visitors to dream of flight.
+
+110
+00:16:40,466 --> 00:16:47,537
+We just needed to look at birds, and at the sky, and ask what it would take to go up there ourselves.
+
+111
+00:16:49,869 --> 00:16:59,610
+Now to a text that has never, in over two thousand years, needed anyone's permission to be taken seriously: the Book of Ezekiel.
+
+112
+00:16:59,610 --> 00:17:10,476
+Chapter one: a Hebrew priest in exile, on the banks of a river in Babylon, in the fifth year of a king's captivity, sees the heavens open.
+
+113
+00:17:10,476 --> 00:17:15,548
+What comes out is one of the strangest passages in the entire Bible.
+
+114
+00:17:15,548 --> 00:17:27,798
+A windstorm out of the north, a great cloud with fire flashing continuously, and within it, four living creatures, each with four faces and four wings.
+
+115
+00:17:27,798 --> 00:17:43,272
+Beside each creature, Ezekiel describes a wheel, or rather, in his words, a wheel within a wheel, their rims full of eyes, moving in any direction without turning, lifted by the spirit of the living creatures.
+
+116
+00:17:43,272 --> 00:17:52,516
+Above it all, a throne, and on the throne, the likeness of a human form surrounded by brightness like fire.
+
+117
+00:17:52,516 --> 00:18:16,500
+For most of Jewish and Christian history, this vision has been read exactly the way you'd expect: as a theophany, a symbolic and overwhelming appearance of the divine, meant to convey the majesty and mobility of God's presence to a defeated, exiled people who badly needed to hear that their God hadn't stayed behind in Jerusalem.
+
+118
+00:18:16,500 --> 00:18:33,256
+That reading has an unbroken interpretive tradition going back to antiquity, especially in Jewish mysticism, where Ezekiel's vision became the foundation of an entire mystical tradition called Merkabah - "chariot" - mysticism.
+
+119
+00:18:33,256 --> 00:19:03,010
+Then, in 1968, a hotel manager turned author named Erich von Daniken read the same chapter and proposed something else entirely, in a book that's going to come up more than once tonight: that Ezekiel had witnessed, and clumsily described in Bronze Age language, an actual extraterrestrial spacecraft, complete with rotating parts, propulsion, and an occupant in some kind of suit.
+
+120
+00:19:03,010 --> 00:19:20,634
+In 1974, a NASA engineer named Josef Blumrich, who'd initially set out to debunk von Daniken, went further and published a technical paper attempting to reverse-engineer Ezekiel's wheels into a plausible landing craft.
+
+121
+00:19:20,634 --> 00:19:24,026
+I'll be honest about where I land on this one.
+
+122
+00:19:24,026 --> 00:19:29,053
+The engineering exercise is genuinely clever, and it's fun to read.
+
+123
+00:19:29,053 --> 00:19:45,005
+But it requires treating an intensely poetic, symbolically loaded prophetic vision, explicitly described in the text as "the appearance of the likeness of the glory of the Lord," as an eyewitness engineering report.
+
+124
+00:19:45,005 --> 00:19:58,125
+Everything else in the same book is unambiguously visionary and symbolic - the priest eats a scroll, later lies on his side for over a year as prophetic performance.
+
+125
+00:19:58,125 --> 00:20:01,653
+Nobody proposes those passages are literal.
+
+126
+00:20:01,653 --> 00:20:09,375
+I don't see a strong reason to make an exception for chapter one just because that's the chapter with wheels in it.
+
+127
+00:20:12,416 --> 00:20:16,133
+By the time we reach classical Rome, something changes.
+
+128
+00:20:16,133 --> 00:20:20,766
+For the first time we're not relying on a single disputed document.
+
+129
+00:20:20,766 --> 00:20:31,064
+We have centuries of continuous, official record-keeping about strange things in the sky, because the Romans built an entire branch of religious government around it.
+
+130
+00:20:31,064 --> 00:20:43,986
+They called them prodigia, portents, and the Senate took them seriously enough to appoint priests, the haruspices, specifically to interpret and ritually neutralize them.
+
+131
+00:20:43,986 --> 00:20:54,911
+The Roman historians who logged prodigy lists, particularly Livy and Pliny the Elder, recorded genuinely startling entries across four centuries.
+
+132
+00:20:54,911 --> 00:20:58,578
+Livy mentions phantom ships gleaming in the sky.
+
+133
+00:20:58,578 --> 00:21:16,655
+Multiple ancient sources describe round shields, clipeus in Latin, seen flying and gleaming across the sky in daylight, on more than one occasion, witnessed by enough people to be recorded as civic events rather than individual delusions.
+
+134
+00:21:16,655 --> 00:21:42,069
+Pliny's Natural History, our best surviving compilation of Roman scientific belief, includes a section cataloguing celestial oddities - burning spears in the sky, a beam that appeared to fall from the heavens near a northern Italian town, and lights described as "armor of the heavens" clashing during a war against a Germanic tribe.
+
+135
+00:21:42,069 --> 00:21:50,509
+Here's the honest, slightly deflating context, though: prodigy-collecting wasn't disinterested observation.
+
+136
+00:21:50,509 --> 00:21:54,307
+It was a civic institution with a political function.
+
+137
+00:21:54,307 --> 00:22:12,825
+A strange sky-event was politically useful - it justified sacrifices, calmed public anxiety after military setbacks, or, depending on which faction controlled the Senate that year, discredited a rival's leadership as having offended the gods.
+
+138
+00:22:12,825 --> 00:22:28,799
+Historians of Roman religion have noted that the sheer volume of recorded prodigies tends to spike suspiciously around military crises, which tells you as much about Roman anxiety and political theater as it does about the sky.
+
+139
+00:22:28,799 --> 00:22:32,005
+That doesn't mean every entry is invented.
+
+140
+00:22:32,005 --> 00:22:53,390
+Some of what they're describing sounds a lot like the same atmospheric phenomena we discussed with Nuremberg - halos, parhelia, bright meteors, or ball lightning, which was entirely unrecognized as a natural phenomenon until the twentieth century and would have terrified anyone who saw it.
+
+141
+00:22:53,390 --> 00:23:07,845
+A few entries almost certainly describe genuine meteor falls, which the Romans, lacking any concept of rocks falling from space, had every reason to interpret as divine weapons.
+
+142
+00:23:07,845 --> 00:23:15,645
+What I find most valuable about the Roman material isn't any single sighting, it's the pattern.
+
+143
+00:23:15,645 --> 00:23:34,073
+An advanced, literate, scientifically curious civilization looked at the same sky we do, saw things it couldn't explain often enough to build an entire religious bureaucracy around managing the anxiety, and never once reached for visitors from another world.
+
+144
+00:23:34,073 --> 00:23:40,839
+That explanation, it turns out, is much newer than the phenomenon it's trying to explain.
+
+145
+00:23:43,473 --> 00:23:54,502
+Which brings us back, five centuries later, to where I opened tonight, and to the fact that Nuremberg 1561 wasn't even the only one of its kind.
+
+146
+00:23:54,502 --> 00:24:14,613
+Five years later, in August 1566, the Swiss city of Basel experienced something remarkably similar: black spheres, again, this time reportedly moving in front of the sun and appearing to fight each other, described in another surviving broadsheet with another woodcut.
+
+147
+00:24:14,613 --> 00:24:50,163
+Historians researching both events have noted a detail that complicates the simple "it was just a sun dog" explanation: the timing places both events within a few years of the publication of Europe's first major printed manual on rocketry and fireworks, raising a genuinely intriguing alternative - that at least some of what people saw might have been early pyrotechnic experiments, misidentified fireworks, rather than either atmospheric optics or anything stranger.
+
+148
+00:24:50,163 --> 00:24:58,661
+I want to be honest about how unsatisfying that is as an answer, because I felt it while researching this chapter.
+
+149
+00:24:58,661 --> 00:25:15,217
+We have three candidate explanations for Nuremberg and Basel - rare compound atmospheric optics, early fireworks, or something genuinely unexplained - and reasonable historians land in different places on all three.
+
+150
+00:25:15,217 --> 00:25:26,789
+The astronomer and skeptic Ian Ridpath, who has spent decades tracing UFO reports back to mundane explanations, favors the atmospheric reading.
+
+151
+00:25:26,789 --> 00:25:33,363
+Other archivists point out the fireworks-timing coincidence without fully endorsing it.
+
+152
+00:25:33,363 --> 00:25:45,319
+Nobody has a clean, complete answer that accounts for every detail in Glaser's woodcut, including that stubborn detail of something falling to earth in smoke.
+
+153
+00:25:45,319 --> 00:25:50,778
+What's not in dispute is the religious framing both broadsheets share.
+
+154
+00:25:50,778 --> 00:26:16,759
+Glaser's text ends by calling the event a divine warning, sent to bring the city to repentance - language that fits perfectly into the anxious, apocalyptic mood of a Europe splitting apart over the Reformation, where reformers had spent decades teaching people to read unusual sky events as messages from God about the coming end of the age.
+
+155
+00:26:16,759 --> 00:26:21,472
+A strange light in the sky wasn't just a strange light.
+
+156
+00:26:21,472 --> 00:26:22,949
+It was a sermon.
+
+157
+00:26:22,949 --> 00:26:39,528
+It would take nearly four hundred years, and Carl Jung's 1958 book on flying saucers as a modern myth, before anyone connected these two Renaissance broadsheets to the twentieth-century UFO phenomenon at all.
+
+158
+00:26:39,528 --> 00:26:48,663
+For most of their existence, Glaser's woodcuts sat in library archives, filed under religious ephemera, not mystery.
+
+159
+00:26:48,663 --> 00:26:52,740
+We're the ones who went back and re-read them as something else.
+
+160
+00:26:52,740 --> 00:26:59,265
+Which, again, is a pattern worth remembering as we keep moving forward in time.
+
+161
+00:27:01,515 --> 00:27:16,457
+There's one more piece of this Renaissance puzzle worth sitting with before we move on, and you don't need a broadsheet to find it, you just need to look up, in paintings that have been hanging in plain sight in major museums for five hundred years.
+
+162
+00:27:16,457 --> 00:27:32,269
+The most cited example is a late fifteenth-century tempera panel usually called The Madonna with Saint Giovannino, attributed to the workshop of Domenico Ghirlandaio, in the Palazzo Vecchio in Florence.
+
+163
+00:27:32,269 --> 00:27:44,670
+In the upper background, behind Mary's shoulder, there's a small, distinctly disc-shaped object rendered in gold, with visible ray-lines, hovering above a hillside.
+
+164
+00:27:44,670 --> 00:27:51,229
+A man and his dog stand below it, both looking straight up, shielding their eyes.
+
+165
+00:27:51,229 --> 00:27:52,796
+It's not hidden.
+
+166
+00:27:52,796 --> 00:27:54,791
+It's not ambiguous.
+
+167
+00:27:54,791 --> 00:28:03,278
+It's just there, quietly, in the background of a devotional painting nobody thought twice about for centuries.
+
+168
+00:28:03,278 --> 00:28:37,807
+Art historians have a consistent, well-documented answer, and I think it's worth actually taking seriously rather than treating as a dismissal: that object is very likely a depiction of the Star of Bethlehem, rendered using the visual conventions Renaissance painters used for celestial and angelic light, a convention you can trace through other paintings from the same period showing similarly stylized radiant discs representing divine glory, guiding stars, or the Holy Spirit.
+
+169
+00:28:37,807 --> 00:28:46,875
+The figures looking up and shielding their eyes fit a known devotional pose used elsewhere for exactly that kind of scene.
+
+170
+00:28:46,875 --> 00:28:50,545
+Is that explanation completely satisfying?
+
+171
+00:28:50,545 --> 00:29:01,991
+Mostly, yes, once you've seen a handful of other paintings using the same visual shorthand for miraculous light, this one stops looking so anomalous.
+
+172
+00:29:01,991 --> 00:29:23,945
+But I'll admit the shape and the two figures' body language make it an unusually literal-looking example, and it's easy to see why it keeps circulating online as proof, even though most art historians who've actually studied it read it as fairly conventional Marian iconography rather than a hidden UFO.
+
+173
+00:29:23,945 --> 00:29:47,028
+I bring this up less because I think it's a real sighting, and more because it illustrates something we're going to keep running into tonight: the line between a record of a strange event and an artistic convention we've since lost the context for is thinner and blurrier than either the true believers or the confident debunkers usually admit.
+
+174
+00:29:49,951 --> 00:29:53,332
+By the late nineteenth century, something shifts.
+
+175
+00:29:53,332 --> 00:30:06,787
+For the first time, the mystery objects in the sky start looking less like divine chariots and more like machines, because that's exactly what an entire nation had just started dreaming about building.
+
+176
+00:30:06,787 --> 00:30:29,541
+Beginning in November 1896 in California and spreading east over the following months, thousands of Americans across more than twenty states reported seeing a cigar-shaped "airship" in the night sky, equipped, according to countless newspaper accounts, with wings, propellers, and a bright searchlight.
+
+177
+00:30:29,541 --> 00:30:52,019
+Unlike the ambiguous medieval broadsheets, these reports came from a country obsessed with a very specific technological question: heavier-than-air powered flight hadn't been achieved yet, the Wright brothers were still seven years away, and everyone was reading breathless newspaper speculation about who would build it first.
+
+178
+00:30:52,019 --> 00:30:58,741
+What followed was, by any honest account, one of the great media phenomena of the era.
+
+179
+00:30:58,741 --> 00:31:07,067
+Newspapers, many of them locked in fierce circulation wars, ran increasingly elaborate follow-up stories.
+
+180
+00:31:07,067 --> 00:31:11,906
+A supposed inventor from Kansas claimed to be piloting the craft.
+
+181
+00:31:11,906 --> 00:31:44,194
+A notorious hoax article described an airship crashing near a small Texas town in April 1897, complete with a dead alien pilot supposedly buried in the local cemetery - a story historians researching the incident have traced convincingly to a local reporter drumming up interest in a town whose railroad bid had just failed, with no contemporary corroborating evidence and no grave ever conclusively located despite repeated searches.
+
+182
+00:31:44,194 --> 00:32:08,713
+Most serious historians of the airship flap conclude the vast majority of sightings were a mix of genuine misidentifications of the planet Venus and bright stars, outright newspaper hoaxes competing for readers, and a healthy dose of collective excitement about the coming age of flight, all reinforcing each other in a feedback loop.
+
+183
+00:32:08,713 --> 00:32:23,992
+A small number of reports remain genuinely puzzling even after that filter - a handful of detailed, sober accounts from credible witnesses describing something more structured than a misidentified planet.
+
+184
+00:32:23,992 --> 00:32:31,480
+What I find most useful about 1896-97 isn't any individual sighting.
+
+185
+00:32:31,480 --> 00:32:34,105
+It's the shift in the story itself.
+
+186
+00:32:34,105 --> 00:32:43,567
+For thousands of years, the unexplained thing in the sky had been a chariot, a disk, a portent, a wheel of fire.
+
+187
+00:32:43,567 --> 00:32:51,115
+Now, for the first time, it's an airship, a machine, built by someone, somewhere.
+
+188
+00:32:51,115 --> 00:32:59,114
+The explanation people reached for had changed to match what they'd just started imagining was technologically possible.
+
+189
+00:32:59,114 --> 00:33:14,613
+That pattern, the sky-mystery always wearing the costume of whatever technology its witnesses have just started to imagine, is going to repeat itself almost exactly fifty years later, in the deserts of New Mexico.
+
+190
+00:33:17,147 --> 00:33:29,895
+Fifty years after the airship flap, and this time it's pilots doing the reporting, trained observers, in the middle of a war, describing something that had no business being in the sky with them.
+
+191
+00:33:29,895 --> 00:33:54,486
+Starting in late 1944, Allied aircrews flying night missions over Europe and the Pacific began reporting small, glowing balls of light, orange, red, or white, that would appear alongside their aircraft, pace them at speed, execute maneuvers no propeller aircraft of the era could survive, and then vanish.
+
+192
+00:33:54,486 --> 00:34:07,699
+American pilots of one night-fighter squadron gave them a name that stuck: "foo fighters," borrowed, reportedly, from a nonsense phrase in a popular comic strip of the time.
+
+193
+00:34:07,699 --> 00:34:13,063
+Both sides, it turned out later, thought the other side had built them.
+
+194
+00:34:13,063 --> 00:34:17,090
+American pilots suspected a secret German weapon.
+
+195
+00:34:17,090 --> 00:34:25,891
+German pilots, questioned after the war, reported seeing near-identical lights and assumed the Allies had built them.
+
+196
+00:34:25,891 --> 00:34:28,003
+Neither side had.
+
+197
+00:34:28,003 --> 00:34:48,565
+Postwar interrogation of German scientists and a thorough review of wartime engineering programs found no secret weapon matching the description on either side, which is itself one of the stronger pieces of evidence that whatever pilots were seeing wasn't manufactured by anyone in that war.
+
+198
+00:34:48,565 --> 00:34:54,869
+The mainstream explanation, and it's a genuinely solid one, is a mix of St.
+
+199
+00:34:54,869 --> 00:35:25,172
+Elmo's fire, a real, well-documented electrical discharge phenomenon that can appear as glowing orbs around aircraft in certain atmospheric conditions, ball lightning, and simple optical effects from exhaust and static discharge at altitude, combined with the very reasonable tendency of exhausted combat pilots to misjudge the distance, size, and behavior of lights against a night sky with no reference points.
+
+200
+00:35:25,172 --> 00:35:28,677
+None of that is a knock on the witnesses.
+
+201
+00:35:28,677 --> 00:35:43,213
+Distance and speed are notoriously difficult to judge for a point of light with nothing else around it to measure against, a problem that shows up again and again in aviation history, right up to the present day.
+
+202
+00:35:43,213 --> 00:35:54,858
+What makes foo fighters matter for tonight's story isn't that they were secretly extraterrestrial, most investigators, then and now, doubt that.
+
+203
+00:35:54,858 --> 00:36:12,018
+It's that they mark the true starting point of the modern UFO phenomenon: trained military observers, using technical vocabulary, filing official reports through a chain of command, about objects that outperformed their own aircraft.
+
+204
+00:36:12,018 --> 00:36:17,300
+That's a fundamentally different kind of witness than a sixteenth-century broadsheet.
+
+205
+00:36:17,300 --> 00:36:27,228
+And two and a half years after the war ended, that same kind of witness would kick off the single most famous UFO story in American history.
+
+206
+00:36:29,367 --> 00:36:35,021
+Kenneth Arnold wasn't looking for anything strange on June 24th, 1947.
+
+207
+00:36:35,021 --> 00:36:50,498
+He was a private pilot searching for the wreckage of a downed Marine transport plane near Mount Rainier when he saw nine crescent-shaped objects flying in formation at what he estimated to be a physically implausible speed.
+
+208
+00:36:50,498 --> 00:37:01,387
+Describing their motion to a reporter, he said they moved like a saucer if you skip it across water, a phrase about the way they flew, not their shape.
+
+209
+00:37:01,387 --> 00:37:15,518
+The reporter, working the wire, shortened it to "flying saucer." The name stuck to the object instead of the motion, and an entire vocabulary was born out of a single compressed quote.
+
+210
+00:37:15,518 --> 00:37:37,867
+Arnold's sighting triggered a genuine media wave, hundreds of copycat reports across the country within weeks, most now attributed to that same combination we keep encountering: heightened public attention, misidentified aircraft and weather phenomena, and a fresh, ready-made vocabulary for describing them.
+
+211
+00:37:37,867 --> 00:37:50,487
+Then, on July 8th, the Roswell Army Air Field public information office issued a press release stating they had recovered a "flying disc" from a ranch outside town.
+
+212
+00:37:50,487 --> 00:37:58,264
+For about a day, it was a genuine, official, on-the-record government claim of a captured flying saucer.
+
+213
+00:37:58,264 --> 00:38:01,643
+The next day, the story changed.
+
+214
+00:38:01,643 --> 00:38:12,498
+A general held a press conference in Fort Worth displaying wreckage identified as a conventional weather balloon, and the flying-disc story was officially retracted.
+
+215
+00:38:12,498 --> 00:38:22,657
+For nearly thirty years, that was the end of it, a minor, forgotten news item, one of dozens from the summer of 1947.
+
+216
+00:38:22,657 --> 00:38:39,282
+Roswell only became the culture-defining story you already know decades later, starting in the late 1970s, when researchers began reinterviewing surviving witnesses and proposing the original weather-balloon explanation was a cover story.
+
+217
+00:38:39,282 --> 00:38:40,815
+The U.S.
+
+218
+00:38:40,815 --> 00:39:16,179
+Air Force eventually published two extensive reports, in 1994 and 1997, concluding the wreckage actually came from Project Mogul, a highly classified program using high-altitude balloon trains to detect Soviet nuclear tests, which would explain both the original disc description, since a Mogul balloon array looked genuinely unlike a conventional weather balloon, and the reason the truth was suppressed for decades: not aliens, but nuclear-espionage secrecy at the dawn of the Cold War.
+
+219
+00:39:16,179 --> 00:39:23,400
+I find that explanation more interesting than a cover-up about aliens, honestly, not less.
+
+220
+00:39:23,400 --> 00:39:43,172
+A government hiding a classified nuclear-detection program behind a deliberately boring weather-balloon story, for thirty straight years, while a far stranger myth grew in the silence it left behind, that's a real, documented pattern in how secrecy itself manufactures mystery.
+
+221
+00:39:43,172 --> 00:39:48,920
+We're about to watch it happen again, on a much larger institutional scale.
+
+222
+00:39:51,768 --> 00:39:55,925
+Between 1947 and 1969, the U.S.
+
+223
+00:39:55,925 --> 00:40:13,898
+Air Force ran three consecutive official investigations into UFO reports - Project Sign, Project Grudge, and finally the one that lasted, Project Blue Book - and by the time it closed, it had logged and investigated over twelve thousand individual reports.
+
+224
+00:40:13,898 --> 00:40:21,827
+The numbers, when you actually read the final report rather than the mythology around it, are fairly unglamorous.
+
+225
+00:40:21,827 --> 00:40:35,411
+Blue Book concluded that roughly ninety percent of cases had conventional explanations - aircraft, balloons, astronomical objects, birds, and a healthy number of outright hoaxes.
+
+226
+00:40:35,411 --> 00:40:51,327
+What draws far less attention is the other number: 701 cases, in the project's own final tally, were formally closed as "unidentified," meaning investigators, working with the full resources of the U.S.
+
+227
+00:40:51,327 --> 00:40:55,867
+Air Force, genuinely couldn't determine what the witnesses had seen.
+
+228
+00:40:55,867 --> 00:40:57,597
+That's not nothing.
+
+229
+00:40:57,597 --> 00:41:00,963
+It's also not evidence of alien visitation.
+
+230
+00:41:00,963 --> 00:41:08,626
+It's an honest admission of the limits of investigation, sitting quietly in an official archive most people have never opened.
+
+231
+00:41:08,626 --> 00:41:15,498
+What made Blue Book controversial wasn't really its conclusions, it was the atmosphere around it.
+
+232
+00:41:15,498 --> 00:41:29,454
+A scientific review panel, commissioned to give the program a final independent assessment, recommended shutting the project down in 1968, concluding further study wasn't likely to advance science.
+
+233
+00:41:29,454 --> 00:41:48,309
+Critics, including some scientists who'd served on the committee itself, argued the investigation had been designed from the start to reach exactly that conclusion, pointing to leaked internal memos suggesting the goal was to debunk rather than genuinely investigate.
+
+234
+00:41:48,309 --> 00:41:52,998
+Blue Book closed in December 1969.
+
+235
+00:41:52,998 --> 00:41:56,422
+For the next several decades, official U.S.
+
+236
+00:41:56,422 --> 00:42:01,706
+government interest in the subject went essentially silent, at least publicly.
+
+237
+00:42:01,706 --> 00:42:06,268
+It would take until 2007, and a request from a U.S.
+
+238
+00:42:06,268 --> 00:42:15,393
+senator, for anyone in government to seriously reopen the question, in a program that stayed classified and unacknowledged for another decade.
+
+239
+00:42:15,393 --> 00:42:24,170
+I want to pause on that silence, because I think it did as much to shape the modern UFO mythology as any single sighting.
+
+240
+00:42:24,170 --> 00:42:36,744
+Decades of official quiet, after more than twenty years of official, if imperfect, investigation, is exactly the kind of vacuum conspiracy theories are built to fill.
+
+241
+00:42:36,744 --> 00:42:57,108
+Whether that vacuum was hiding something or was just bureaucratic disinterest in a subject with no career upside, that's the argument that was about to explode, in the most unlikely place: a hardcover bestseller written by a hotel manager with no archaeological training at all.
+
+242
+00:42:59,559 --> 00:43:03,773
+In 1968, a book called Chariots of the Gods?
+
+243
+00:43:03,773 --> 00:43:17,438
+was published by a man named Erich von Daniken, a Swiss hotel manager with a criminal record for fraud and embezzlement, and no formal training in archaeology, history, or any related field.
+
+244
+00:43:17,438 --> 00:43:31,429
+It went on to sell over sixty-five million copies worldwide and, more than any single work before or since, invented the "ancient astronaut" genre we've been circling around all night.
+
+245
+00:43:31,429 --> 00:44:04,831
+Von Daniken's core claim was straightforward and, you have to admit, seductive: that extraterrestrial visitors made contact with early human civilizations, and that the evidence is scattered across the ancient world for anyone willing to look - the precision of the Egyptian pyramids, the Nazca Lines in Peru, the Sanskrit vimana we talked about earlier, Ezekiel's wheel, all of it reinterpreted as garbled folk memory of actual alien technology.
+
+246
+00:44:04,831 --> 00:44:14,641
+It's a single unifying theory for practically every unexplained ancient site on Earth, which is exactly why it's remained so durable.
+
+247
+00:44:14,641 --> 00:44:31,197
+It's also, according to essentially every archaeologist, engineer, and Egyptologist who has examined his specific claims in detail, wrong on the facts in ways that go well beyond reasonable scholarly disagreement.
+
+248
+00:44:31,197 --> 00:45:20,922
+A widely cited 1976 rebuttal, drawing on dozens of specialists, went through von Daniken's claims site by site: the precision of the pyramids is well within the demonstrated capabilities of Bronze Age surveying and engineering, extensively documented in surviving construction records and worker villages; the Nazca Lines are readily explainable, and partially reproducible, using simple staked-rope techniques, without any aerial vantage point required at all; and several of von Daniken's most dramatic photographic evidence claims were later shown to be either misidentified conventional objects or, in at least a few documented instances, outright fabrications.
+
+249
+00:45:20,922 --> 00:45:27,842
+What's genuinely remarkable isn't that a flawed book existed, plenty of those get forgotten.
+
+250
+00:45:27,842 --> 00:45:30,987
+It's that this particular one didn't.
+
+251
+00:45:30,987 --> 00:45:52,989
+Its central move, take something ancient people didn't fully explain to modern satisfaction, and fill the gap with extraterrestrials, turned out to be almost infinitely reusable, and you can trace its DNA directly into decades of documentaries, and yes, into more than a few corners of this very platform.
+
+252
+00:45:52,989 --> 00:45:58,572
+I'd rather leave you with the harder, more honest version of the same wonder.
+
+253
+00:45:58,572 --> 00:46:10,090
+The pyramids don't need alien help to be one of the greatest engineering achievements in human history - if anything, that makes them more impressive, not less.
+
+254
+00:46:10,090 --> 00:46:19,251
+Bronze Age humans built them, with astonishing skill, using tools and mathematics we can still reconstruct today.
+
+255
+00:46:19,251 --> 00:46:22,920
+Sometimes the truth was never the mystery's enemy.
+
+256
+00:46:22,920 --> 00:46:24,916
+It was the whole point.
+
+257
+00:46:26,960 --> 00:46:31,465
+Which brings us, finally, to now, to an official U.S.
+
+258
+00:46:31,465 --> 00:46:36,353
+government position that would have been unthinkable to the Blue Book-era Air Force.
+
+259
+00:46:36,353 --> 00:46:44,759
+In 2020, Congress created the All-domain Anomaly Resolution Office, AARO, giving the U.S.
+
+260
+00:46:44,759 --> 00:47:00,907
+government its first standing, congressionally mandated body dedicated to investigating unidentified anomalous phenomena, the current, deliberately broader official term, covering sightings in the air, at sea, and in space.
+
+261
+00:47:00,907 --> 00:47:16,070
+Its major public reports, released from 2024 onward, disclosed that the office had logged well over sixteen hundred reports since it opened, with several hundred added in a single reporting year.
+
+262
+00:47:16,070 --> 00:47:24,034
+The large majority were resolved as balloons, drones, birds, or other conventional objects.
+
+263
+00:47:24,034 --> 00:47:32,023
+A smaller number, several hundred by the office's own count, remained unresolved for lack of sufficient data.
+
+264
+00:47:32,023 --> 00:47:45,757
+And a still smaller set, several dozen across the reports released so far, were flagged as showing genuinely anomalous characteristics or flight behavior worth further, dedicated analysis.
+
+265
+00:47:45,757 --> 00:47:58,748
+The office has been consistent on one specific point across every report it has released: no evidence, so far, of extraterrestrial origin for any case investigated.
+
+266
+00:47:58,748 --> 00:48:01,500
+That sentence hasn't changed.
