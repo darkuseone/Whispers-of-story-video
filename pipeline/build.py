@@ -2076,19 +2076,27 @@ def main(job_path):
     log("── финал")
     final = out / "final.mp4"
     render.mux(silent, mixed, final)
-    render.write_srt(marks, out / "subs.srt")
 
     # ПРОВЕРКА ЗАМЕРОМ, а не на глаз. Расхождение видео и звука — симптом
     # перекрытия переходов: код возврата ноль, лог чистый, а конец начитки
     # молча срезан -shortest. Видно это только здесь.
     vd = render.duration_of(final, "v")
     ad = render.duration_of(final, "a")
+    # SRT — строго по длине готового файла, не по marks/total_audio.
+    # Иначе хвост субтитров уезжает за конец ролика на минуты.
+    media_end = min(x for x in (vd, ad) if x > 0) if (vd > 0 or ad > 0) else total
+    n_srt = render.write_srt(marks, out / "subs.srt", max_end=media_end)
     size_gb = final.stat().st_size / 2**30
     log(f"  видео {vd:.3f} с, звук {ad:.3f} с, тайм-коды {total:.3f} с")
+    log(f"  субтитры {n_srt} реплик до {media_end:.3f} с "
+        f"(из {len(marks)} по тайм-кодам)")
     log(f"  файл  {size_gb:.2f} ГБ  ({final.stat().st_size * 8 / vd / 1e6:.1f} Мбит/с)")
     if abs(vd - ad) > 0.5:
         log(f"  ! видео и звук разошлись на {abs(vd - ad):.2f} с — "
             f"это перекрытие переходов, смотри set_render_durations")
+    if total - media_end > 1.0:
+        log(f"  ! тайм-коды длиннее ролика на {total - media_end:.1f} с — "
+            f"хвост начитки срезан mux -shortest; SRT обрезан под файл")
     if size_gb > 1.9:
         log(f"  ! {size_gb:.2f} ГБ при лимите GitHub Releases в 2 ГБ — "
             f'подними crf в style_override (сейчас {st.crf})')
