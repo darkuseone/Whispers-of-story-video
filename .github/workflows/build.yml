@@ -8,7 +8,7 @@ on:
         required: true
         default: 'ancient-01'
       stage:
-        description: 'smoke / magnific / material / vet / assets / render / auto'
+        description: 'smoke / magnific / material / vet / assets / render / shorts / auto'
         required: true
         default: 'auto'
   push:
@@ -18,9 +18,11 @@ on:
       - 'jobs/*.json'
       - '.render/**'
       - '.build/**'
+      - '.shorts/**'
 
 # Ручной запуск — как раньше. Push нового jobs/*.json → auto. Push
 # .render/<job>.retry → только монтаж (кэш озвучки/материала). Push
+# .shorts/<job>.retry → только шортсы (кэш + final.mp4 из релиза). Push
 # .build/<job>.retry → полный stage: auto для УЖЕ лежащего jobs/<job>.json
 # (когда первый прогон упал до кэша, или нужен полный перезапуск без
 # удаления спецификации). Правка готовой спецификации сборку не трогает.
@@ -62,11 +64,40 @@ jobs:
           if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
             DIFF_JOBS=$(git show --name-status --format= "$AFTER" -- jobs/ || true)
             DIFF_RENDER=$(git show --name-status --format= "$AFTER" -- .render/ || true)
+            DIFF_SHORTS=$(git show --name-status --format= "$AFTER" -- .shorts/ || true)
             DIFF_BUILD=$(git show --name-status --format= "$AFTER" -- .build/ || true)
           else
             DIFF_JOBS=$(git diff --name-status "$BEFORE" "$AFTER" -- jobs/ || true)
             DIFF_RENDER=$(git diff --name-status "$BEFORE" "$AFTER" -- .render/ || true)
+            DIFF_SHORTS=$(git diff --name-status "$BEFORE" "$AFTER" -- .shorts/ || true)
             DIFF_BUILD=$(git diff --name-status "$BEFORE" "$AFTER" -- .build/ || true)
+          fi
+
+          # Только шортсы: .shorts/<job>.retry — кэш материалов + final.mp4
+          # из релиза final-<job>. Монтаж длинного ролика не трогаем.
+          SHORTS_JOBS=()
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            status="${line%%$'\t'*}"
+            file="${line#*$'\t'}"
+            case "$status" in A|M) ;; *) continue ;; esac
+            case "$file" in
+              .shorts/*.retry) ;;
+              *) continue ;;
+            esac
+            base="${file#.shorts/}"
+            base="${base%.retry}"
+            SHORTS_JOBS+=("$base")
+          done <<< "$DIFF_SHORTS"
+
+          if [ ${#SHORTS_JOBS[@]} -gt 0 ]; then
+            JSON=$(printf '%s\n' "${SHORTS_JOBS[@]}" | python3 -c \
+              'import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+            echo "jobs=$JSON" >> "$GITHUB_OUTPUT"
+            echo "stage=shorts" >> "$GITHUB_OUTPUT"
+            echo "run_build=true" >> "$GITHUB_OUTPUT"
+            echo "Пересборка шортсов (кэш + релиз): $JSON"
+            exit 0
           fi
 
           # Пересборка монтажа: .render/<job>.retry — только stage render,
@@ -253,10 +284,11 @@ jobs:
             material) need="" ; want="PEXELS_API_KEY PIXABAY_API_KEY MAGNIFIC_API_KEY" ;;
             vet)      need="" ; want="XAI_API_KEY" ;;
             render)   need="" ; want="" ;;
+            shorts)   need="" ; want="" ;;
             *)        need="ELEVENLABS_API_KEY PEXELS_API_KEY PIXABAY_API_KEY" ; want="ELEVENLABS_VOICE_ID XAI_API_KEY MAGNIFIC_API_KEY" ;;
           esac
           case "${{ steps.pick.outputs.stage }}" in
-            smoke|magnific|material|vet|render) ;;
+            smoke|magnific|material|vet|render|shorts) ;;
             *)
               if [ -z "$XAI_API_KEY" ] && [ -z "$MAGNIFIC_API_KEY" ]; then
                 echo "ПУСТО: и XAI_API_KEY, и MAGNIFIC_API_KEY — рисовать картинки нечем"
@@ -397,7 +429,7 @@ jobs:
           fail_on_unmatched_files: true
 
       - name: Этап 1 — озвучка, изображения, материал
-        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render' && steps.pick.outputs.stage != 'shorts' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         env:
           XAI_API_KEY:        ${{ secrets.XAI_API_KEY }}
           # 70% картинок, редкие вставки видео и библиотека графики.
@@ -422,27 +454,41 @@ jobs:
 
       # Только если что-то качали. На чистом перерендере папка не менялась.
       - name: Кладём материалы в кэш
-        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render' && steps.pick.outputs.stage != 'shorts'
         uses: actions/cache/save@v4
         with:
           path: work/${{ steps.pick.outputs.id }}/assets
           key: assets-${{ steps.pick.outputs.id }}-v1-${{ github.run_id }}
 
       - name: Этап 2 — монтаж
-        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'shorts'
         run: python pipeline/build.py jobs/${{ steps.pick.outputs.job }}.json
 
       # Описание, главы, две обложки через xAI (крупный жёлтый текст на
       # картинке). Без ключа covers.py уйдёт в запасной PIL-кадр из ролика.
       - name: Этап 3 — комплект для YouTube
-        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'shorts'
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: python pipeline/youtube.py jobs/${{ steps.pick.outputs.job }}.json
 
-      # Два вертикальных шортса: хук и развязка. Вопрос сверху на всю
-      # длину, белые пословные капшены сверху. Ключей не тратит — режет
-      # исходники кадров и звук из final.mp4 локальным ffmpeg.
+      # Только шортсы: final.mp4 берём из уже выложенного релиза, материалы
+      # — из кэша. Монтаж длинного ролика не повторяем.
+      - name: Достаём final.mp4 из релиза
+        if: steps.pick.outputs.stage == 'shorts'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ID="${{ steps.pick.outputs.id }}"
+          JOB="${{ steps.pick.outputs.job }}"
+          mkdir -p "work/$ID/out"
+          gh release download "final-$JOB" -p final.mp4 -D "work/$ID/out" --clobber
+          test -f "work/$ID/out/final.mp4"
+          ls -lh "work/$ID/out/final.mp4"
+
+      # Два вертикальных шортса: хук-вопрос сверху (с переносом), обычные
+      # субтитры по центру, спокойный Ken Burns. Ключей не тратит.
       - name: Этап 4 — шортсы
         if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         run: python pipeline/shorts.py jobs/${{ steps.pick.outputs.job }}.json
@@ -453,12 +499,17 @@ jobs:
         run: |
           set -e
           DIR=work/${{ steps.pick.outputs.id }}/out
-          test -f "$DIR/final.mp4" || { echo "final.mp4 не найден"; find work -type f | head -40; exit 1; }
+          STAGE="${{ steps.pick.outputs.stage }}"
+          if [ "$STAGE" = "shorts" ]; then
+            test -f "$DIR/shorts/short_1.mp4" || { echo "short_1.mp4 не найден"; find work -type f | head -40; exit 1; }
+          else
+            test -f "$DIR/final.mp4" || { echo "final.mp4 не найден"; find work -type f | head -40; exit 1; }
+          fi
           echo "dir=$DIR" >> $GITHUB_OUTPUT
-          ls -la "$DIR"
+          ls -la "$DIR" "$DIR/shorts" 2>/dev/null || ls -la "$DIR"
 
       - name: Выдаём ролик
-        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'shorts'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: final-${{ steps.pick.outputs.job }}
@@ -470,6 +521,17 @@ jobs:
             ${{ steps.out.outputs.dir }}/shorts/short_2.mp4
             ${{ steps.out.outputs.dir }}/cover_1.jpg
             ${{ steps.out.outputs.dir }}/cover_2.jpg
+          fail_on_unmatched_files: true
+
+      - name: Обновляем шортсы в релизе
+        if: steps.pick.outputs.stage == 'shorts'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: final-${{ steps.pick.outputs.job }}
+          name: Готово — ${{ steps.pick.outputs.job }}
+          files: |
+            ${{ steps.out.outputs.dir }}/shorts/short_1.mp4
+            ${{ steps.out.outputs.dir }}/shorts/short_2.mp4
           fail_on_unmatched_files: true
 
       - name: Комплект для выкладки отдельно
@@ -484,6 +546,7 @@ jobs:
             ${{ steps.out.outputs.dir }}/thumbnail.jpg
             ${{ steps.out.outputs.dir }}/subs.srt
             ${{ steps.out.outputs.dir }}/shorts/shorts.json
+          if-no-files-found: ignore
           retention-days: 30
 
       # Если упали на этапе 3/4, монтаж уже съел 1–2 часа — final.mp4 и
