@@ -19,8 +19,10 @@ shots.json (пути ИСХОДНИКОВ) и marks.json. Ключей не тр
     пословно / не караоке по 1–3 слова — они плывут относительно
     звука, если тайм-коды слов без пауз между главами)
   - вопрос сверху, перенос строк, поля — не вылезает за край
-  - спокойный Ken Burns / лёгкий zoom, без «плавающей» камеры
-    и без горизонтальных проездов через весь кадр
+  - БЕЗ Ken Burns / дрейфа поверх: только нарезка исходников.
+    Движение в клипе — то, что уже есть в футаже (zoom/parallax
+    длинного ролика); фото — статичный кадр. Лишний zoompan
+    на телефоне читается как тряска
   - длина 30–90 с, цель ~55–70 с
   - в конце стрелка на полный ролик
 
@@ -52,13 +54,9 @@ HARD_MAX = 90.0
 MIN_LEN = 28.0
 MIN_LEN_SOFT = 12.0       # тестовые короткие ролики (mock)
 
-# Кадр шортса. Раньше 1.4–2.6 с + агрессивные sweep — «камера скачет».
-# Теперь держим дольше и двигаем еле заметно (Ken Burns).
+# Кадр шортса. Без дополнительного движения поверх — только нарезка.
 CUT_RANGE = (2.8, 4.8)
 CUT_MERGED_MAX = 7.0
-
-# Вертикальный холст с запасом только под МЯГКИЙ зум/дрейф (~12%).
-CANVAS_W, CANVAS_H = 1216, 2160
 
 # Safe zone Shorts: верх ~12% UI, низ ~18% кнопки.
 # Вопрос — в верхней безопасной трети; субтитры — строго по центру.
@@ -311,37 +309,12 @@ def question_for(win, marks, job_questions, n):
 
 # ─────────────────────── ВЕРТИКАЛЬНЫЙ ВИДЕОРЯД ───────────────────────
 
-# Только спокойный Ken Burns. Амплитуда малая: на телефоне агрессивный
-# sweep_left (x 0.18→0.82) читается как «кривая камера».
-V_MOVES = {
-    "kb_in":     dict(w0=1.14, w1=1.02, x0=.50, x1=.50, y0=.46, y1=.44),
-    "kb_out":    dict(w0=1.02, w1=1.14, x0=.50, x1=.50, y0=.44, y1=.46),
-    "kb_up":     dict(w0=1.08, w1=1.08, x0=.50, x1=.50, y0=.58, y1=.40),
-    "kb_down":   dict(w0=1.08, w1=1.08, x0=.50, x1=.50, y0=.40, y1=.58),
-    "kb_in_up":  dict(w0=1.12, w1=1.03, x0=.50, x1=.50, y0=.52, y1=.42),
-}
-
-
-def v_motion(move: str, dur: float) -> str:
-    """Мягкий Ken Burns: linear на длинных кусках, smooth на коротких."""
-    m = V_MOVES[move]
-    ease = "linear" if dur >= 3.5 else "smooth"
-    p = render.ease_expr(ease, dur)
-    w0 = SW * m["w0"]
-    w1 = SW * m["w1"]
-    wexpr = f"trunc(({w0:.1f}+({w1 - w0:.1f})*{p})/2)*2"
-    xexpr = f"(iw-{SW})*({m['x0']:.3f}+({m['x1'] - m['x0']:.3f})*{p})"
-    yexpr = f"(ih-{SH})*({m['y0']:.3f}+({m['y1'] - m['y0']:.3f})*{p})"
-    return (f"scale=w='{wexpr}':h=-2:eval=frame,"
-            f"crop={SW}:{SH}:x='{xexpr}':y='{yexpr}',setsar=1")
-
-
 def prepare_vertical(src: Path, dst: Path):
-    """Вертикальный холст 9:16 из исходника (не апскейл из готового 16:9)."""
+    """Статичный вертикальный кадр 9:16 из исходника (без зума/дрейфа)."""
     from PIL import Image
     im = Image.open(src).convert("RGB")
     iw, ih = im.size
-    ar = CANVAS_W / CANVAS_H
+    ar = SW / SH
     cw = min(iw, ih * ar)
     ch = cw / ar
     if ch > ih:
@@ -351,7 +324,7 @@ def prepare_vertical(src: Path, dst: Path):
     cx = int((iw - cw) * 0.5)
     cy = int((ih - ch) * 0.38)
     im.crop((cx, cy, cx + cw, cy + ch)).resize(
-        (CANVAS_W, CANVAS_H), Image.LANCZOS).save(dst, quality=95)
+        (SW, SH), Image.LANCZOS).save(dst, quality=95)
 
 
 _STOP = {
@@ -380,26 +353,20 @@ def cut_plan(shots, t0, t1, rng, words=None):
     """
     Перерезка окна: 2.8–4.8 с на кадр + семантический выбор исходника.
 
-    Раньше брали ровно тот кадр длинного ролика, что стоял на таймлайне —
-    на развязке про Пентагон мог остаться египетский музей. Теперь среди
-    соседей (±45 с) предпочитаем файл, чьё имя/tag пересекается со
-    словами, которые в этот момент звучат.
+    Без Ken Burns / sweep поверх: движение только то, что уже есть
+    в исходном клипе. Фото остаётся статичным кадром.
     """
     cuts, t = [], t0
-    move_cycle = ["kb_in", "kb_up", "kb_out", "kb_down", "kb_in_up"]
-    mi = rng.randrange(len(move_cycle))
 
     while t < t1 - 0.05:
         dur = min(rng.uniform(*CUT_RANGE), t1 - t)
         mid = t + dur / 2
-        # слова, звучащие на этом куске
         said = ""
         if words:
             said = " ".join(w["text"] for w in words
                             if t <= w["start"] < t + dur)
         said_tok = _tokens(said)
 
-        # кандидаты: кадр на таймлайне + соседи того же kind
         on_tl = next((s for s in shots
                       if s["start"] <= mid < s["start"] + s["duration"]),
                      shots[-1])
@@ -410,15 +377,11 @@ def cut_plan(shots, t0, t1, rng, words=None):
 
         def score(s):
             overlap = len(said_tok & _tokens(_shot_blob(s)))
-            # лёгкий бонус кадру с таймлайна, чтобы не прыгать без нужды
             bonus = 0.35 if s is on_tl else 0.0
-            # клипы чуть предпочтительнее на хуке (движение «живое»)
             kind_b = 0.15 if s.get("kind") == "clip" and t - t0 < 12 else 0.0
             return overlap + bonus + kind_b
 
         sh = max(cand, key=score)
-        move = move_cycle[mi % len(move_cycle)]
-        mi += 1
 
         if cuts and cuts[-1]["file"] == sh["file"] \
                 and cuts[-1]["dur"] + dur <= CUT_MERGED_MAX:
@@ -427,8 +390,7 @@ def cut_plan(shots, t0, t1, rng, words=None):
             src_off = float(sh.get("src_start", 0.0)) + max(
                 0.0, t - sh["start"])
             cuts.append(dict(file=sh["file"], kind=sh["kind"],
-                             src_start=src_off, dur=round(dur, 3),
-                             move=move))
+                             src_start=src_off, dur=round(dur, 3)))
         t += dur
 
     drift = (t1 - t0) - sum(c["dur"] for c in cuts)
@@ -438,18 +400,16 @@ def cut_plan(shots, t0, t1, rng, words=None):
 
 
 def render_cut(c, out: Path, canvas_cache, tmp: Path):
-    """Один вертикальный кус: фото — Ken Burns, клип — мягкий zoom-crop."""
+    """
+    Один вертикальный кус без движения поверх исходника.
+
+    Клип: только scale+crop в 9:16 — parallax/zoom футажа остаются как
+    снято. Фото: статичный кадр на всю длительность куска.
+    """
     src = Path(c["file"])
-    move = c.get("move") or "kb_in"
     if c["kind"] == "clip":
-        # Клип тоже слегка «дышит», но без скачков по x.
-        # scale+crop 9:16 + очень лёгкий zoom через zoompan на коротком куске
-        # слишком тяжёл; делаем тот же Ken Burns поверх подготовленного
-        # вертикального кадра: берём средний кадр-поток и кропим стабильно
-        # с микро-зумом.
-        vf = (f"scale={CANVAS_W}:{CANVAS_H}:force_original_aspect_ratio=increase,"
-              f"crop={CANVAS_W}:{CANVAS_H},"
-              + v_motion(move, c["dur"]) + f",fps={SFPS}")
+        vf = (f"scale={SW}:{SH}:force_original_aspect_ratio=increase,"
+              f"crop={SW}:{SH},setsar=1,fps={SFPS}")
         run(f"ffmpeg -y -stream_loop -1 -ss {float(c['src_start']):.2f} "
             f"-i {shlex.quote(str(src))} -vf {shlex.quote(vf)} "
             f"-t {c['dur']:.3f} -c:v libx264 -crf 19 -preset veryfast "
@@ -461,9 +421,8 @@ def render_cut(c, out: Path, canvas_cache, tmp: Path):
         canvas = tmp / f"v_{len(canvas_cache):03d}.jpg"
         prepare_vertical(src, canvas)
         canvas_cache[src] = canvas
-    vf = v_motion(move, c["dur"])
     run(f"ffmpeg -y -loop 1 -t {c['dur']:.3f} -r {SFPS} "
-        f"-i {shlex.quote(str(canvas))} -vf {shlex.quote(vf)} "
+        f"-i {shlex.quote(str(canvas))} "
         f"-c:v libx264 -crf 19 -preset veryfast -pix_fmt yuv420p -an "
         f"{shlex.quote(str(out))}")
 
