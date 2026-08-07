@@ -193,18 +193,41 @@ THEME_SYNONYMS = {
     "temple": {"temple", "temples", "sanctuary", "shrine", "pylon", "ruins"},
     "pyramid": {"pyramid", "pyramids", "giza"},
     "sky": {"sky", "skies", "celestial", "heaven", "heavens", "clouds",
-            "star", "stars", "night"},
+            "star", "stars", "night", "atmosphere", "aurora"},
     "desert": {"desert", "sand", "dunes", "wasteland"},
     "manuscript": {"manuscript", "papyrus", "parchment", "scroll", "tablet",
-                   "cuneiform"},
-    "aircraft": {"aircraft", "airplane", "plane", "propeller", "bomber"},
-    "radar": {"radar", "console", "control", "military"},
+                   "cuneiform", "document", "documents", "dossier"},
+    "aircraft": {"aircraft", "airplane", "plane", "propeller", "bomber",
+                 "jet", "fighter", "aviation"},
+    "radar": {"radar", "console", "control", "military", "scope", "antenna"},
     "library": {"library", "archive", "archives", "manuscripts", "books"},
-    "rome": {"rome", "roman", "forum", "colosseum"},
-    "egypt": {"egypt", "egyptian", "nile", "luxor", "karnak", "pharaoh"},
-    "ufo": {"ufo", "saucer", "orb", "anomaly", "uap"},
-    "ship": {"ship", "airship", "zeppelin", "balloon"},
-    "war": {"war", "wartime", "soldier", "military", "combat"},
+    "rome": {"rome", "roman", "forum", "colosseum", "pliny", "livy"},
+    "egypt": {"egypt", "egyptian", "nile", "luxor", "karnak", "pharaoh",
+              "tulli", "hieroglyph", "hieroglyphs"},
+    "ufo": {"ufo", "ufos", "saucer", "saucers", "orb", "orbs", "anomaly",
+            "anomalies", "uap", "uaps", "flying", "disk", "disks", "disc",
+            "discs", "lights", "sighting", "sightings"},
+    "ship": {"ship", "airship", "zeppelin", "balloon", "dirigible"},
+    "war": {"war", "wartime", "soldier", "military", "combat", "pilots",
+            "pilot", "foo"},
+    "roswell": {"roswell", "newmexico", "debris", "ranch", "crash"},
+    "pentagon": {"pentagon", "aaro", "pentagon", "defense", "hearing",
+                 "hearings", "congress", "washington"},
+    "nasa": {"nasa", "space", "planet", "planets", "orbit", "satellite",
+             "apollo", "hubble", "cosmos", "galaxy"},
+    "nuremberg": {"nuremberg", "nuernberg", "broadsheet", "woodcut",
+                  "renaissance", "basel"},
+    "sumerian": {"sumerian", "sumer", "anunnaki", "mesopotamia", "babylon",
+                 "assyria", "ziggurat"},
+    "vimana": {"vimana", "vimanas", "sanskrit", "mahabharata", "ramayana",
+               "india", "chariot"},
+    "ezekiel": {"ezekiel", "wheel", "wheels", "bible", "prophet", "cherub"},
+    "bluebook": {"bluebook", "blue", "book", "hynek", "project"},
+    "daniken": {"daniken", "chariots", "gods", "ancient", "aliens"},
+    "newspaper": {"newspaper", "broadsheet", "headline", "press", "newsreel",
+                  "news"},
+    "planet": {"planet", "planets", "mars", "jupiter", "saturn", "earth",
+               "moon", "lunar"},
 }
 
 
@@ -287,7 +310,13 @@ class ShotPicker:
             if n:
                 self.prior[j] = n * self.PRIOR_WEIGHT
 
-    def take(self, t: float, text: str = ""):
+    def take(self, t: float, text: str = "", require_match: bool = False):
+        """
+        require_match: если в начитке есть предметные слова, а ни один
+        файл с ними не пересекается — вернуть (None, None). Вызывающий
+        закрывает слот генерацией под ЭТУ фразу, а не чужим Египтом под
+        рассказ про Пентагон.
+        """
         n = len(self.pool)
         if not n:
             raise SystemExit("пустой пул материала")
@@ -298,17 +327,23 @@ class ShotPicker:
         def score(j):
             path, _tag, kw = self.pool[j]
             used = self.used.get(j, 0) + self.prior.get(j, 0.0)
-            # Требуем реальное пересечение: нулевой overlap не должен
-            # побеждать за счёт позиции на таймлайне, если есть хоть один
-            # файл со смыслом. Штраф -100 за отсутствие смысла уводит
-            # «пустые» файлы в конец очереди.
             raw = len(want & kw)
-            overlap = (raw - used) if raw else (-100 - used)
+            # Нулевой overlap — штраф. Два+ совпадения получают бонус,
+            # чтобы «sky + nuremberg» бил «sky» одного поля.
+            if raw <= 0:
+                overlap = -100 - used
+            else:
+                overlap = raw * 3 + (2 if raw >= 2 else 0) - used
             same = 1 if path == self.last else 0
             return (same, -overlap, used, abs(j - k), j)
 
         best = min(range(n), key=score)
-        if len(want & self.pool[best][2]):
+        matched = bool(want & self.pool[best][2])
+        if require_match and want and not matched:
+            # не считаем это попаданием и не списываем файл
+            self.calls -= 1
+            return None, None
+        if matched:
             self.hits += 1
         self.last_repeat = self.used.get(best, 0)
         self.used[best] = self.used.get(best, 0) + 1
@@ -579,11 +614,12 @@ def opening_plan(st, intro_start, intro_end):
         p["first_long"] = (6.0, 9.0)
         p["ramp_until"] = intro_start + 20.0
     elif o == "hard_in":
-        # открывает видео на полном темпе, вступление короче обычного
+        # открывает видео на полном темпе. Вступление НЕ укорачиваем:
+        # канал держит 70-80% видео первые 3–5 минут, укорачивание до 70%
+        # длины ломало долю и снова открывало фотоальбомом.
         p["first_is_clip"] = True
-        p["tight_until"] = intro_start + 8.0
-        p["tight_factor"] = 0.35
-        p["end"] = intro_start + (intro_end - intro_start) * 0.7
+        p["tight_until"] = intro_start + 12.0
+        p["tight_factor"] = 0.40
     # black_card ничего не меняет в раскладке: проявление из чёрного
     # делается фильтром на первой группе склейки, см. join()
     return p
@@ -784,7 +820,17 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
 
     def put_image(kind, t_pos, said="", **extra):
         """Ставит кадр-картинку нужной семьи и записывает его в счёт."""
-        src, tag = (gen_pick if kind == "gen" else arch_pick).take(t_pos, said)
+        picker = gen_pick if kind == "gen" else arch_pick
+        # Архив — только по смыслу; иначе чужой музей под чужой абзац.
+        # Генерация мягче: промпты пишутся по сценарию, но формулировки
+        # расходятся со словами диктора — require_match обнулял бы пул.
+        if kind == "arch":
+            src, tag = picker.take(t_pos, said, require_match=True)
+            if src is None:
+                src, tag = gen_pick.take(t_pos, said)
+                kind = "gen"
+        else:
+            src, tag = picker.take(t_pos, said)
         fr_name, fr = st.framing(src.name)
         return dict(kind="image", file=src, tag=tag,
                     framing=fr, framing_name=fr_name, **extra)
@@ -867,6 +913,14 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         # из одних фотографий лучше, чем отсутствие вступления.
         if idx == 0 and op["first_is_clip"] and clip_available():
             allowed = ["clip"]
+        # Первые ~60% вступления — только видео, пока оно есть. Иначе
+        # starlit/долгий establish снова открывают двумя фото, и удержание
+        # на первых секундах уже потеряно.
+        intro_span = max(intro_end - intro_start, 1.0)
+        if (clip_available()
+                and (t - intro_start) < intro_span * 0.60
+                and "clip" in (["clip"] if clip_available() else [])):
+            allowed = ["clip"]
         got = mix.pick(allowed, phase="intro")
         kind = "clip" if got == "clip" else "image"
         run_len = run_len + 1 if kind == run_kind else 1
@@ -894,36 +948,47 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         # переход во вступлении короче обычного: полуторасекундное
         # растворение съедает весь смысл перебивки
 
+        said = intro_said(t, dur)
         if got == "clip":
-            src, _ = clip_pick.take(t, intro_said(t, dur))
-            src_start, stretch = clip_timing(src, dur)
-            shots.append(dict(kind="clip", file=src, tag="clip",
-                              src_start=src_start, stretch=stretch,
-                              move=repeat_move(clip_pick.last_repeat),
-                              start=round(t, 3), duration=dur,
-                              transition=tr, transition_dur=trd,
-                              effect=st.effect(),
-                              beat_kind="hook", why=f"вступление ({st.opening})"))
-        else:
-            # Во вступлении по фотографии всегда идёт скольжение или наезд,
-            # статики тут быть не должно. Набор ограничивается ПАРАМЕТРОМ,
-            # а не подменой результата: раньше движение бралось из движка и
-            # перевыбиралось здесь своим жребием, если не подошло, — мимо
-            # счётчика семей. Проверка плана нашла на этом девять наездов
-            # подряд в первых трёх минутах.
-            # starlit сужает ПЕРВЫЙ кадр до проездов: долгий кадр открытия
-            # обязан ехать всю свою длительность, а не наехать и встать.
+            src, _ = clip_pick.take(t, said, require_match=True)
+            if src is None:
+                # нет футажа под эту фразу — не ставим чужой клип, рисуем
+                got = "gen"
+                kind = "image"
+                run_kind = "image"
+                run_len = 1
+                rng_pair = st.intro_photo_duration_range
+                dur = round(st.rng.uniform(*rng_pair), 3)
+            else:
+                src_start, stretch = clip_timing(src, dur)
+                shots.append(dict(kind="clip", file=src, tag="clip",
+                                  src_start=src_start, stretch=stretch,
+                                  move=repeat_move(clip_pick.last_repeat),
+                                  start=round(t, 3), duration=dur,
+                                  transition=tr, transition_dur=trd,
+                                  effect=st.effect(),
+                                  beat_kind="hook",
+                                  why=f"вступление ({st.opening})"))
+                mix.charge("clip", dur, phase="intro")
+                t += dur
+                idx += 1
+                continue
+        if got != "clip":
             only = (op["first_move_only"]
                     if idx == 0 and op["first_move_only"] else INTRO_MOVES)
             mv, sp, ez = st.pick_move(1.05, allow_hold=False, only=only,
                                       duration=dur)
             shots.append(put_image(
-                got, t, said=intro_said(t, dur), start=round(t, 3),
+                got, t, said=said, start=round(t, 3),
                 duration=dur, move=mv, speed=sp, ease=ez,
                 transition=tr, transition_dur=trd,
                 effect=st.effect(),
                 beat_kind="hook", why=f"вступление ({st.opening})"))
-        mix.charge(got, dur, phase="intro")
+            # put_image мог уйти в gen вместо arch — charge по факту тега
+            charged = "gen" if shots[-1].get("tag") == "gen" else got
+            if charged not in ("gen", "arch"):
+                charged = "gen"
+            mix.charge(charged, dur, phase="intro")
         t += dur
         idx += 1
 
@@ -1082,17 +1147,26 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         meta = dict(why=cfg.get("why", ""), beat_kind=cfg.get("beat_kind"))
 
         if got == "clip":
-            src, _ = clip_pick.take(start, said)
-            src_start, stretch = clip_timing(src, dur)
-            shots.append(dict(kind="clip", file=src, tag="clip",
-                              src_start=src_start, stretch=stretch,
-                              move=repeat_move(clip_pick.last_repeat),
-                              start=start, duration=dur, **meta,
-                              **{k: cfg[k] for k in
-                                 ("transition", "transition_dur", "effect")}))
-            since_clip = 0
-            n = st.body_clip_every_n_shots
-            next_gap = max(1, n + st.rng.choice([-1, 0, 0, 1]))
+            src, _ = clip_pick.take(start, said, require_match=True)
+            if src is None:
+                got = "gen"
+                since_clip += 1
+                shots.append(put_image(
+                    got, start, said=said, start=start, duration=dur, **meta,
+                    **{k: cfg[k] for k in
+                       ("move", "speed", "ease", "transition", "transition_dur",
+                        "effect")}))
+            else:
+                src_start, stretch = clip_timing(src, dur)
+                shots.append(dict(kind="clip", file=src, tag="clip",
+                                  src_start=src_start, stretch=stretch,
+                                  move=repeat_move(clip_pick.last_repeat),
+                                  start=start, duration=dur, **meta,
+                                  **{k: cfg[k] for k in
+                                     ("transition", "transition_dur", "effect")}))
+                since_clip = 0
+                n = st.body_clip_every_n_shots
+                next_gap = max(1, n + st.rng.choice([-1, 0, 0, 1]))
         else:
             since_clip += 1
             shots.append(put_image(

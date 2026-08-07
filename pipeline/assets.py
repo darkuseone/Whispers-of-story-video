@@ -881,18 +881,75 @@ def src_pixabay(q, n):
 
 
 def src_nasa(q, n, media="image"):
-    """Ключ не нужен. Общественное достояние."""
+    """
+    images.nasa.gov. Ключ не нужен, общественное достояние.
+
+    Для UFO/космоса — планеты, Земля из орбиты, архивные кадры миссий.
+    В теги кладём title+description, иначе relevant() и ShotPicker
+    видят пустую строку и отбраковывают годное.
+    """
     r = requests.get("https://images-api.nasa.gov/search", timeout=TIMEOUT,
                      headers=UA, params={"q": q, "media_type": media})
+    if not ok(r, "nasa", q):
+        return []
     out = []
-    for it in r.json().get("collection", {}).get("items", [])[:n * 3]:
+    for it in r.json().get("collection", {}).get("items", [])[:n * 4]:
         links = it.get("links") or []
         if not links:
             continue
         href = links[0].get("href")
-        if href:
-            out.append({"url": href, "src": "nasa",
-                        "kind": "image" if media == "image" else "video"})
+        if not href:
+            continue
+        data = (it.get("data") or [{}])[0]
+        blob = " ".join(filter(None, [
+            data.get("title"), data.get("description"),
+            " ".join(data.get("keywords") or []),
+        ]))
+        if blob and not relevant(q, blob):
+            continue
+        out.append({"url": href, "src": "nasa",
+                    "kind": "image" if media == "image" else "video",
+                    "tags": blob[:400], "title": (data.get("title") or "")[:160]})
+        if len(out) >= n:
+            break
+    return out
+
+
+def src_nasa_video(q, n):
+    """
+    images.nasa.gov, видео. Ключ не нужен.
+
+    Для канала про древности — боковой источник; для UFO/космоса —
+    основной: орбита, запуски, планеты, архив миссий. В умолчания видео
+    не ставим — подключать полем video_sources.
+    """
+    r = requests.get("https://images-api.nasa.gov/search", timeout=TIMEOUT,
+                     headers=UA, params={"q": q, "media_type": "video"})
+    if not ok(r, "nasa_video", q):
+        return []
+    out = []
+    for it in (r.json().get("collection", {}).get("items") or [])[:n * 3]:
+        href = it.get("href")
+        if not href:
+            continue
+        data = (it.get("data") or [{}])[0]
+        blob = " ".join(filter(None, [
+            data.get("title"), data.get("description"),
+            " ".join(data.get("keywords") or []),
+        ]))
+        if blob and not relevant(q, blob):
+            continue
+        try:
+            files = requests.get(href, timeout=30, headers=UA).json()
+        except Exception:
+            continue
+        pick = [f for f in files if f.endswith(".mp4") and "~mobile" in f] or \
+               [f for f in files if f.endswith(".mp4") and "~medium" in f] or \
+               [f for f in files if f.endswith(".mp4")]
+        if pick:
+            out.append({"url": pick[0], "src": "nasa", "kind": "video",
+                        "tags": blob[:400],
+                        "title": (data.get("title") or "")[:160]})
         if len(out) >= n:
             break
     return out
@@ -931,14 +988,29 @@ def src_archive_org(q, n):
     Prelinger — эталонный архив рекламной и бытовой хроники XX века,
     plus явно помеченные publicdomain. Это и честнее по правам, и на
     порядок урожайнее.
+
+    Для UFO/военных/новостных запросов добавляем newsreel и ephemera —
+    иначе Roswell/Blue Book из одного Prelinger почти не выходят.
     """
+    sq = short_query(q)
+    ql = q.lower()
+    ufoish = any(k in ql for k in (
+        "ufo", "uap", "saucer", "roswell", "radar", "military", "pentagon",
+        "airship", "newsreel", "hearing", "congress", "pilot", "foo fighter",
+        "blue book", "declassif", "foia", "trump"))
+    collections = (
+        '(collection:(prelinger) OR collection:(publicmoviescollection) OR '
+        'collection:(newsreel) OR collection:(universal_newsreels) OR '
+        'collection:(ephemera) OR licenseurl:(*publicdomain*))'
+        if ufoish else
+        '(collection:(prelinger) OR collection:(publicmoviescollection) OR '
+        'licenseurl:(*publicdomain*))'
+    )
     r = requests.get("https://archive.org/advancedsearch.php", timeout=TIMEOUT,
                      headers=UA,
-                     params={"q": f'{short_query(q)} AND mediatype:(movies) AND '
-                                  f'(collection:(prelinger) OR '
-                                  f'collection:(publicmoviescollection) OR '
-                                  f'licenseurl:(*publicdomain*))',
-                             "fl[]": "identifier", "rows": n * 2,
+                     params={"q": f'{sq} AND mediatype:(movies) AND {collections}',
+                             "fl[]": "identifier,title,description",
+                             "rows": n * 3,
                              "output": "json"})
     if not ok(r, "archive.org", q):
         return []
@@ -947,6 +1019,13 @@ def src_archive_org(q, n):
     # это самый медленный источник, и на нём легко просидеть минуты
     for d in r.json().get("response", {}).get("docs", [])[:4]:
         ident = d["identifier"]
+        title = d.get("title") or ""
+        desc = (d.get("description") or "")
+        if isinstance(desc, list):
+            desc = " ".join(desc)
+        blob = f"{title} {desc}"
+        if blob and not relevant(q, blob):
+            continue
         meta = requests.get(f"https://archive.org/metadata/{ident}",
                             timeout=25, headers=UA).json()
         # Берём САМЫЙ ЛЁГКИЙ подходящий файл, а не первый попавшийся.
@@ -966,7 +1045,8 @@ def src_archive_org(q, n):
         if vids:
             out.append({
                 "url": f"https://archive.org/download/{ident}/{vids[0]['name']}",
-                "src": "archive.org", "kind": "video"})
+                "src": "archive.org", "kind": "video",
+                "tags": blob[:400], "title": title[:160]})
         if len(out) >= n:
             break
     return out
@@ -1013,38 +1093,6 @@ def src_cleveland(q, n):
         img = ((it.get("images") or {}).get("web") or {}).get("url")
         if img:
             out.append({"url": img, "src": "cleveland", "kind": "image"})
-        if len(out) >= n:
-            break
-    return out
-
-
-def src_nasa_video(q, n):
-    """
-    images.nasa.gov, видео. Ключ не нужен, всё в общественном достоянии.
-
-    Для канала про древности это боковой источник: НАСА отдаёт космос и
-    технику. Держим его доступным по имени, но в умолчания не ставим — по
-    предметным запросам он даёт шум, и это уже проверено на фотографиях.
-    """
-    r = requests.get("https://images-api.nasa.gov/search", timeout=TIMEOUT,
-                     headers=UA, params={"q": q, "media_type": "video"})
-    if not ok(r, "nasa_video", q):
-        return []
-    out = []
-    for it in (r.json().get("collection", {}).get("items") or [])[:n * 2]:
-        href = it.get("href")
-        if not href:
-            continue
-        try:
-            files = requests.get(href, timeout=30, headers=UA).json()
-        except Exception:
-            continue
-        # в списке лежат рендеры разного размера; берём мобильный/средний,
-        # оригиналы бывают по несколько гигабайт
-        pick = [f for f in files if f.endswith(".mp4") and "~mobile" in f] or \
-               [f for f in files if f.endswith(".mp4")]
-        if pick:
-            out.append({"url": pick[0], "src": "nasa", "kind": "video"})
         if len(out) >= n:
             break
     return out

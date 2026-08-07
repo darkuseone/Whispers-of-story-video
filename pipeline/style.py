@@ -405,7 +405,7 @@ OPENING_ALIASES = {"long_footage": "long_establish"}
 #            пятно в холодном ролике, поэтому редко и слабо
 #   mist     холодная дымка, ползёт вбок
 #   none     слоя нет вовсе
-OVERLAY_KINDS = ("none", "motes", "stars", "sparks", "mist")
+OVERLAY_KINDS = ("none", "motes", "stars", "sparks")
 OVERLAY_VARIANTS = (1, 2, 3)
 
 # Предел множителя амплитуды камеры. Выше — рабочий холст 3000 пикселей

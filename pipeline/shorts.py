@@ -639,8 +639,14 @@ def ensure_shots(job, assets: Path, out: Path):
     # тот же формат, что пишет build.py
     serial = []
     for s in shots:
-        row = {k: (f"{v:.3f}" if isinstance(v, float) else v)
-               for k, v in s.items()}
+        row = {}
+        for k, v in s.items():
+            if isinstance(v, float):
+                row[k] = f"{v:.3f}"
+            elif isinstance(v, Path):
+                row[k] = str(v)
+            else:
+                row[k] = v
         serial.append(row)
     shots_p.write_text(json.dumps(serial, ensure_ascii=False, indent=1),
                        encoding="utf-8")
