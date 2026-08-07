@@ -15,7 +15,9 @@ shots.json (пути ИСХОДНИКОВ) и marks.json. Ключей не тр
 ОТКУДА УДЕРЖАНИЕ (по практике Shorts 2025–26):
   - первые 3–5 с: крупный ВОПРОС (хук), без простыни текста
   - дальше начитка ОТВЕЧАЕТ на этот вопрос
-  - обычные субтитры фразами 2–4 слова ПО ЦЕНТРУ (safe zone)
+  - обычные субтитры ЦЕЛЫМИ предложениями ПО ЦЕНТРУ (не
+    пословно / не караоке по 1–3 слова — они плывут относительно
+    звука, если тайм-коды слов без пауз между главами)
   - вопрос сверху, перенос строк, поля — не вылезает за край
   - спокойный Ken Burns / лёгкий zoom, без «плавающей» камеры
     и без горизонтальных проездов через весь кадр
@@ -86,10 +88,30 @@ def run(cmd):
 
 # ─────────────────────── ПОСЛОВНЫЕ ТАЙМ-КОДЫ ───────────────────────
 
+def _chapter_pause(job, block_i: int) -> float:
+    """
+    Та же пауза между главами, что в assets.build_voice. Без неё
+    пословные тайм-коды после первой главы уезжают вперёд звука.
+    """
+    n_blocks = len(job["script_blocks"])
+    if block_i >= n_blocks:
+        return 0.0
+    seed = abs(hash(job.get("id", "x"))) % 1000
+    pause = 2.0 + ((seed + block_i * 7) % 11) / 10.0
+    block = job["script_blocks"][block_i - 1]
+    tail = block.rstrip()[-120:].lower()
+    if ("?" in tail or tail.endswith("...")
+            or re.search(r"\b(we don.?t know|nobody knows|"
+                         r"still looking|hang on|listen)\b", tail)):
+        pause = min(3.0, pause + 0.4)
+    return pause
+
+
 def words_from_alignment(job, vdir: Path):
-    """Слова с временами из посимвольных тайм-кодов ElevenLabs."""
+    """Слова с временами из посимвольных тайм-кодов ElevenLabs + паузы."""
     words, offset = [], 0.0
-    for i in range(1, len(job["script_blocks"]) + 1):
+    n_blocks = len(job["script_blocks"])
+    for i in range(1, n_blocks + 1):
         mp3 = vdir / f"block_{i:02d}.mp3"
         aljson = vdir / f"block_{i:02d}.json"
         if not (mp3.exists() and aljson.exists()):
@@ -117,6 +139,13 @@ def words_from_alignment(job, vdir: Path):
             words.append(dict(text="".join(buf), start=round(t0 + offset, 3),
                               end=round(t1 + offset, 3)))
         offset += render.duration_of(mp3, "a")
+        # Пауза после главы — как в voice_full / marks.json.
+        pause_mp3 = vdir / f"pause_{i:02d}.mp3"
+        if i < n_blocks:
+            if pause_mp3.exists():
+                offset += render.duration_of(pause_mp3, "a")
+            else:
+                offset += _chapter_pause(job, i)
     return words or None
 
 
@@ -441,6 +470,10 @@ def render_cut(c, out: Path, canvas_cache, tmp: Path):
 
 # ─────────────────────── КАПШЕНЫ ───────────────────────
 
+CAPTION_LINE = 34          # символов в строке обычного субтитра
+CAPTION_MAX_LINES = 3
+
+
 def _ass_t(sec: float) -> str:
     h, r = divmod(max(sec, 0.0), 3600)
     m, s = divmod(r, 60)
@@ -454,51 +487,70 @@ def _ass_esc(s: str) -> str:
              .replace("\n", r"\N"))
 
 
-def phrase_captions(words, t0, dur, max_words=3):
+def wrap_caption(text: str, line: int = CAPTION_LINE,
+                 max_lines: int = CAPTION_MAX_LINES) -> str:
+    """Перенос обычного субтитра на 1–3 строки по словам."""
+    words = text.strip().split()
+    if not words:
+        return ""
+    lines, cur, i = [], words[0], 1
+    while i < len(words):
+        trial = f"{cur} {words[i]}"
+        if len(trial) <= line:
+            cur = trial
+            i += 1
+            continue
+        lines.append(cur)
+        cur = words[i]
+        i += 1
+        if len(lines) >= max_lines - 1:
+            rest = " ".join([cur] + words[i:])
+            if len(rest) > line:
+                rest = rest[: line - 1].rsplit(" ", 1)[0]
+                if not rest.endswith((".", "!", "?", "…")):
+                    rest += "…"
+            lines.append(rest)
+            return "\n".join(lines[:max_lines])
+    lines.append(cur)
+    return "\n".join(lines)
+
+
+def captions_from_marks(marks, t0, dur):
     """
-    Обычные субтитры: группы по 2–4 слова по центру, а не одно «караоке»
-    слово вверху. Границы — по паузе голоса или по лимиту слов.
+    Обычные субтитры: целые предложения из marks.json, время относительно
+    начала шортса (= тот же таймлайн, с которого режется звук из final.mp4).
+
+    Раньше резали по 2–3 слова из пословных тайм-кодов — на телефоне это
+    выглядело как караоке, и после пауз между главами слова уезжали от
+    начитки. Предложения из marks совпадают с SRT длинного ролика.
     """
-    inside = [w for w in words if t0 <= w["start"] < t0 + dur - 0.12]
-    if not inside:
-        return []
-    phrases, buf = [], []
-
-    def flush():
-        nonlocal buf
-        if not buf:
-            return
-        phrases.append(dict(
-            text=" ".join(x["text"] for x in buf),
-            start=buf[0]["start"] - t0,
-            end=min(buf[-1]["end"] - t0 + 0.15, dur),
-        ))
-        buf = []
-
-    for i, w in enumerate(inside):
-        buf.append(w)
-        gap = 0.0
-        if i + 1 < len(inside):
-            gap = inside[i + 1]["start"] - w["end"]
-        end_punct = bool(re.search(r"[.!?]$", w["text"]))
-        if len(buf) >= max_words or gap >= 0.28 or end_punct:
-            flush()
-    flush()
-    # подправить конец до старта следующей фразы
-    for i, p in enumerate(phrases):
-        if i + 1 < len(phrases):
-            p["end"] = min(p["end"], phrases[i + 1]["start"] - 0.02)
-        p["end"] = max(p["end"], p["start"] + 0.18)
-    return phrases
+    t1 = t0 + dur
+    caps = []
+    for m in marks:
+        ms, me = float(m["start"]), float(m["end"])
+        if me <= t0 + 0.05 or ms >= t1 - 0.05:
+            continue
+        text = wrap_caption(" ".join(str(m.get("text") or "").split()))
+        if not text:
+            continue
+        start = max(0.0, ms - t0)
+        end = min(dur, me - t0)
+        if end - start < 0.20:
+            continue
+        caps.append(dict(text=text, start=round(start, 3), end=round(end, 3)))
+    for i, p in enumerate(caps):
+        if i + 1 < len(caps):
+            p["end"] = min(p["end"], caps[i + 1]["start"] - 0.04)
+        p["end"] = max(p["end"], p["start"] + 0.35)
+    return caps
 
 
-def write_ass(words, t0, dur, out: Path, question: str):
+def write_ass(marks, t0, dur, out: Path, question: str):
     """
     Два слоя:
 
-      Question  сверху, 2–3 строки, жёлтый, с полями — не вылезает за край.
-                Первые HOOK_SECONDS крупнее (интрига), потом чуть спокойнее.
-      Caption   обычные фразы 2–4 слова ПО ЦЕНТРУ safe zone.
+      Question  сверху, 2–3 строки — хук на всю длину шортса.
+      Caption   обычные предложения ПО ЦЕНТРУ safe zone.
       Cta       внизу safe zone, не под кнопками.
     """
     # ASS цвета: &HAABBGGRR. Жёлтый вопрос читается на тёмном и светлом.
@@ -518,9 +570,10 @@ def write_ass(words, t0, dur, out: Path, question: str):
         # Question — дальше чуть мельче, та же плашка
         "Style: Question,DejaVu Sans,50,&H0000F0FF,&H0000F0FF,&H00000000,"
         "&HC0000000,-1,0,0,0,100,100,0,0,3,10,0,8,64,64,0,1\n"
-        # Caption — центр, белый с обводкой
-        "Style: Caption,DejaVu Sans,70,&H00FFFFFF,&H00FFFFFF,&H00000000,"
-        "&H64000000,-1,0,0,0,100,100,0,0,1,9,3,5,72,72,0,1\n"
+        # Caption — центр, обычный субтитр (предложение), белый с обводкой.
+        # Alignment 5 = середина кадра; MarginL/R дают поля под safe zone.
+        "Style: Caption,DejaVu Sans,58,&H00FFFFFF,&H00FFFFFF,&H00000000,"
+        "&H80000000,-1,0,0,0,100,100,0,0,1,8,2,5,70,70,0,1\n"
         "Style: Cta,DejaVu Sans,44,&H00E6EFF3,&H00FFFFFF,&H00000000,"
         "&H90000000,-1,0,0,0,100,100,1,0,3,8,0,2,72,72,0,1\n\n"
         "[Events]\n"
@@ -539,17 +592,14 @@ def write_ass(words, t0, dur, out: Path, question: str):
                 f"Dialogue: 0,{_ass_t(hook_end)},{_ass_t(dur)},Question,,0,0,0,,"
                 f"{{\\pos(540,{QUESTION_Y})\\q2}}{q}")
 
-    phrases = phrase_captions(words, t0, dur)
+    phrases = captions_from_marks(marks, t0, dur)
     for p in phrases:
         txt = _ass_esc(p["text"].strip())
         if not txt:
             continue
-        # цифры/годы чуть крупнее
-        fs = r"\fs84" if any(ch.isdigit() for ch in txt) else ""
         rows.append(
             f"Dialogue: 1,{_ass_t(p['start'])},{_ass_t(p['end'])},Caption,,0,0,0,,"
-            f"{{\\pos(540,{CAPTION_Y})" + fs +
-            r"\fscx92\fscy92\t(0,80,\fscx100\fscy100)}" + txt)
+            f"{{\\pos(540,{CAPTION_Y})\\q2\\fad(80,60)}}{txt}")
 
     rows.append(
         f"Dialogue: 2,{_ass_t(max(dur - CTA_SECONDS, 0))},{_ass_t(dur)},"
@@ -561,8 +611,8 @@ def write_ass(words, t0, dur, out: Path, question: str):
 
 # ─────────────────────── СБОРКА ОДНОГО ШОРТСА ───────────────────────
 
-def render_short(n, win, shots, words, final: Path, sdir: Path, seed: str,
-                 question: str):
+def render_short(n, win, shots, words, marks, final: Path, sdir: Path,
+                 seed: str, question: str):
     rng = random.Random(f"{seed}-short-{n}")
     t0, t1 = win["t0"], win["t1"]
     dur = round(t1 - t0, 3)
@@ -585,7 +635,7 @@ def render_short(n, win, shots, words, final: Path, sdir: Path, seed: str,
         f"-c copy {shlex.quote(str(body))}")
 
     ass = tmp / "captions.ass"
-    n_phrases = write_ass(words, t0, dur, ass, question)
+    n_phrases = write_ass(marks, t0, dur, ass, question)
 
     out = sdir / f"short_{n}.mp4"
     fade_st = max(dur - 0.40, 0.0)
@@ -602,7 +652,7 @@ def render_short(n, win, shots, words, final: Path, sdir: Path, seed: str,
     shutil.rmtree(tmp, ignore_errors=True)
 
     log(f"  short_{n}: {win['role']:<10} {t0/60:5.1f}-{t1/60:5.1f} мин, "
-        f"{dur:.0f} с, {len(cuts)} кадров, {n_phrases} фраз")
+        f"{dur:.0f} с, {len(cuts)} кадров, {n_phrases} субтитров")
     log(f"           вопрос:\n             "
         + question.replace("\n", "\n             "))
     log(f"           {win['why']}")
@@ -667,8 +717,17 @@ def main(job_path):
     shots_p = out / "shots.json"
 
     marks = json.loads((assets / "marks.json").read_text())
+    media_dur = render.duration_of(final, "v") or render.duration_of(final, "a")
     total = json.loads((assets / "state.json").read_text())["total_audio"]
-    total = min(total, render.duration_of(final, "v") or total)
+    # Окна и субтитры только внутри реального final.mp4: marks/total_audio
+    # бывают длиннее из‑за среза mux -shortest.
+    if media_dur > 0:
+        total = min(total, media_dur)
+        marks = [m for m in marks if float(m["start"]) < total - 0.2]
+        if marks and float(marks[-1]["end"]) > total:
+            marks[-1] = dict(marks[-1], end=round(total, 3))
+    log(f"таймлайн шортсов: {total:.1f} с "
+        f"(final.mp4 {media_dur:.1f} с), предложений {len(marks)}")
 
     shots = []
     for s in json.loads(shots_p.read_text()):
@@ -680,9 +739,12 @@ def main(job_path):
                           beat_kind=s.get("beat_kind")))
 
     story = beats_mod.analyze(marks, job["script_blocks"], total)
+    # Слова — только для семантического подбора кадров. Субтитры идут
+    # из marks (целые предложения), иначе снова получится караоке.
     words = words_from_alignment(job, assets / "voice")
     if words:
-        log(f"слова: {len(words)} по посимвольным тайм-кодам ElevenLabs")
+        log(f"слова: {len(words)} по посимвольным тайм-кодам ElevenLabs "
+            f"(для подбора кадров)")
     else:
         words = words_from_marks(marks)
         log(f"слова: {len(words)} раскиданы по длине (посимвольных "
@@ -705,7 +767,7 @@ def main(job_path):
     meta = []
     for n, win in enumerate(wins, 1):
         q = question_for(win, marks, job_qs, n)
-        meta.append(render_short(n, win, shots, words, final, sdir,
+        meta.append(render_short(n, win, shots, words, marks, final, sdir,
                                  job["id"], q))
 
     (sdir / "shorts.json").write_text(json.dumps(dict(
