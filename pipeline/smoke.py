@@ -126,8 +126,20 @@ def main(job_path):
                          f"ПОСЛЕ всего рендера")
     print(f"   списки на месте, теги {len(tags)}/{youtube.TAGS_LIMIT} символов")
 
-    print("── план кадров")
+    # Главы ↔ субтитры. Та же ловушка, что уронила ufos-history-01 на
+    # этапе 3 после двух часов монтажа: split('.') резал «U.S.» / не
+    # учитывал «Gods?». Проверяем по marks.json бесплатно, до рендера.
+    print("── главы в субтитрах")
     marks = json.loads((work / "marks.json").read_text())
+    cues = [(float(m["start"]), youtube.norm(m["text"])) for m in marks]
+    try:
+        chaps = youtube.chapters(job, cues)
+    except SystemExit as e:
+        raise SystemExit(f"youtube.chapters не сойдётся после монтажа: {e}") from e
+    print(f"   {len(chaps)} глав находятся в marks "
+          f"(последняя с {youtube.stamp(chaps[-1][0])})")
+
+    print("── план кадров")
     total = json.loads((work / "state.json").read_text())["total_audio"]
     av = channel.avoid()
     st = style_mod.StyleEngine(

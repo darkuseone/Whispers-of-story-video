@@ -486,6 +486,20 @@ jobs:
             ${{ steps.out.outputs.dir }}/shorts/shorts.json
           retention-days: 30
 
+      # Если упали на этапе 3/4, монтаж уже съел 1–2 часа — final.mp4 и
+      # subs.srt спасаем артефактом, чтобы не терять их при «не нашёл главу».
+      - name: Спасаем final после падения монтажа
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: salvage-${{ steps.pick.outputs.job }}
+          path: |
+            work/${{ steps.pick.outputs.id }}/out/final.mp4
+            work/${{ steps.pick.outputs.id }}/out/subs.srt
+            work/${{ steps.pick.outputs.id }}/out/shots.json
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Диагностика при падении
         if: failure()
         run: |
