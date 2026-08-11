@@ -59,6 +59,16 @@ GATHER_BUDGET = 420                     # столько всего на оди�
 # подрезаем на диске сразу после скачивания. Обрезка идёт БЕЗ
 # перекодирования, потоковым копированием — это секунды на файл и никакой
 # потери качества.
+#
+# ГРАНИЦЫ ЭТИ ПРИМЕНЯЮТСЯ НЕ ВСЕМИ ИСТОЧНИКАМИ ОДИНАКОВО. У pexels и
+# pixabay разрешение известно ДО скачивания — тариф качества выбирается по
+# CLIP_MIN_WIDTH/CLIP_MAX_WIDTH заранее. У archive_org, wikimedia_video и
+# библиотеки Magnific разрешение неизвестно до скачивания (archive.org
+# берёт файл по весу в байтах, не по пикселям; у Commons и Magnific
+# ширина может не прийти в ответе вовсе), поэтому на них стоит второй,
+# универсальный рубеж ПОСЛЕ скачивания — cap_clip_resolution в gather():
+# он даунскейлит, а не отбраковывает, потому что по узким историческим
+# темам находка может быть единственной.
 MAX_CLIP_SECONDS = 25
 CLIP_MIN_WIDTH = 1280                   # ниже 720p не берём — заметно на экране
 CLIP_MAX_WIDTH = 1920                   # выше 1080p не нужно, только вес
@@ -85,6 +95,48 @@ def trim_long_clip(path: Path, limit: float = MAX_CLIP_SECONDS) -> None:
         was = path.stat().st_size // 1048576
         tmp.replace(path)
         log(f"    подрезан с {dur:.0f} до {limit:.0f} с "
+            f"({was} -> {path.stat().st_size // 1048576} МБ)")
+    else:
+        tmp.unlink(missing_ok=True)
+
+
+def cap_clip_resolution(path: Path, max_width: int = CLIP_MAX_WIDTH) -> None:
+    """
+    Даунскейл СВЕРХУ, если клип пришёл тяжелее 1080p.
+
+    CLIP_MAX_WIDTH уже стоит фильтром на входе у pexels и pixabay — там он
+    выбирается из тарифов качества ДО скачивания. Но у archive_org,
+    wikimedia_video и библиотеки Magnific разрешение неизвестно, пока файл
+    не лёг на диск: archive.org отдаёт самый лёгкий файл по БАЙТАМ, не по
+    пикселям, а у Commons и Magnific пиксели в ответе может не быть вовсе.
+    Без этой страховки 4K-хроника проходит любой фильтр только потому, что
+    сильно сжата, и потом декодируется в память кадр за кадром на every
+    прогоне монтажа — раздутый кэш и лишняя память ffmpeg ради разрешения,
+    которого не видно на 1080p-выходе.
+
+    Даунскейл, а не отбраковка: по узким историческим темам материала и
+    так мало, выбрасывать находку из-за одних лишних пикселей — терять то,
+    что не найти второй раз. -c copy здесь не годится, разрешение меняет
+    только перекодирование.
+    """
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
+                        "-show_entries", "stream=width", "-of", "csv=p=0",
+                        str(path)], capture_output=True, text=True)
+    try:
+        width = int(r.stdout.strip())
+    except ValueError:
+        return
+    if width <= max_width:
+        return
+    tmp = path.with_suffix(".scale.mp4")
+    res = subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-i", str(path),
+         "-vf", f"scale={max_width}:-2", "-c:v", "libx264", "-crf", "20",
+         "-preset", "veryfast", "-an", str(tmp)], capture_output=True)
+    if res.returncode == 0 and tmp.exists() and tmp.stat().st_size > 20000:
+        was = path.stat().st_size // 1048576
+        tmp.replace(path)
+        log(f"    даунскейл {width}p -> {max_width}p "
             f"({was} -> {path.stat().st_size // 1048576} МБ)")
     else:
         tmp.unlink(missing_ok=True)
@@ -1208,11 +1260,12 @@ def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET):
                 ext = ".mp4" if it["kind"] == "video" else ".jpg"
                 dst = out / f"{kind}_{n:03d}_{it['src']}{ext}"
                 if fetch(it["url"], dst):
-                    # Видео подрезаем СРАЗУ. Дальше файл живёт в кэше между
-                    # прогонами, и лишние секунды в нём — это лишние
-                    # мегабайты на каждой пересборке.
+                    # Видео подрезаем и даунскейлим СРАЗУ. Дальше файл живёт
+                    # в кэше между прогонами, и лишние секунды и пиксели в
+                    # нём — это лишние мегабайты на каждой пересборке.
                     if it["kind"] == "video":
                         trim_long_clip(dst)
+                        cap_clip_resolution(dst)
                     # запрос сохраняется рядом с файлом: по нему build.py потом
                     # подбирает кадр под то, что звучит в эту секунду
                     got.append({"file": str(dst), "q": q, **it})
