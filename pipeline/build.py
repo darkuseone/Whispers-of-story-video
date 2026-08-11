@@ -722,21 +722,26 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         """
         Откуда брать кусок клипа и надо ли его замедлять.
 
-        Возвращает (секунда начала, множитель замедления). Множитель ноль
-        означает обычный путь: кусок из середины файла плюс петля, если
-        кадр длиннее остатка.
+        Возвращает (секунда начала, множитель замедления, длина исходника).
+        Множитель ноль означает обычный путь: кусок из середины файла плюс
+        петля, если кадр длиннее остатка.
 
         Замедление включается только для ЗАВЕДОМО КОРОТКИХ исходников —
         сгенерированных вставок на 2-3 секунды. Для стока на пятнадцать
         секунд петля лучше: он снят с нормальной скоростью движения, и
         замедлять его незачем.
+
+        Длина исходника возвращается наружу не для красоты: множитель
+        здесь считается от ЭКРАННОЙ длительности кадра, а рендерится кадр
+        длиннее — на перекрытие перехода, — и пересчитать множитель под
+        настоящую длину можно только зная исходник. См. set_render_durations.
         """
         total = cutter.duration(src)
         if 0 < total <= CLIP_STRETCH_SOURCE_MAX and dur > total * 1.05:
             k = min(CLIP_STRETCH_MAX, dur / max(total - 0.15, 0.5))
             if k > 1.05:
-                return 0.0, round(k, 3)
-        return cutter.take_start(src, dur), 0.0
+                return 0.0, round(k, 3), total
+        return cutter.take_start(src, dur), 0.0, total
 
     def put_image(kind, t_pos, said="", **extra):
         """Ставит кадр-картинку нужной семьи и записывает его в счёт."""
@@ -842,9 +847,10 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
 
         if got == "clip":
             src, _ = clip_pick.take(t, said_at(t, dur))
-            src_start, stretch = clip_timing(src, dur)
+            src_start, stretch, src_total = clip_timing(src, dur)
             shots.append(dict(kind="clip", file=src, tag="clip",
                               src_start=src_start, stretch=stretch,
+                              src_total=src_total,
                               move=repeat_move(clip_pick.last_repeat),
                               start=round(t, 3), duration=dur,
                               transition=tr, transition_dur=trd,
@@ -1021,9 +1027,10 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
 
         if got == "clip":
             src, _ = clip_pick.take(start, said)
-            src_start, stretch = clip_timing(src, dur)
+            src_start, stretch, src_total = clip_timing(src, dur)
             shots.append(dict(kind="clip", file=src, tag="clip",
                               src_start=src_start, stretch=stretch,
+                              src_total=src_total,
                               move=repeat_move(clip_pick.last_repeat),
                               start=start, duration=dur, **meta,
                               **{k: cfg[k] for k in
@@ -1370,6 +1377,35 @@ def set_render_durations(shots):
         for k, sh in enumerate(group):
             extra = 0.0 if k == len(group) - 1 else xfade_dur(sh) + PAD
             sh["render_dur"] = round(sh["duration"] + extra, 3)
+
+    # ЗАМЕДЛЕНИЕ СЧИТАЕТСЯ ОТ render_dur, А НЕ ОТ duration.
+    #
+    # Множитель подбирался в clip_timing под экранную длительность кадра,
+    # но рендерится кадр длиннее — на перекрытие перехода плюс запас. У
+    # замедленного клипа петля отключена (см. render_footage_clip), и
+    # растянутого исходника на эту добавку не хватает: файл выходит
+    # короче -t, а дальше начинается пункт 3 задания — xfade просит кадры
+    # за концом клипа и МОЛЧА обрывает всю группу из двенадцати.
+    #
+    # Пример с прогона: исходник 5 с на кадре 8 с давал k=1.649, то есть
+    # 8.25 секунды при нужных 9.57.
+    #
+    # Если растянуть до render_dur можно только сильнее потолка —
+    # замедление снимается совсем, и клип идёт обычной петлёй. Петля на
+    # длинном кадре читается как заедание, но это косметика; оборванная
+    # группа склейки — это минус сотня секунд ролика.
+    for sh in shots:
+        if not sh.get("stretch"):
+            continue
+        total = sh.get("src_total") or 0.0
+        if total <= 0:
+            sh["stretch"] = 0.0
+            continue
+        need = sh["render_dur"] / max(total - 0.15, 0.5)
+        if need > CLIP_STRETCH_MAX:
+            sh["stretch"] = 0.0
+        else:
+            sh["stretch"] = round(max(need, sh["stretch"]), 3)
 
 
 # ───────────────────────── РЕНДЕР ─────────────────────────

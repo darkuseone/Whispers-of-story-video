@@ -1083,9 +1083,14 @@ ALL_SOURCES = {
     "openverse": src_openverse,
     "loc": src_loc,
     "nasa": src_nasa,
-    # последняя очередь, в умолчаниях отсутствуют намеренно
-    "magnific_image": src_magnific_image,
-    "magnific_video": src_magnific_video,
+    # Библиотеки Magnific здесь НЕТ намеренно, и это не забывчивость.
+    #
+    # Списание суточного лимита живёт в magnific_fallback: он считает
+    # фактически скачанное и зовёт note_library. Источник, выбранный по
+    # имени из спецификации, идёт в gather напрямую, мимо этого счёта, —
+    # то есть качает из библиотеки, не списывая лимит вообще. Правило
+    # «обращаться к библиотеке только доборным проходом» так перестаёт
+    # быть правилом, которое можно нарушить опечаткой в спецификации.
 }
 
 VIDEO_SOURCES = [src_pexels, src_pixabay, src_archive_org, src_wikimedia_video]
@@ -1364,7 +1369,23 @@ def magnific_fallback(job, work: Path, queries, got, folder, kind, media):
     """
     if not magnific.available():
         return []
+    # СЫТ ЛИ ЗАПРОС — СПРАШИВАЕМ У ДИСКА, А НЕ У ЭТОГО ПРОГОНА.
+    #
+    # gather возвращает только что скачанное, и на пересборке из кэша это
+    # пустой список: всё уже лежит на диске, качать нечего. Считать по
+    # нему значит объявить голодными ВСЕ запросы и вычерпать суточный
+    # лимит библиотеки на материал, который уже есть, — причём на каждой
+    # пересборке заново, а пересборок у ролика пять-десять.
+    #
+    # Поэтому смотрим в манифест: там лежит всё, что когда-либо скачано
+    # по этой папке, вместе с запросом, по которому оно пришло.
     fed = {row.get("q") for row in got}
+    man = work / folder / "_manifest.json"
+    if man.exists():
+        try:
+            fed |= {row.get("q") for row in json.loads(man.read_text())}
+        except (json.JSONDecodeError, OSError):
+            pass
     starving = [q for q in queries if q not in fed]
     if not starving:
         return []

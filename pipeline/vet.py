@@ -636,8 +636,16 @@ def vet_all(job, work: Path, use_vision=True):
                 """
                 f, _why = item
                 worst = None
+                # Расход считается по КАЖДОМУ запросу, а не по вернувшемуся
+                # вердикту. У видео их два, наружу уходит один — худший, —
+                # и если сложить только его токены, строка стоимости
+                # занижает счёт вдвое на всём видео ролика.
+                tin = tout = calls = 0
                 for im in frames[f][:2]:
                     res = ask_vision(im, topic, desc, model, key)
+                    tin += res[2][0]
+                    tout += res[2][1]
+                    calls += 1
                     if worst is None:
                         worst = res
                     elif res[0] is False:
@@ -645,14 +653,14 @@ def vet_all(job, work: Path, use_vision=True):
                         break
                     elif res[0] is not None and worst[0] is None:
                         worst = res
-                return f, worst
+                return f, worst, tin, tout, calls
 
             with ThreadPoolExecutor(max_workers=WORKERS) as ex:
-                for f, res in ex.map(one, ask_list):
+                for f, res, tin, tout, calls in ex.map(one, ask_list):
                     vision_out[f] = res
-                    tok_in += res[2][0]
-                    tok_out += res[2][1]
-                    asked += 1
+                    tok_in += tin
+                    tok_out += tout
+                    asked += calls
             unknown = sum(1 for v in vision_out.values() if v[0] is None)
             if unknown == len(ask_list):
                 log(f"  ! зрение не ответило ни разу "
@@ -682,9 +690,9 @@ def vet_all(job, work: Path, use_vision=True):
     if asked:
         p_in, p_out = price_of(model or "")
         cost = tok_in / 1e6 * p_in + tok_out / 1e6 * p_out
-        log(f"── зрение ({model}): {asked} кадров, "
+        log(f"── зрение ({model}): {asked} запросов, "
             f"{tok_in} входных и {tok_out} выходных токенов")
-        log(f"   ${cost:.3f} за ролик, ${cost/asked*1000:.2f} за тысячу кадров "
+        log(f"   ${cost:.3f} за ролик, ${cost/asked*1000:.2f} за тысячу запросов "
             f"(тариф ${p_in:.2f}/${p_out:.2f} за млн). "
             f"Токены измерены по полю usage в ответах API.")
     elif not vision_ok:

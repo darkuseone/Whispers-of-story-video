@@ -154,8 +154,13 @@ def _load_slug_overrides(env_name: str, defaults: dict) -> dict:
 IMAGE_SLUGS = _load_slug_overrides("MAGNIFIC_IMAGE_SLUGS", _DEFAULT_IMAGE_SLUGS)
 VIDEO_SLUGS = _load_slug_overrides("MAGNIFIC_VIDEO_SLUGS", _DEFAULT_VIDEO_SLUGS)
 
-IMAGE_MODELS = list(_DEFAULT_IMAGE_SLUGS)
-VIDEO_MODELS = list(_DEFAULT_VIDEO_SLUGS)
+# Список моделей берётся из СЛИТЫХ словарей, а не из умолчаний. Иначе
+# обещанный возврат модели переменной окружения не работает вовсе: slug
+# доедет до IMAGE_SLUGS, но модели не будет в списке, по которому идут
+# чередование и жребий, и её никто никогда не выберет. Ровно так и было
+# с seedance после того, как её убрали из умолчаний.
+IMAGE_MODELS = list(IMAGE_SLUGS)
+VIDEO_MODELS = list(VIDEO_SLUGS)
 
 # Freepik принимает не "16:9", а именованный enum. Соответствие —
 # подтверждённое (imagen3/seedream в документации), полный список шире,
@@ -559,7 +564,7 @@ def _resolve_download(resource_id) -> str:
         return ""
 
 
-def search_library(query: str, n: int, kind: str = "image"):
+def search_library(query: str, n: int, kind: str = "image", resolve=True):
     """
     Готовые файлы из библиотеки Magnific: видео, фото, векторы, графика,
     иллюстрации.
@@ -640,7 +645,12 @@ def search_library(query: str, n: int, kind: str = "image"):
         if not isinstance(row, dict):
             continue
         rid = row.get("id")
-        url = _resolve_download(rid) if rid else _first_url(row)
+        # resolve=False — режим диагностики: нужен только ответ «нашлось
+        # или нет». Резолв ссылки бьёт в /resources/{id}/download, то есть
+        # в выдачу лицензии, и это настоящее скачивание по счёту сервиса —
+        # гонять его ради проверки нельзя.
+        url = (_resolve_download(rid) if rid else _first_url(row)) \
+            if resolve else (_first_url(row) or f"id:{rid}")
         if not url:
             continue
         is_video = bool(re.search(r"\.(mp4|webm|mov)(\?|$)", url, re.I)) \
@@ -819,8 +829,9 @@ def selftest():
                 log(line)
 
     log("\n── библиотека")
-    rows = search_library("ancient greek temple ruins", 2, "image")
-    log(f"  найдено {len(rows)} (лимит НЕ списан: считается по скачанному)")
+    rows = search_library("ancient greek temple ruins", 2, "image",
+                          resolve=False)
+    log(f"  найдено {len(rows)} (без выдачи лицензии — лимит не тронут)")
 
     if fixed:
         log("\nНАШЛОСЬ рабочее написание — вписать в magnific.py "
