@@ -132,6 +132,14 @@ def main(job_path):
     # вступление молча превращается в фотоальбом.
     print("── доли материала")
     intro_end = getattr(st, "intro_end", 0.0)
+
+    # Потолок стока: пул × сколько раз клип можно показать × самый длинный
+    # кусок. Если заказанная доля выше него, дело не в раскладке, а в том,
+    # что материала физически нет, — и валить прогон за это нельзя.
+    pool = len({s["file"] for s in shots if s["kind"] == "clip"})
+    ceiling = pool * build.MAX_CLIP_REPEATS * build.CLIP_MAX_SECONDS
+
+    drift = []
     for ru, lo, hi, target in (("вступление", 0.0, intro_end, st.intro_clip_share),
                                ("тело", intro_end, total, st.body_clip_share)):
         inside = [s for s in shots if lo <= s["start"] < hi]
@@ -139,8 +147,33 @@ def main(job_path):
         if span <= 0:
             continue
         clip_s = sum(s["duration"] for s in inside if s["kind"] == "clip")
-        print(f"   {ru:<12} видео {clip_s/span*100:5.1f}% "
-              f"(заказано {target*100:.0f}%), {span/60:.1f} мин")
+        got = clip_s / span
+        note = ""
+        # ДОПУСК 8 ПУНКТОВ. Заказаны полосы (70-80% и 20-30%), цель — их
+        # середина, и попадание в полосу с запасом это примерно столько.
+        if abs(got - target) > 0.08:
+            if got < target and ceiling < target * span:
+                note = (f"  ← стока не хватает физически: пул {pool} клипов "
+                        f"даёт максимум {ceiling/60:.1f} мин видео")
+            else:
+                note = "  ← РАЗОШЛОСЬ"
+                drift.append(f"{ru}: {got*100:.1f}% против заказанных "
+                             f"{target*100:.0f}%")
+        print(f"   {ru:<12} видео {got*100:5.1f}% "
+              f"(заказано {target*100:.0f}%), {span/60:.1f} мин{note}")
+
+    # Раньше эти проценты только ПЕЧАТАЛИСЬ. Смоук сообщал «видео 5.0%
+    # против заказанных 24%» и тут же объявлял прогон пройденным — то
+    # есть главное правило канала не проверялось вовсе, хотя и README, и
+    # CLAUDE.md обещали обратное.
+    if drift:
+        raise SystemExit(
+            "доли материала разошлись с заказанными:\n  " +
+            "\n  ".join(drift) +
+            "\nСтока при этом хватает, значит дело в раскладке — смотри "
+            "MaterialMix в build.py и оси clip_rhythm/body_clip_every_n_shots "
+            "в style.py. Правила, считающие КАДРЫ, дают по времени вдвое "
+            "меньше заказанного.")
 
     # ДОЛГИЕ КАДРЫ БЕЗ ДОЛГОГО ХОДА. Отдельной строкой, потому что это
     # самая дорогая ошибка канала и по логу сборки она не видна: движение
