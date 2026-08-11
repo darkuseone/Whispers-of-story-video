@@ -259,62 +259,86 @@ def cheap_problems(path: Path):
 
 # ─────────────────────── ЗРЕНИЕ ───────────────────────
 
-PROMPT = """You are the picture editor of a slow, atmospheric documentary \
-channel about the ancient world — Egypt, Greece, Rome, Mesopotamia, the \
-Bronze Age, Atlantis and other myths and mysteries of antiquity. The videos \
-are 40-50 minutes long, cool-toned, and meant to be watched at night. There \
-is no sensationalism: atmosphere, facts, and respect for history.
+# Канал расширен с августа 2026 за пределы античности: раскопки и артефакты,
+# наука и космос, мифология, исторические расследования, «новый мир»
+# (современные технологические и цифровые феномены — теория мёртвого
+# интернета, ИИ и так далее). До этой правки PROMPT был жёстко зашит под
+# один жанр — «канал про древний мир, отклоняй всё современное» — и это
+# прямо ломало отбраковку на первом же ролике за пределами античности:
+# dead-internet-01 про серверные и смартфоны получил бы вердикт «это не
+# античный мир» на каждом собственном кадре. Универсальные правила (текст
+# и логотипы, фэнтези-арт, дешёвый реконструкторский костюм, техническое
+# качество) остались общими для всех жанров; то, что считается «своей
+# эпохой» и что — анахронизмом, у каждого выпуска своё и приходит из
+# спецификации через PERIOD_CONTEXT, а не из константы модуля.
+DEFAULT_PERIOD_CONTEXT = """ACCEPT if the frame shows: ruins, excavation \
+sites, temples, columns, statues, reliefs, hieroglyphs, cuneiform, \
+inscriptions, mosaics, frescoes, pottery, bronze and gold artefacts, coins, \
+jewellery, papyri, manuscripts, maps or engravings of antiquity, museum \
+objects, archaeological work, desert, sea, cliffs, night sky, stars, water, \
+stone, sand, fire and other elemental textures that carry atmosphere, or \
+period-appropriate landscape of the Mediterranean, Nile, Aegean or Near \
+East.
 
-THE VIDEO IS ABOUT: {topic}
-{description}
+REJECT anything that breaks the period:
 
-Look at the attached frame and judge it as a working editor would: not "is \
-this a nice picture" but "can this shot go into THIS video without a viewer \
-noticing that it does not belong".
-
-ACCEPT if the frame shows: ruins, excavation sites, temples, columns, \
-statues, reliefs, hieroglyphs, cuneiform, inscriptions, mosaics, frescoes, \
-pottery, bronze and gold artefacts, coins, jewellery, papyri, manuscripts, \
-maps or engravings of antiquity, museum objects, archaeological work, \
-desert, sea, cliffs, night sky, stars, water, stone, sand, fire and other \
-elemental textures that carry atmosphere, or period-appropriate landscape \
-of the Mediterranean, Nile, Aegean or Near East.
-
-REJECT if the frame shows anything that breaks the period or the mood:
-
-1. ANYTHING MODERN IN SHOT. Cars, roads, road signs, power lines, street \
+- ANYTHING MODERN IN SHOT. Cars, roads, road signs, power lines, street \
 lamps, scaffolding, safety railings, glass and steel buildings, plastic, \
 modern clothing, backpacks, sunglasses, phones, cameras, tourists. This is \
 the single most common failure with ruins footage: the temple is genuine \
 and there is a coach party in front of it. If a tourist or a modern object \
 is clearly visible, reject even though the site itself is right.
 
-2. TEXT, LOGOS, INTERFACES. Any website address, domain, ".com", watermark, \
-channel logo, subtitle, caption, chart, diagram with labels, screenshot, \
-browser or phone screen, or an archive/digitisation credit card of the sort \
-that old public-domain footage carries at its start or end. One such frame \
-breaks the illusion for the whole video.
-
-3. FANTASY AND GAME ART. Video game screenshots, CGI fantasy temples, \
-concept art of dragons or wizards, "ancient aliens" imagery, pyramids with \
-spaceships, glowing portals, obvious 3D renders with plastic lighting. The \
-channel is about history, and this material makes it look like the opposite.
-
-4. RE-ENACTMENT THAT LOOKS CHEAP. Costume parties, festival cosplay, plastic \
-armour, gladiator shows for tourists, film-set props. Serious museum \
-reconstruction is fine; a man in a bedsheet is not.
-
-5. WRONG CIVILISATION OR WRONG ERA presented as the subject. Medieval \
+- WRONG CIVILISATION OR WRONG ERA presented as the subject. Medieval \
 castles, knights, Vikings, samurai, cathedrals, Renaissance painting, \
 Victorian interiors, industrial machinery. They are historical but they are \
-not the ancient world, and a viewer who knows the period will see it at once.
+not the ancient world, and a viewer who knows the period will see it at \
+once."""
 
-6. STOCK FILLER. Business people, laboratories, hospitals, shopping malls, \
-offices, sports, food photography, cosmetics, fireworks, pets, weddings, \
-abstract motion graphics, particle backgrounds.
+PROMPT = """You are the picture editor of a slow, atmospheric documentary \
+channel. Videos run 30-40 minutes, are cool-toned, and are meant to be \
+watched in the evening. There is no sensationalism: atmosphere, facts, and \
+a steady investigative tone carry the video, not shock or drama.
 
-7. TECHNICALLY UNUSABLE. Very blurry, heavily compressed, tiny, distorted \
-by AI artefacts (melted faces, six-fingered hands, nonsense inscriptions), \
+THE VIDEO IS ABOUT: {topic}
+{description}
+
+WHAT COUNTS AS PERIOD-CORRECT FOR THIS SPECIFIC EPISODE:
+{period_context}
+
+Look at the attached frame and judge it as a working editor would: not "is \
+this a nice picture" but "can this shot go into THIS video without a viewer \
+noticing that it does not belong".
+
+Beyond the period rules above, REJECT if the frame shows any of these —
+they break the illusion regardless of the episode's subject:
+
+1. TEXT, LOGOS, INTERFACES that are NOT the kind of material this specific \
+episode is explicitly collecting. A website address, domain, ".com", \
+watermark, channel logo, subtitle, chart, diagram with labels, or an \
+archive/digitisation credit card of the sort that old public-domain footage \
+carries at its start or end always breaks the illusion. A browser, phone \
+screen, or old interface screenshot is fine ONLY if the period context \
+above says this episode is specifically about old computers, screens, or \
+internet history — otherwise reject it like any other modern chrome.
+
+2. FANTASY AND GAME ART. Video game screenshots, CGI fantasy renders, \
+concept art of creatures or magic, "ancient aliens" imagery, glowing \
+portals, obvious 3D renders with plastic lighting — unless the episode is \
+explicitly illustrating a myth or a fictional claim and says so above.
+
+3. RE-ENACTMENT THAT LOOKS CHEAP. Costume parties, festival cosplay, \
+plastic armour, tourist stage shows, film-set props. Serious museum or \
+documentary reconstruction is fine; a man in a bedsheet is not.
+
+4. STOCK FILLER UNRELATED TO THIS EPISODE. Generic posed business-handshake \
+photography, lifestyle laptop-on-a-desk shots, unrelated sports, food, \
+cosmetics, fireworks, pets, or wedding photography, generic abstract \
+particle-motion backgrounds — material that has nothing to do with what \
+this specific episode is actually about, even if it is technically clean.
+
+5. TECHNICALLY UNUSABLE. Very blurry, heavily compressed, tiny, distorted \
+by AI artefacts (melted faces, six-fingered hands, nonsense text), \
 extremely low contrast, or a flat catalogue photograph of an object on a \
 pure white background — this channel grades everything cold and dark, and a \
 white rectangle burns a hole in the frame.
@@ -328,7 +352,7 @@ Then rate the frame from 1 to 5 on how good it is for THIS video:
 
 Be strict. There is more material than the video needs, so rejecting a \
 doubtful frame costs nothing, while one wrong frame is visible to every \
-viewer for the whole 45 minutes.
+viewer for the whole video.
 
 Answer with STRICT JSON and nothing else:
 {{"keep": true or false, "quality": 1-5, "why": "at most 12 words", \
@@ -377,7 +401,7 @@ def candidates(key, want=None):
     return out
 
 
-def choose_model(im, topic, desc, key, want=None):
+def choose_model(im, topic, desc, key, want=None, period_context=None):
     """
     Подбирает рабочую модель на ОДНОЙ пробной картинке.
 
@@ -389,7 +413,8 @@ def choose_model(im, topic, desc, key, want=None):
     if not cands:
         return None, "сервис не отдал ни одной модели"
     for name in cands[:6]:
-        keep, why, used, _q = ask_vision(im, topic, desc, name, key, tries=1)
+        keep, why, used, _q = ask_vision(im, topic, desc, name, key, tries=1,
+                                         period_context=period_context)
         if keep is not None:
             log(f"  зрение: работает модель {name}")
             return name, ""
@@ -406,7 +431,7 @@ def to_data_url(im: Image.Image) -> str:
 
 
 def ask_vision(im: Image.Image, topic: str, description: str, model: str,
-               key: str, tries=2):
+               key: str, tries=2, period_context=None):
     """
     Вердикт модели по одному кадру.
 
@@ -419,13 +444,19 @@ def ask_vision(im: Image.Image, topic: str, description: str, model: str,
     Оценка 1-5 — второй, более строгий вопрос поверх «годится или нет»,
     см. MIN_QUALITY. Модель, которая её не вернула, получает 3: не
     наказываем кадр за то, что модель ответила не полностью.
+
+    period_context — что считается своей эпохой для ЭТОГО конкретного
+    выпуска (см. DEFAULT_PERIOD_CONTEXT и topic_text). Канал больше не
+    только про древний мир, и жёстко зашитого одного ответа на вопрос
+    «что здесь анахронизм» с августа 2026 не существует.
     """
     body = {
         "model": model,
         "temperature": 0,
         "messages": [{"role": "user", "content": [
             {"type": "text", "text": PROMPT.format(
-                topic=topic, description=description)},
+                topic=topic, description=description,
+                period_context=period_context or DEFAULT_PERIOD_CONTEXT)},
             {"type": "image_url",
              "image_url": {"url": to_data_url(im), "detail": "low"}},
         ]}],
@@ -483,6 +514,20 @@ def topic_text(job):
     desc = y.get("description_intro", "")
     return (topic + (f" ({kw})" if kw else ""),
             f"More context: {desc}" if desc else "")
+
+
+def period_context_of(job):
+    """
+    Что для ЭТОГО выпуска считается своей эпохой, а что анахронизмом.
+
+    Поле vet_context — свободный текст в спецификации ролика: только автор
+    сценария знает, что здесь материал по теме, а что мусор (для выпуска
+    про интернет-архивы старый скриншот форума — то, что нужно, а не
+    брак). Поля нет — берётся DEFAULT_PERIOD_CONTEXT, старое поведение
+    «канал про древний мир»: все выпуски античной линейки его не задают
+    и продолжают вести себя как раньше.
+    """
+    return job.get("vet_context") or DEFAULT_PERIOD_CONTEXT
 
 
 def manifest_meta(work: Path):
@@ -561,6 +606,7 @@ def triage(path: Path, im, bad, pale, src, query, current_queries, trusted):
 
 def vet_all(job, work: Path, use_vision=True):
     topic, desc = topic_text(job)
+    period_context = period_context_of(job)
     # Модель не задаётся здесь: её подбирает choose_model ниже, на пробной
     # картинке. Раньше на этом месте стояла зашитая константа с угаданным
     # именем — она и оказалась несуществующей.
@@ -598,7 +644,8 @@ def vet_all(job, work: Path, use_vision=True):
             vision_ok = False
         else:
             model, why = choose_model(probe, topic, desc, key,
-                                      job.get("vet_model"))
+                                      job.get("vet_model"),
+                                      period_context=period_context)
             if not model:
                 log(f"  ! зрение недоступно: {why} — работает только "
                     f"локальный ярус, спорное остаётся в работе")
@@ -642,7 +689,8 @@ def vet_all(job, work: Path, use_vision=True):
                 # занижает счёт вдвое на всём видео ролика.
                 tin = tout = calls = 0
                 for im in frames[f][:2]:
-                    res = ask_vision(im, topic, desc, model, key)
+                    res = ask_vision(im, topic, desc, model, key,
+                                     period_context=period_context)
                     tin += res[2][0]
                     tout += res[2][1]
                     calls += 1
