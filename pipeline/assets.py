@@ -740,28 +740,53 @@ def src_pexels(q, n):
 
 def relevant(query: str, tags: str) -> bool:
     """
-    Есть ли у находки хоть одно значимое слово из запроса.
+    Похоже ли найденное на то, что искали.
 
     Стоки ищут по ИЛИ и добирают выдачу чем попало, лишь бы отдать
     запрошенное число. Замер на первом прогоне pawn-01: запрос
     «candle lamp light on aged wood» принёс бананы, петуха с курами,
-    помаду, пиво, фейерверк и статую Свободы — двадцать четыре ролика
-    из тридцати девяти оказались не по теме, и всё это человеку потом
-    отсматривать руками на листе отбора.
+    помаду, пиво, фейерверк и статую Свободы.
 
-    Проверка нарочно мягкая: достаточно ОДНОГО совпадения. Строгая
-    (все слова) оставила бы пустую выдачу — у стоков нет столько
-    материала по узким запросам. Задача не отобрать лучшее, а отсеять
-    заведомо чужое.
+    ОДНОГО СОВПАДЕНИЯ МАЛО, и это замерено на dead-internet-01. Там
+    проверка пропускала файл по любому единственному общему слову, и по
+    запросу про клавиатуру в ролик уезжали жареные кофейные зёрна —
+    у ролика в тегах стояло «laptop», потому что кофе на стоках снимают
+    рядом с ноутбуком. Дальше за каждый такой файл платилось дважды:
+    скачиванием и запросом к зрению, которое его и отбраковывало. Из 142
+    клипов зрение забраковало 105.
+
+    Поэтому два правила вместо одного:
+
+    1. СЛУЖЕБНЫЕ СЛОВА НЕ СЧИТАЮТСЯ УЛИКОЙ. «night», «dark», «room»,
+       «light», «background» стоят в тегах у половины стока и совпадают
+       с чем угодно. Совпадение по ним не значит ничего.
+    2. ЧЕМ БОГАЧЕ ОПИСАНИЕ, ТЕМ СТРОЖЕ СПРОС. У pixabay теги списком в
+       десяток слов — там требуем два совпадения. У pexels «описание»
+       это адрес страницы вида /video/server-room-4990243, три слова
+       всего, и требовать двух значило бы выбрасывать годное: там хватает
+       одного.
+
+    Проверка по-прежнему НЕ отбирает лучшее — это работа зрения. Она
+    отсеивает заведомо чужое, но теперь делает это до того, как за файл
+    заплачено.
     """
     stop = {"the", "a", "an", "of", "and", "or", "in", "on", "at", "to",
             "with", "closeup", "close", "up", "detail", "shot", "old"}
+    # Слова, которые есть у всего подряд: улика нулевой ценности. Сюда же
+    # «video» — оно стоит в КАЖДОМ адресе страницы pexels.
+    weak = {"dark", "night", "light", "lights", "room", "background",
+            "view", "scene", "macro", "slow", "motion", "footage", "video",
+            "stock", "abstract", "beautiful", "nature", "time", "lapse",
+            "timelapse", "white", "black", "colour", "color", "screen"}
     want = {w for w in re.findall(r"[a-z]+", query.lower())
-            if len(w) > 2 and w not in stop}
+            if len(w) > 2 and w not in stop and w not in weak}
     if not want:
         return True
-    have = set(re.findall(r"[a-z]+", (tags or "").lower()))
-    return bool(want & have)
+    have = {w for w in re.findall(r"[a-z]+", (tags or "").lower())
+            if w not in weak}
+    hits = want & have
+    need = 2 if (len(want) >= 3 and len(have) >= 5) else 1
+    return len(hits) >= need
 
 
 def src_pixabay(q, n):
@@ -1058,11 +1083,23 @@ def src_loc(q, n):
 
 
 def src_wikimedia(q, n):
-    """Commons. Ключ не нужен, но User-Agent обязателен."""
+    """
+    Commons. Ключ не нужен, но User-Agent обязателен.
+
+    gsrnamespace=6 ОБЯЗАТЕЛЕН, и его отсутствие — не мелочь. Без него
+    поиск идёт по основному пространству имён (статьи), а файлы Commons
+    живут в пространстве File:, то есть в шестом. Результат — стабильный,
+    молчаливый ноль: HTTP 200, пустой список, жаловаться не на что.
+    Замерено на трёх запросах подряд: без namespace — 0 страниц, с ним —
+    12, из которых 3-4 проходят по лицензии. Ровно так этот источник и
+    отдавал ноль на всех запросах ролика dead-internet-01, ни разу не
+    подав признака неисправности.
+    """
     r = requests.get("https://commons.wikimedia.org/w/api.php", timeout=TIMEOUT,
                      headers=UA,
                      params={"action": "query", "generator": "search",
                              "gsrsearch": f"{q} filetype:bitmap",
+                             "gsrnamespace": 6,
                              "gsrlimit": n * 2, "prop": "imageinfo",
                              "iiprop": "url|extmetadata", "iiurlwidth": 1920,
                              "format": "json"})
@@ -1096,6 +1133,7 @@ def src_wikimedia_video(q, n):
                      headers=UA,
                      params={"action": "query", "generator": "search",
                              "gsrsearch": f"{short_query(q)} filetype:video",
+                             "gsrnamespace": 6,   # см. src_wikimedia
                              "gsrlimit": n * 2, "prop": "imageinfo",
                              "iiprop": "url|extmetadata|size",
                              "format": "json"})
