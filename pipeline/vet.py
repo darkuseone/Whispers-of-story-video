@@ -184,9 +184,8 @@ def video_frames(path: Path, n=3):
         # удаляется и это незаметно, но прогон, снятый по таймауту или
         # отменённый в Actions, оставляет их на диске — и следующая
         # сборка честно берёт png-заглушку за клип, вписывает ей вердикт
-        # и отдаёт монтажу. Ровно так у ролика и появляется «лишний»
-        # материал, которого никто не скачивал.
-        tmp = path.parent / f"_probe_{path.stem}_{k}.png"
+        # и отдаёт монтажу.
+        tmp = path.parent / f"_{path.stem}_probe{k}.png"
         subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{at:.2f}",
                         "-i", str(path), "-frames:v", "1", "-y", str(tmp)],
                        check=False)
@@ -858,6 +857,7 @@ def vet_all(job, work: Path, use_vision=True):
     cache_path = work / "vet_cache.json"
     cache = load_cache(cache_path, pkey)
     from_cache = twins = 0
+    skipped_files = set()
     budget = pool_budget(job, work)
     if budget:
         log(f"  достаточно {budget} годных файлов каждого вида — дальше "
@@ -899,7 +899,7 @@ def vet_all(job, work: Path, use_vision=True):
             continue
         log(f"── проверяю {kind}: {len(files)} шт")
 
-        decided, ask_list, frames, fkeys, mids = {}, [], {}, {}, {}
+        decided, ask_list, frames, fkeys, mid_hash = {}, [], {}, {}, {}
         cheap_n = cached_n = twin_n = 0
         for f in files:
             # ПАМЯТЬ ПРОВЕРЯЕТСЯ ДО РАЗБОРА ФАЙЛА. Отпечаток считается по
@@ -914,8 +914,6 @@ def vet_all(job, work: Path, use_vision=True):
                 cached_n += 1
                 continue
             im, bad, pale, look = cheap_problems(f)
-            frames[f] = look or ([im] if im is not None else [])
-            mids[f] = im
             src, query = meta.get(f.name, ("", ""))
             verdict, why = triage(f, im, bad, pale, src, query,
                                   current_queries, trusted)
@@ -924,6 +922,14 @@ def vet_all(job, work: Path, use_vision=True):
                 cache[key] = {"keep": verdict == "keep", "why": why}
                 cheap_n += 1
                 continue
+            # КАДРЫ ДЕРЖИМ ТОЛЬКО ДЛЯ ТЕХ, КОГО СПРОСИМ, а от среднего
+            # оставляем один хэш вместо картинки. Материала под четыре
+            # сотни файлов, кадр в 1920x1080 занимает шесть мегабайт, и
+            # лишний кадр на файл — это гигабайты памяти раннера на ровном
+            # месте. Хэш нужен только для корзин близнецов, ему хватает
+            # сетки 9x8.
+            frames[f] = look or [im]
+            mid_hash[f] = dhash(im)
             ask_list.append((f, why))
 
         # БЛИЗНЕЦЫ. Спрашиваем по одному представителю от корзины, вердикт
@@ -942,16 +948,24 @@ def vet_all(job, work: Path, use_vision=True):
             why_of = dict(ask_list)
             by_query = {}
             for f, _w in ask_list:
-                q = meta.get(f.name, ("", ""))[1]
+                src, q = meta.get(f.name, ("", ""))
                 # Файл без записи в манифесте — материал неизвестного
                 # происхождения (старый кэш, ручная подкладка). Такие в
                 # корзины не сводятся вовсе: раз запрос неизвестен, нет и
                 # оснований считать два похожих по яркости кадра одним и
                 # тем же. Своя корзина у каждого — ключ по имени файла.
-                by_query.setdefault(q or f"?{f.name}", []).append(f)
+                #
+                # Синтетика из mock.py — туда же, и по той же причине с
+                # обратным знаком: она СОВПАДАЕТ побитово по построению
+                # (testsrc2 один на всех), и сведение близнецов честно
+                # схлопывало бы весь мок-пул в один файл. Смоук после
+                # этого падал на долях материала — то есть проверка
+                # ломалась о собственную заглушку, а не о код.
+                lane = f"?{f.name}" if (src == "mock" or not q) else q
+                by_query.setdefault(lane, []).append(f)
             reps = []
             for lane in by_query.values():
-                hashes = {f: dhash(mids[f]) for f in lane}
+                hashes = {f: mid_hash[f] for f in lane}
                 for b in near_groups(hashes):
                     bucket_of[b[0]] = b
                     reps.append((b[0], why_of[b[0]]))
@@ -1045,6 +1059,7 @@ def vet_all(job, work: Path, use_vision=True):
                     decided[member] = (
                         False, f"проверка остановлена: годного уже {kept_now} "
                                f"при достаточных {budget}")
+                    skipped_files.add(member)
             if skipped:
                 log(f"   остановился на достатке: {kept_now} годных при "
                     f"достаточных {budget}, не смотрел ещё "
@@ -1093,6 +1108,15 @@ def vet_all(job, work: Path, use_vision=True):
                         # заново и снова заплатит за представителя.
                         cache[fkeys[f]] = {"keep": bool(keep), "why": why}
             verdicts[kind][str(n)] = {"keep": bool(keep), "why": why}
+            # ПРИЗНАК «НЕ СМОТРЕЛИ». Для монтажа это тот же отказ — файл в
+            # ролик не идёт. А вот добору материала (assets.refill_after_vet)
+            # разница принципиальна: он меряет долю брака и по ней решает,
+            # качать ли вторую волну. Без этого признака остановка по
+            # достатку выглядела бы как «отбраковка съела половину пула» и
+            # запускала бы лишнее скачивание — за которое ещё и платит
+            # суточный лимит библиотеки.
+            if f in skipped_files:
+                verdicts[kind][str(n)]["skipped"] = True
             kept += bool(keep)
 
         log(f"   годных {kept}, отбраковано {len(files) - kept}")
@@ -1124,6 +1148,22 @@ def vet_all(job, work: Path, use_vision=True):
                    encoding="utf-8")
     log(f"── вердикты записаны в {out}")
     return verdicts
+
+
+def skipped_from(work: Path):
+    """
+    Номера, которых зрение НЕ СМОТРЕЛО из-за остановки по достатку.
+
+    Монтажу они не нужны — для него это обычный отказ. Нужны добору
+    материала: он меряет долю брака, а непросмотренное браком не является
+    и в эту долю попадать не должно.
+    """
+    p = work / "vetted.json"
+    if not p.exists():
+        return {}
+    data = json.loads(p.read_text(encoding="utf-8"))
+    return {kind: {int(n) for n, v in d.items() if v.get("skipped")}
+            for kind, d in data.items()}
 
 
 def rejected_from(work: Path):

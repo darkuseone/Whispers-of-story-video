@@ -24,6 +24,7 @@ testsrc2.
 
 import json
 import math
+import random
 import subprocess
 import sys
 from pathlib import Path
@@ -114,6 +115,18 @@ def make_images(out: Path, prompts, tag: str):
         d.line([0, 0, IMG_W, IMG_H], fill=(255, 255, 255), width=3)
         d.rectangle([40, 40, IMG_W - 40, IMG_H - 40], outline=(20, 20, 20),
                     width=6)
+        # СВОЯ ГЕОМЕТРИЯ У КАЖДОЙ КАРТОЧКИ. Цвет её не разводит: отбраковка
+        # дублей считает перцептивный хэш по ЯРКОСТИ, и полсотни карточек,
+        # отличающихся только оттенком, для неё один и тот же кадр — она
+        # честно выбрасывала их как копии, и пул архива схлопывался втрое.
+        # Крупные пятна по грубой сетке: хэш смотрит сетку 8x8 и пятно
+        # мельче её ячейки не замечает вовсе.
+        rnd = random.Random(4000 + i)
+        for _ in range(3):
+            bx, by = rnd.randrange(0, 6) * 256, rnd.randrange(0, 4) * 216
+            bw, bh = rnd.choice((200, 300, 420)), rnd.choice((160, 240, 320))
+            tone = rnd.choice(((20, 18, 16), (235, 232, 225)))
+            d.rectangle([bx, by, bx + bw, by + bh], fill=tone)
         d.text((80, IMG_H // 2 - 60), f"{tag} {i:03d}", font=font,
                fill=(25, 20, 15))
         d.text((80, IMG_H // 2 + 60), p[:38], fill=(40, 32, 25))
@@ -122,11 +135,58 @@ def make_images(out: Path, prompts, tag: str):
     return made
 
 
+def write_manifest(out: Path, prefix: str, queries):
+    """
+    Манифест для синтетики — ТОТ ЖЕ формат, что пишет assets.gather.
+
+    Без него подбор по смыслу в build.keywords_for падает на имена файлов
+    («clip 003 mock»), и смоук показывал 0% попаданий по архиву и стоку —
+    то есть проверял не тот путь, который работает в бою. Запросы берутся
+    из спецификации и раздаются файлам по кругу: тот же файл всегда
+    получает тот же запрос, прогон воспроизводим.
+    """
+    if not queries:
+        return
+    man = out / "_manifest.json"
+    rows = []
+    if man.exists():
+        try:
+            rows = json.loads(man.read_text())
+        except json.JSONDecodeError:
+            rows = []
+    known = {Path(r.get("file", "")).name for r in rows}
+    added = 0
+    for p in sorted(out.glob(f"{prefix}_*")):
+        if p.name in known:
+            continue
+        try:
+            n = int(p.name.split("_")[1].split(".")[0])
+        except (IndexError, ValueError):
+            continue
+        rows.append({"file": str(p), "q": queries[n % len(queries)],
+                     "src": "mock", "kind": "mock"})
+        added += 1
+    if added:
+        man.write_text(json.dumps(rows, indent=1, ensure_ascii=False))
+
+
 def make_clips(out: Path, count: int, seconds=14.0):
     """
     testsrc2 вместо стока. Длина 14 секунд — как у настоящего стока, чтобы
     проверялся тот же путь: кусок берётся из середины файла, а на кадре
     длиннее исходника включается петля.
+
+    КЛИПЫ ВЫХОДЯТ ОДИНАКОВЫМИ, и развести их дёшево не получается: замер
+    на двадцати клипах показал минимум НОЛЬ бит расхождения даже после
+    сдвига фазы анимации, отражений и двух крупных заливок по сетке.
+    Перцептивный хэш сравнивает СОСЕДНИЕ пиксели, а внутри сплошного
+    пятна они равны — заливка его просто не двигает.
+
+    Поэтому синтетика исключена из сведения близнецов на стороне
+    отбраковки, по источнику `mock` в манифесте (см. vet.vet_all). Иначе
+    отбраковка дублей честно выбрасывала половину пула как «тот же кадр
+    под другим именем», доли материала после этого не сходились, и смоук
+    падал на синтетике, а не на коде.
     """
     out.mkdir(parents=True, exist_ok=True)
     have = len(list(out.glob("clip_*.mp4")))
@@ -141,6 +201,11 @@ def make_clips(out: Path, count: int, seconds=14.0):
 
 
 def main(job_path):
+    try:
+        import PIL  # noqa: F401
+    except ImportError:
+        raise SystemExit("нет Pillow — поставь зависимости: "
+                         "pip install -r requirements.txt")
     job = json.loads(Path(job_path).read_text(encoding="utf-8"))
     work = Path("work") / job["id"] / "assets"
     work.mkdir(parents=True, exist_ok=True)
@@ -178,12 +243,18 @@ def main(job_path):
     #
     # Как и у стока: в боевом прогоне запрос приносит max(1, round(6 *
     # overshoot)) файлов, из которых отбраковка съедает около двух третей.
+    # Подписи карточек — НАСТОЯЩИЕ запросы из спецификации, по кругу: по
+    # ним же пишется манифест, и подбор по смыслу проверяется тем же
+    # путём, что и в бою, а не по именам файлов.
     over = float(job.get("material_overshoot", 1.4))
     want_arch = max(12, len(job.get("archive_queries", [])) *
                     max(1, round(6 * over) // 3))
+    arch_qs = job.get("archive_queries") or []
     n = make_images(work / "archive",
-                    [f"архивное фото по запросу {i+1}" for i in range(want_arch)],
+                    [arch_qs[i % len(arch_qs)] if arch_qs
+                     else f"archive photo {i+1}" for i in range(want_arch)],
                     "arch")
+    write_manifest(work / "archive", "arch", arch_qs)
     log(f"архив     : добавлено {n}, "
         f"всего {len(list((work / 'archive').glob('arch_*')))}")
 
@@ -200,6 +271,7 @@ def main(job_path):
     want_clips = max(24, len(job.get("footage_queries", [])) *
                      max(1, round(5 * over) // 3))
     n = make_clips(work / "footage", want_clips)
+    write_manifest(work / "footage", "clip", job.get("footage_queries") or [])
     log(f"футаж     : добавлено {n}, "
         f"всего {len(list((work / 'footage').glob('clip_*')))}")
 

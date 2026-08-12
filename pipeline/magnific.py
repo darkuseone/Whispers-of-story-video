@@ -53,8 +53,8 @@ Freepik в апреле 2026 переименовался в Magnific; рабо�
 `x-freepik-api-key` (НЕ `Authorization: Bearer`), путь у каждой модели
 свой: `/ai/text-to-image/{slug}` и `/ai/image-to-video/{slug}`, ответ —
 асинхронная задача (`task_id` + `status`, опрос по тому же пути плюс
-`/{task_id}`), aspect_ratio — не "16:9", а именованный enum
-(`widescreen_16_9`).
+`/{task_id}`), aspect_ratio — именованный enum (`widescreen_16_9`) у
+flux/seedream и дробный `"16:9"` у nano-banana-pro (см. `_aspect`).
 
 Что здесь ДОГАДКА, а не факт: официальная документация
 (docs.freepik.com) отдаёт боту 403 на прямой заход, и точные slug'и
@@ -162,18 +162,29 @@ VIDEO_SLUGS = _load_slug_overrides("MAGNIFIC_VIDEO_SLUGS", _DEFAULT_VIDEO_SLUGS)
 IMAGE_MODELS = list(IMAGE_SLUGS)
 VIDEO_MODELS = list(VIDEO_SLUGS)
 
-# Freepik принимает не "16:9", а именованный enum. Соответствие —
-# подтверждённое (imagen3/seedream в документации), полный список шире,
-# но каналу нужны только эти два кадра.
-_ASPECT_RATIOS = {
+# У большинства Freepik/Magnific text-to-image моделей aspect_ratio —
+# именованный enum (imagen3/seedream/flux). Но nano-banana-pro принимает
+# ТОЛЬКО дробный вид ('16:9', '9:16', …) — именованный enum даёт 400
+# Validation error (замерено на ufos-history-01, 2026-08-06). Полный
+# список дробных у nano-banana: 1:1, 2:3, 3:2, 4:3, 3:4, 5:4, 4:5, 16:9,
+# 9:16, 21:9.
+_ASPECT_ENUM = {
     "16:9": "widescreen_16_9",
     "9:16": "social_story_9_16",
     "1:1": "square_1_1",
 }
+_ASPECT_LITERAL_MODELS = frozenset({"nano-banana2", "nano-banana-pro"})
+_ASPECT_LITERAL_OK = frozenset({
+    "1:1", "2:3", "3:2", "4:3", "3:4", "5:4", "4:5", "16:9", "9:16", "21:9",
+})
 
 
-def _aspect(a: str) -> str:
-    return _ASPECT_RATIOS.get(a, "widescreen_16_9")
+def _aspect(a: str, model: str = None) -> str:
+    """Формат aspect_ratio под конкретную модель."""
+    if model in _ASPECT_LITERAL_MODELS or (
+            model and model.startswith("nano-banana")):
+        return a if a in _ASPECT_LITERAL_OK else "16:9"
+    return _ASPECT_ENUM.get(a, "widescreen_16_9")
 
 
 # Сколько СЕКУНД просить у видеомодели. Только короткая вставка: длинный
@@ -467,7 +478,8 @@ def generate_image(prompt: str, dst: Path, model: str = None,
     model = model or IMAGE_MODELS[0]
     slug = IMAGE_SLUGS.get(model, model)
     path = f"/ai/{IMAGE_CATEGORY}/{slug}"
-    data = _post(path, {"prompt": prompt, "aspect_ratio": _aspect(aspect)},
+    data = _post(path, {"prompt": prompt,
+                        "aspect_ratio": _aspect(aspect, model)},
                  f"картинка моделью {model} ({slug})")
     if data is None:
         return False
@@ -520,7 +532,7 @@ def generate_video(prompt: str, dst: Path,
     api_seconds = _MIN_API_DURATION.get(model, 5)
     path = f"/ai/{VIDEO_CATEGORY}/{slug}"
     data = _post(path, {"prompt": prompt, "duration": api_seconds,
-                        "aspect_ratio": _aspect("16:9")},
+                        "aspect_ratio": _aspect("16:9", model)},
                  f"видео моделью {model} ({slug})")
     if data is None:
         return False

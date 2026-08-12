@@ -34,9 +34,11 @@ PREP_H = PREP_W * H // W          # 1687 -> ниже округляется до
 
 
 def run(cmd, quiet=True):
-    return subprocess.run(cmd, shell=True, check=True,
-                          stdout=subprocess.DEVNULL if quiet else None,
-                          stderr=subprocess.DEVNULL if quiet else None)
+    r = subprocess.run(cmd, shell=True, capture_output=quiet, text=quiet)
+    if r.returncode != 0:
+        if quiet and r.stderr:
+            print(r.stderr, flush=True)
+        raise subprocess.CalledProcessError(r.returncode, cmd, r.stdout, r.stderr)
 
 
 def prepare_image(src: Path, dst: Path, framing: dict):
@@ -105,7 +107,10 @@ def motion_filter(move: str, speed: float, dur: float, ease: str = None) -> str:
 
     p = ease_expr(ease or m.get("ease") or "smooth", dur)
 
-    wexpr = f"trunc(({w0:.1f}+({w1 - w0:.1f})*{p})/2)*2"
+    # Холст после scale не может быть уже/ниже кадра 1920×1080 — иначе
+    # crop берёт несуществующие пиксели и ffmpeg падает (exit 134). Так
+    # ломался reveal_out с w1=2000 на длинных кадрах вроде clip_0112.
+    wexpr = f"max({W},trunc(({w0:.1f}+({w1 - w0:.1f})*{p})/2)*2)"
     xexpr = f"(iw-{W})*({x0:.3f}+({x1 - x0:.3f})*{p})"
     yexpr = f"(ih-{H})*({y0:.3f}+({y1 - y0:.3f})*{p})"
 
@@ -225,14 +230,14 @@ def concat_segments(segments, out: Path):
         f"-c copy {shlex.quote(str(out))}")
 
 
-# Сколько плавно уводится подложка: секунда на вход в яму и секунда на
-# выход. Резкий уход слышен как обрыв дорожки, слишком плавный не читается
-# как решение — секунда это середина, проверенная на слух.
+# Сколько плавно уводится подложка в яме-событии: секунда на вход и
+# секунда на выход. Резкий уход слышен как обрыв дорожки, слишком плавный
+# не читается как решение — секунда это середина, проверенная на слух.
 DUCK_RAMP = 1.0
 
 # Больше 24 ям выражение volume становится длиннее, чем ffmpeg готов
-# разбирать без заметной паузы на старте. На получасовом ролике это
-# примерно яма на минуту — больше и не нужно.
+# разбирать без заметной паузы на старте. Ямы теперь стоят только на
+# границах глав и карточках-прерываниях — их меньше двух десятков.
 DUCK_MAX = 24
 
 
@@ -240,11 +245,13 @@ def duck_expression(points, depth: float) -> str:
     """
     Выражение громкости подложки с ямами в заданных точках.
 
-    Зачем вообще ямы. Подложка на постоянном уровне — это фон, зритель
-    перестаёт её слышать через минуту. Подложка, которая уходит под важной
-    фразой и возвращается после неё, работает как знак препинания: место,
-    где музыка расступилась, зритель запоминает. Это ровно то решение,
-    которое на монтаже принимает человек, и оно ничего не стоит.
+    РОЛЬ СМЕНИЛАСЬ. Раньше это был единственный дакинг ролика: ямы
+    считались заранее по долям сценария и промахивались мимо реальных пауз
+    диктора — музыка ныряла посреди фразы и выныривала под словом. Теперь
+    под голосом подложку ведёт sidechaincompress (см. build_audio), а ямы
+    остались ЗВУКОВЫМ СОБЫТИЕМ: глубокое приседание на границе главы и под
+    полноэкранной карточкой. Зритель слышит «что-то сменилось» раньше, чем
+    видит.
 
     points — [(секунда, длительность)]. depth 0..1: доля, на которую
     подложка приседает (0.6 значит «до 40% громкости»).
@@ -266,26 +273,43 @@ def duck_expression(points, depth: float) -> str:
     return "*".join(parts)
 
 
+# Насколько быстро музыка ВОЗВРАЩАЕТСЯ после фразы диктора, миллисекунды
+# release у sidechaincompress. Это и есть манера дакинга, бывшая ось
+# duck_style: медленный возврат звучит как документальное кино, быстрый —
+# как подкаст. Ямы по точкам эту ось раньше реализовывали грубее.
+DUCK_RELEASE_MS = {
+    "revelation": 2600,   # долго держит тишину после слов — самая киношная
+    "beats": 900,         # музыка дышит в каждой паузе
+    "sparse": 3400,       # возвращается только в длинных паузах
+    "breath": 1700,       # середина
+}
+
+
 # Длина перехода между двумя подложками. Шесть секунд: короче слышно как
 # склейку, длиннее — как кашу из двух треков, играющих одновременно.
 BED_CROSSFADE = 6.0
 
 
-def build_bed(beds, out: Path, total: float, switch_at: float = 0.55) -> Path:
+def build_bed(beds, out: Path, total: float, switch_at: float = 0.55,
+              switch_points=None) -> Path:
     """
-    Готовая дорожка подложки на весь ролик: петля, а при двух треках —
-    смена в середине.
+    Готовая дорожка подложки на весь ролик: петля, а при нескольких
+    треках — смены по ходу ролика.
 
-    ЗАЧЕМ ДВЕ ПОДЛОЖКИ. Ролик идёт сорок пять минут. Подложка длится две-
-    три минуты и зацикливается пятнадцать-двадцать раз; к двадцатой петле
-    зритель знает её наизусть, и она перестаёт быть фоном — начинает
-    раздражать. Смена трека в районе середины сбрасывает это ощущение
-    целиком, стоит ноль и делается один раз при сведении.
+    ЗАЧЕМ НЕСКОЛЬКО ПОДЛОЖЕК. Ролик идёт сорок пять минут. Подложка длится
+    две-три минуты и зацикливается пятнадцать-двадцать раз; к двадцатой
+    петле зритель знает её наизусть, и она перестаёт быть фоном — начинает
+    раздражать. Смена трека сбрасывает это ощущение целиком, стоит ноль и
+    делается один раз при сведении. В длинном ролике треков три, смены
+    падают на границы глав (см. build.beds_for): смена музыки посреди
+    мысли слышна как склейка, на границе — как решение.
 
     Переход — acrossfade, а не встык: встык слышно как обрыв, даже когда
     оба трека тихие.
 
     beds — список путей. Один элемент — обычная петля, как было раньше.
+    switch_points — АБСОЛЮТНЫЕ секунды смен (len(beds) - 1 штука). Не
+    заданы — смены считаются от switch_at и далее равными долями.
     """
     beds = [Path(b) for b in (beds if isinstance(beds, (list, tuple)) else [beds])]
     beds = [b for b in beds if b and b.exists()]
@@ -298,36 +322,78 @@ def build_bed(beds, out: Path, total: float, switch_at: float = 0.55) -> Path:
     shape = (f"afade=t=in:d={fade_in:.2f},"
              f"afade=t=out:st={st_out:.2f}:d={fade_out:.2f}")
 
-    if len(beds) == 1 or total < BED_CROSSFADE * 4:
+    if len(beds) == 1 or total < BED_CROSSFADE * 4 * len(beds):
         run(f"ffmpeg -y -stream_loop -1 -i {shlex.quote(str(beds[0]))} "
             f"-t {total:.2f} -af {shlex.quote(shape)} "
             f"-c:a aac -b:a 160k {shlex.quote(str(out))}")
         return out
 
-    # Длины подобраны так, чтобы после перекрытия вышло РОВНО total:
-    # (a + xf) + b - xf = total. Ошибка здесь тише всего остального в
-    # конвейере: дорожка окажется короче ролика, amix её дотянет тишиной,
-    # и последние минуты просто останутся без музыки.
     xf = BED_CROSSFADE
-    a = max(xf * 2, total * float(switch_at))
-    b = max(xf * 2, total - a)
-    run(f"ffmpeg -y -stream_loop -1 -t {a + xf:.2f} -i {shlex.quote(str(beds[0]))} "
-        f"-stream_loop -1 -t {b:.2f} -i {shlex.quote(str(beds[1]))} "
-        f"-filter_complex "
-        f"{shlex.quote(f'[0:a][1:a]acrossfade=d={xf:.2f}:c1=tri:c2=tri,{shape}[a]')} "
+    n = len(beds)
+    pts = sorted(float(p) for p in (switch_points or []))
+    if len(pts) != n - 1:
+        first = total * float(switch_at) if n == 2 else total / n
+        pts = [first + (total - first) / max(n - 1, 1) * k
+               for k in range(n - 1)] if n > 2 else [total * float(switch_at)]
+        pts = sorted(pts)
+    # смены не ближе двух кроссфейдов к краям и друг к другу
+    clean, floor = [], xf * 2
+    for p in pts:
+        p = max(floor, min(p, total - xf * 2 * (n - 1 - len(clean))))
+        clean.append(p)
+        floor = p + xf * 2
+    pts = clean
+
+    # Длины подобраны так, чтобы после перекрытий вышло РОВНО total:
+    # каждый acrossfade съедает xf, поэтому каждый кусок, кроме
+    # последнего, рендерится на xf длиннее. Ошибка здесь тише всего
+    # остального в конвейере: дорожка окажется короче ролика, amix её
+    # дотянет тишиной, и последние минуты просто останутся без музыки.
+    bounds = [0.0] + pts + [total]
+    segs = [bounds[k + 1] - bounds[k] for k in range(n)]
+    ins, fc, prev = [], [], "0:a"
+    for k, (bed, seg) in enumerate(zip(beds, segs)):
+        t = seg + (xf if k < n - 1 else 0.0)
+        ins.append(f"-stream_loop -1 -t {t:.2f} -i {shlex.quote(str(bed))}")
+        if k > 0:
+            label = f"x{k}"
+            fc.append(f"[{prev}][{k}:a]acrossfade=d={xf:.2f}:c1=tri:c2=tri"
+                      f"[{label}]")
+            prev = label
+    fc.append(f"[{prev}]{shape}[a]")
+    run(f"ffmpeg -y {' '.join(ins)} -filter_complex "
+        f"{shlex.quote(';'.join(fc))} "
         f"-map [a] -t {total:.2f} -c:a aac -b:a 160k {shlex.quote(str(out))}")
     return out
 
 
 def build_audio(voice: Path, bed, out: Path, total: float,
-                bed_gain_db: float = -27.0, duck_points=None,
-                duck_depth: float = 0.0, switch_at: float = 0.55,
+                bed_gain_db: float = -27.0, duck_depth: float = 0.0,
+                duck_style: str = "breath", event_dips=None,
+                switch_at: float = 0.55, switch_points=None,
                 tail: float = 0.0):
     """
     Голос + фоновая подложка. bed=None — только голос.
 
-    bed — путь либо СПИСОК путей: при двух подложках вторая заходит около
-    середины ролика через перекрёстное затухание, см. build_bed.
+    bed — путь либо СПИСОК путей: при нескольких подложках следующая
+    заходит через перекрёстное затухание, см. build_bed.
+
+    ДАКИНГ — SIDECHAIN, А НЕ ТОЧКИ ПО ПЛАНУ. Раньше ямы считались заранее
+    по долям сценария: музыка ныряла в запланированную секунду, а диктор
+    в эту секунду мог быть посреди слова — на слух это лотерея. Компрессор
+    с ключом от голоса делает то, что звукорежиссёр делает руками: музыка
+    приседает, ПОКА диктор говорит, и всплывает в его паузах — само собой
+    и в каждой паузе ролика.
+
+      duck_depth  0..1 — насколько глубоко музыка уходит (ось вектора,
+                  превращается в ratio компрессора)
+      duck_style  манера ВОЗВРАТА: как быстро музыка всплывает в паузе,
+                  см. DUCK_RELEASE_MS. Бывшая ось точек, смысл тот же —
+                  «почерк» дакинга свой у каждого ролика
+
+    event_dips — [(секунда, длительность)]: дополнительные ГЛУБОКИЕ ямы
+    на границах глав и под карточками-прерываниями. Это события, о
+    которых sidechain знать не может: голос там как раз молчит.
 
     Подложка зацикливается на весь ролик, независимо от своей длины.
     Заход и уход сглажены, иначе на старте и в финале слышен обрыв.
@@ -353,6 +419,11 @@ def build_audio(voice: Path, bed, out: Path, total: float,
     # Подложка доигрывает примерно половину хвоста. Остаток — настоящая
     # тишина: именно она и есть пауза на подумать, ради которой всё это.
     bed_total = total + min(max(0.0, tail) * 0.55, 3.0)
+    # Тишина в конце дописывается ПОСЛЕ нормализации: loudnorm считает
+    # уровень по всей дорожке, и дописанное молчание сдвигало бы ему
+    # статистику — на длинном ролике незаметно, на коротком слышно.
+    pad = f",apad=whole_dur={total_out:.2f}" if total_out > total else ""
+
     norm = "loudnorm=I=-16:TP=-1.5:LRA=9,alimiter=limit=0.92"
     # Дорожка пишется СТЕРЕО и в 48 кГц. Замер готового ролика показал моно
     # на 96 кГц: начитка приходит от ElevenLabs моно, amix берёт раскладку по
@@ -362,38 +433,57 @@ def build_audio(voice: Path, bed, out: Path, total: float,
     # перекодирует, и лишний раз портить исходник незачем.
     fmt = "-ar 48000 -ac 2 -c:a aac -b:a 192k"
 
-    # Тишина в конце дописывается ПОСЛЕ нормализации: loudnorm считает
-    # уровень по всей дорожке, и дописанное молчание сдвигало бы ему
-    # статистику — на длинном ролике незаметно, на коротком слышно.
-    pad = f",apad=whole_dur={total_out:.2f}" if total_out > total else ""
-
     if bed is None:
         run(f"ffmpeg -y -i {shlex.quote(str(voice))} "
             f"-af {shlex.quote(norm + pad)} -t {total_out:.2f} "
             f"{fmt} {shlex.quote(str(out))}")
         return
 
-    # Заход и уход подложки, а при двух треках ещё и смена в середине —
-    # всё это внутри build_bed. Там же зажат st у afade: отрицательным он
+    # Заход и уход подложки, а при нескольких треках ещё и смены — всё
+    # это внутри build_bed. Там же зажат st у afade: отрицательным он
     # быть не может, иначе фильтр молча не срабатывает вовсе.
-    tmp = build_bed(bed, out.parent / "bed_loop.m4a", bed_total, switch_at)
+    tmp = build_bed(bed, out.parent / "bed_loop.m4a", bed_total, switch_at,
+                    switch_points=switch_points)
 
-    # Ямы подложки. eval=frame обязателен: без него выражение посчитается
-    # один раз на нулевой секунде, и вместо ям получится ровный уровень —
-    # причём тот, что выпал в точке t=0, то есть чаще всего просто тише.
-    duck = duck_expression(duck_points, duck_depth)
-    duck_f = f"volume='{duck}':eval=frame," if duck else ""
+    # ratio: duck_depth 0.30 -> 4.4, 0.72 -> 7.8 — от мягкого радио-дакинга
+    # до почти полного ухода музыки под голосом. threshold низкий: голос
+    # после ElevenLabs тихих слов почти не содержит, а недожатая музыка
+    # хуже пережатой. attack держит короткие смычки: музыка не дёргается
+    # от каждого «and».
+    ratio = 2.0 + max(0.0, min(1.0, float(duck_depth))) * 8.0
+    release = DUCK_RELEASE_MS.get(duck_style, DUCK_RELEASE_MS["breath"])
+    side = (f"sidechaincompress=threshold=0.015:ratio={ratio:.1f}:"
+            f"attack=180:release={release}:makeup=1")
+
+    # Ямы-события. eval=frame обязателен: без него выражение посчитается
+    # один раз на нулевой секунде, и вместо ям получится ровный уровень.
+    dips = duck_expression(event_dips, max(0.45, float(duck_depth or 0.5)))
+    dips_f = f",volume='{dips}':eval=frame" if dips else ""
 
     # Оба входа приводятся к стерео ДО amix: иначе он берёт раскладку по
     # первому входу, а первый — моно-начитка, и подложка теряет ширину.
-    # Начитка добивается тишиной ДО сведения: amix берёт длину по первому
-    # входу, и без этого подложка обрезалась бы по последнему слову — то
-    # есть ровно там, где она должна доигрывать.
-    voc_pad = f",apad=whole_dur={total_out:.2f}" if total_out > total else ""
-    filt = (f"[1:a]volume={bed_gain_db}dB,{duck_f}"
-            f"aformat=channel_layouts=stereo:sample_rates=48000[bed];"
-            f"[0:a]aformat=channel_layouts=stereo:sample_rates=48000"
-            f"{voc_pad}[voc];"
+    # ХВОСТ ДОБИВАЕТСЯ ТИШИНОЙ ОБЕИМ ВЕТВЯМ, И КЛЮЧУ САЙДЧЕЙНА ТОЖЕ.
+    #
+    # Замер: без добивки ключа sidechaincompress заканчивается вместе с
+    # начиткой, и подложка обрывалась ровно на последнем слове — то есть
+    # щелчок, ради устранения которого хвост и заводился, никуда не
+    # девался, а просто переезжал на четыре секунды раньше. Дорожка при
+    # этом честно длилась нужные секунды, и по логу это не видно вовсе:
+    # -91 дБ начинались там, где должна была играть уходящая музыка.
+    #
+    # Тишина в ключе означает «диктор молчит», компрессор отпускает
+    # подложку — и она пошла бы вверх под чёрным кадром. Поэтому поверх
+    # ставится СВОЁ затухание, от последнего слова до конца подложки: оно
+    # сильнее любого поведения компрессора и задаёт форму конца ролика
+    # явно, а не как побочный эффект.
+    pad_f = f"apad=whole_dur={total_out:.2f}," if total_out > total else ""
+    out_fade = (f",afade=t=out:st={total:.2f}:d={bed_total - total:.2f}"
+                if bed_total > total else "")
+    filt = (f"[1:a]volume={bed_gain_db}dB,"
+            f"aformat=channel_layouts=stereo:sample_rates=48000[bedv];"
+            f"[0:a]aformat=channel_layouts=stereo:sample_rates=48000,"
+            f"{pad_f}asplit=2[voc][sc];"
+            f"[bedv][sc]{side}{dips_f}{out_fade}[bed];"
             f"[voc][bed]amix=inputs=2:duration=first:dropout_transition=0,"
             f"{norm}[a]")
     run(f"ffmpeg -y -i {shlex.quote(str(voice))} -i {shlex.quote(str(tmp))} "
@@ -418,13 +508,42 @@ def duration_of(path: Path, stream: str = "v") -> float:
         return 0.0
 
 
-def write_srt(segments, out: Path):
+def clip_srt_segments(segments, max_end: float):
+    """
+    Обрезает субтитры по фактической длине ролика.
+
+    marks/total_audio бывают длиннее final.mp4: нахлёст xfade укорачивает
+    картинку, mux -shortest срезает хвост звука, а SRT раньше писался из
+    полного marks — хвост «висел» после конца видео на минуты. Здесь
+    оставляем только то, что реально есть на экране.
+    """
+    if max_end is None or max_end <= 0:
+        return list(segments)
+    out = []
+    for seg in segments:
+        start = float(seg["start"])
+        end = float(seg["end"])
+        if start >= max_end:
+            continue
+        clipped = dict(seg)
+        clipped["start"] = start
+        clipped["end"] = min(end, max_end)
+        if clipped["end"] - clipped["start"] < 0.05:
+            continue
+        out.append(clipped)
+    return out
+
+
+def write_srt(segments, out: Path, max_end: float | None = None):
     """Субтитры из тайм-кодов ElevenLabs. Распознавание речи не нужно."""
+    segs = clip_srt_segments(segments, max_end) if max_end is not None else list(segments)
+
     def ts(sec):
         h, r = divmod(sec, 3600)
         m, s = divmod(r, 60)
         return f"{int(h):02d}:{int(m):02d}:{int(s):02d},{int((s % 1) * 1000):03d}"
     lines = []
-    for i, seg in enumerate(segments, 1):
+    for i, seg in enumerate(segs, 1):
         lines.append(f"{i}\n{ts(seg['start'])} --> {ts(seg['end'])}\n{seg['text']}\n")
     out.write_text("\n".join(lines), encoding="utf-8")
+    return len(segs)

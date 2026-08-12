@@ -21,6 +21,7 @@ smoke.py — прогон конвейера на настоящих файла�
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -44,6 +45,29 @@ def main(job_path):
 
     print("── темы")
     print(f"   {channel.check(job) or 'не повтор'}")
+
+    # ПРОТОКОЛ СЦЕНАРИЯ 2026. YouTube снимает монетизацию с канала за
+    # шаблонный/обезличенный контент. Поля _ / _проверить / _структура —
+    # доказательство процесса и чек-лист автора; код их не читает в
+    # монтаже, но без них ролик нельзя выпускать. Технические *-mini /
+    # *-test пропускаются: там проверяется конвейер, а не текст.
+    print("── протокол сценария")
+    jid = str(job.get("id", ""))
+    is_tech = bool(re.search(r"(^|-)(mini|test)($|-)", jid)) or \
+        str((job.get("topic") or {}).get("slug", "")).startswith("test-")
+    if is_tech:
+        print("   технический ролик — поля протокола не требую")
+    else:
+        missing = [f for f in ("_", "_проверить", "_структура", "_длительность")
+                   if not str(job.get(f) or "").strip()]
+        if missing:
+            raise SystemExit(
+                "в спецификации нет полей протокола сценария: "
+                + ", ".join(missing)
+                + "\nСм. docs/протокол-сценария.md и ИНСТРУКЦИЯ-ЧАТ.md — "
+                "без них канал рискует демонетизацией / коротким роликом "
+                "вместо формата 40–50 минут.")
+        print("   _, _проверить, _структура, _длительность на месте")
 
     print("── главы")
     seen = set()
@@ -102,8 +126,20 @@ def main(job_path):
                          f"ПОСЛЕ всего рендера")
     print(f"   списки на месте, теги {len(tags)}/{youtube.TAGS_LIMIT} символов")
 
-    print("── план кадров")
+    # Главы ↔ субтитры. Та же ловушка, что уронила ufos-history-01 на
+    # этапе 3 после двух часов монтажа: split('.') резал «U.S.» / не
+    # учитывал «Gods?». Проверяем по marks.json бесплатно, до рендера.
+    print("── главы в субтитрах")
     marks = json.loads((work / "marks.json").read_text())
+    cues = [(float(m["start"]), youtube.norm(m["text"])) for m in marks]
+    try:
+        chaps = youtube.chapters(job, cues)
+    except SystemExit as e:
+        raise SystemExit(f"youtube.chapters не сойдётся после монтажа: {e}") from e
+    print(f"   {len(chaps)} глав находятся в marks "
+          f"(последняя с {youtube.stamp(chaps[-1][0])})")
+
+    print("── план кадров")
     total = json.loads((work / "state.json").read_text())["total_audio"]
     av = channel.avoid()
     st = style_mod.StyleEngine(
@@ -221,47 +257,50 @@ def main(job_path):
     print(f"   самый долгий кадр {longest:.1f} с, все долгие идут "
           f"долгим ходом")
 
-    # ШОРТСЫ. Проверяются здесь, потому что стоят они ноль, а ломаются от
-    # опечатки в одном поле: якорь — это точная фраза из сценария, и
-    # достаточно перефразировать её в спецификации, чтобы шортс не
-    # собрался вовсе. Обнаруживать это ПОСЛЕ трёх часов сборки ролика
-    # незачем — здесь тот же расчёт делается за миллисекунды.
-    print("── шортсы")
-    import shorts as shorts_mod
-    specs = shorts_mod.specs_from(job)
-    if not specs:
-        print("   не заказаны (нет youtube.shorts / youtube.shorts_questions)")
-    for i, spec in enumerate(specs, 1):
-        q = spec.get("question") or spec.get("title") or ""
-        if not q:
-            raise SystemExit(f"шортс {i}: нет ни question, ни title — "
-                             f"нечего писать на экране")
-        payoff, how = shorts_mod.find_payoff(marks, q, spec.get("anchor"))
-        want = float(spec.get("seconds", shorts_mod.WANT_SECONDS))
-        lo, hi = shorts_mod.window(marks, payoff, want,
-                                   shorts_mod.MAX_SECONDS)
-        dur = marks[hi]["end"] - marks[lo]["start"]
-        if dur < shorts_mod.MIN_SECONDS:
+    # ПОДБОР ПО СМЫСЛУ — ПОРОГОМ, а не глазами по логу. Ноль процентов
+    # попаданий значит, что подбор упал на имена файлов: манифест не
+    # написан или запросы из другого словаря. Ролик при этом собирается
+    # без единой ошибки — просто кадры не имеют отношения к словам.
+    # Именно так смоук месяц «проверял» не тот путь, что работает в бою.
+    print("── подбор по смыслу")
+    for src, (hits, calls) in (getattr(st, "match_report", {}) or {}).items():
+        if not calls:
+            continue
+        rate = hits / calls * 100
+        print(f"   {src:<5} {hits}/{calls} ({rate:.0f}%)")
+        if calls >= 12 and rate < 12.0:
             raise SystemExit(
-                f"шортс {i}: вышло {dur:.0f} с при минимуме "
-                f"{shorts_mod.MIN_SECONDS:.0f} — предложения вокруг якоря "
-                f"слишком короткие, подними seconds")
-        # Считается по КОНЦУ отвечающего предложения: важно, когда ответ
-        # ДОГОВОРЁН, а не когда он начат. У этого канала предложения по
-        # десять-двадцать секунд, и разница между двумя этими числами
-        # доходит до трети шортса.
-        at = (marks[payoff]["end"] - marks[lo]["start"]) / dur
-        if not spec.get("anchor"):
-            print(f"   ! шортс {i} без anchor — кусок угадан по словам "
-                  f"вопроса, проверь глазами")
-        print(f"   {i}: {dur:.0f} с с {marks[lo]['start']/60:.0f} мин ролика, "
-              f"ответ договорён к {at*100:.0f}% длины, {how}")
+                f"подбор «{src}»: {rate:.0f}% попаданий по смыслу — материал "
+                f"раздаётся вслепую. Проверь _manifest.json рядом с файлами "
+                f"и совпадение запросов со спецификацией")
+
+    # НОВЫЕ СЛОИ КАДРА. Считаются бесплатно, поэтому проверяются здесь же:
+    # карточки-прерывания не должны налезать друг на друга, титулы глав —
+    # выходить за число глав.
+    print("── карточки и титулы")
+    from editorial import textcard
+    cards = textcard.interrupts(getattr(st, "beats", []), marks, st.rng, total)
+    for a, b in zip(cards, cards[1:]):
+        if b["t"] - a["t"] < textcard.INTERRUPT_GAP:
+            raise SystemExit("карточки-прерывания ближе "
+                             f"{textcard.INTERRUPT_GAP:.0f} с друг к другу")
+    titles = textcard.chapter_titles(
+        (job.get("youtube") or {}).get("chapters") or [],
+        getattr(st, "chapter_edges", []), st.rng)
+    print(f"   карточек {len(cards)}, титулов глав {len(titles)}")
 
     print("── подложки")
-    beds = build.beds_for(st, job)
+    beds = build.beds_for(st, job, total)
     if not beds:
         print("   ! ни одной подложки не найдено — ролик соберётся, но "
               "с одним голосом")
+    switches = build.bed_switch_points(st, total, len(beds))
+    if len(beds) > 1:
+        if len(switches) != len(beds) - 1:
+            raise SystemExit(f"подложек {len(beds)}, а смен {len(switches)} — "
+                             f"смотри bed_switch_points")
+        print(f"   треков {len(beds)}, смены на "
+              + ", ".join(f"{p/60:.1f} мин" for p in switches))
 
     print("\nСМОУК-ПРОГОН ПРОЙДЕН")
 

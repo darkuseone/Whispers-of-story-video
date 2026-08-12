@@ -8,20 +8,204 @@ on:
         required: true
         default: 'ancient-01'
       stage:
-        description: 'smoke / magnific / material / vet / assets / render / auto'
+        description: 'smoke / magnific / material / vet / assets / render / shorts / auto'
         required: true
         default: 'auto'
+  push:
+    branches:
+      - main
+    paths:
+      - 'jobs/*.json'
+      - '.render/**'
+      - '.build/**'
+      - '.shorts/**'
 
-# Триггера на push здесь намеренно нет. С несколькими спецификациями в
-# репозитории правка любой из них запускала бы полную сборку не того ролика.
+# Ручной запуск — как раньше. Push нового jobs/*.json → auto. Push
+# .render/<job>.retry → только монтаж (кэш озвучки/материала). Push
+# .shorts/<job>.retry → только шортсы (кэш + final.mp4 из релиза). Push
+# .build/<job>.retry → полный stage: auto для УЖЕ лежащего jobs/<job>.json
+# (когда первый прогон упал до кэша, или нужен полный перезапуск без
+# удаления спецификации). Правка готовой спецификации сборку не трогает.
+# Шаблоны *-example / *-test / *-mini автозапуском не трогаем.
 
 permissions:
   contents: write
 
 jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      jobs: ${{ steps.find.outputs.jobs }}
+      stage: ${{ steps.find.outputs.stage }}
+      run_build: ${{ steps.find.outputs.run_build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Какие ролики собирать
+        id: find
+        run: |
+          set -euo pipefail
+          EVENT="${{ github.event_name }}"
+
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            JOB="${{ github.event.inputs.job }}"
+            STAGE="${{ github.event.inputs.stage }}"
+            echo "jobs=[\"$JOB\"]" >> "$GITHUB_OUTPUT"
+            echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+            echo "run_build=true" >> "$GITHUB_OUTPUT"
+            echo "Ручной запуск: $JOB, этап $STAGE"
+            exit 0
+          fi
+
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            DIFF_JOBS=$(git show --name-status --format= "$AFTER" -- jobs/ || true)
+            DIFF_RENDER=$(git show --name-status --format= "$AFTER" -- .render/ || true)
+            DIFF_SHORTS=$(git show --name-status --format= "$AFTER" -- .shorts/ || true)
+            DIFF_BUILD=$(git show --name-status --format= "$AFTER" -- .build/ || true)
+          else
+            DIFF_JOBS=$(git diff --name-status "$BEFORE" "$AFTER" -- jobs/ || true)
+            DIFF_RENDER=$(git diff --name-status "$BEFORE" "$AFTER" -- .render/ || true)
+            DIFF_SHORTS=$(git diff --name-status "$BEFORE" "$AFTER" -- .shorts/ || true)
+            DIFF_BUILD=$(git diff --name-status "$BEFORE" "$AFTER" -- .build/ || true)
+          fi
+
+          # Только шортсы: .shorts/<job>.retry — кэш материалов + final.mp4
+          # из релиза final-<job>. Монтаж длинного ролика не трогаем.
+          SHORTS_JOBS=()
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            status="${line%%$'\t'*}"
+            file="${line#*$'\t'}"
+            case "$status" in A|M) ;; *) continue ;; esac
+            case "$file" in
+              .shorts/*.retry) ;;
+              *) continue ;;
+            esac
+            base="${file#.shorts/}"
+            base="${base%.retry}"
+            SHORTS_JOBS+=("$base")
+          done <<< "$DIFF_SHORTS"
+
+          if [ ${#SHORTS_JOBS[@]} -gt 0 ]; then
+            JSON=$(printf '%s\n' "${SHORTS_JOBS[@]}" | python3 -c \
+              'import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+            echo "jobs=$JSON" >> "$GITHUB_OUTPUT"
+            echo "stage=shorts" >> "$GITHUB_OUTPUT"
+            echo "run_build=true" >> "$GITHUB_OUTPUT"
+            echo "Пересборка шортсов (кэш + релиз): $JSON"
+            exit 0
+          fi
+
+          # Пересборка монтажа: .render/<job>.retry — только stage render,
+          # озвучка и материал из кэша, токены не тратятся.
+          RENDER_JOBS=()
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            status="${line%%$'\t'*}"
+            file="${line#*$'\t'}"
+            case "$status" in A|M) ;; *) continue ;; esac
+            case "$file" in
+              .render/*.retry) ;;
+              *) continue ;;
+            esac
+            base="${file#.render/}"
+            base="${base%.retry}"
+            RENDER_JOBS+=("$base")
+          done <<< "$DIFF_RENDER"
+
+          if [ ${#RENDER_JOBS[@]} -gt 0 ]; then
+            JSON=$(printf '%s\n' "${RENDER_JOBS[@]}" | python3 -c \
+              'import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+            echo "jobs=$JSON" >> "$GITHUB_OUTPUT"
+            echo "stage=render" >> "$GITHUB_OUTPUT"
+            echo "run_build=true" >> "$GITHUB_OUTPUT"
+            echo "Пересборка монтажа (кэш): $JSON"
+            exit 0
+          fi
+
+          # Полный перезапуск: .build/<job>.retry → stage auto для уже
+          # существующей спецификации. Нужен, когда прогон упал до кэша
+          # (Set up job / сеть Actions) или автор хочет auto без удаления
+          # jobs/<job>.json. Кэш озвучки/картинок подхватится сам, если есть.
+          BUILD_JOBS=()
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            status="${line%%$'\t'*}"
+            file="${line#*$'\t'}"
+            case "$status" in A|M) ;; *) continue ;; esac
+            case "$file" in
+              .build/*.retry) ;;
+              *) continue ;;
+            esac
+            base="${file#.build/}"
+            base="${base%.retry}"
+            if [ ! -f "jobs/${base}.json" ]; then
+              echo "пропуск .build/${base}.retry — нет jobs/${base}.json"
+              continue
+            fi
+            BUILD_JOBS+=("$base")
+          done <<< "$DIFF_BUILD"
+
+          if [ ${#BUILD_JOBS[@]} -gt 0 ]; then
+            JSON=$(printf '%s\n' "${BUILD_JOBS[@]}" | python3 -c \
+              'import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+            echo "jobs=$JSON" >> "$GITHUB_OUTPUT"
+            echo "stage=auto" >> "$GITHUB_OUTPUT"
+            echo "run_build=true" >> "$GITHUB_OUTPUT"
+            echo "Полный перезапуск (stage auto): $JSON"
+            exit 0
+          fi
+
+          DIFF="$DIFF_JOBS"
+
+          SKIP_SUFFIX='-(example|test|mini)$'
+          JOBS=()
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            status="${line%%$'\t'*}"
+            file="${line#*$'\t'}"
+            [ "$status" = "A" ] || continue
+            case "$file" in
+              jobs/*.json) ;;
+              *) continue ;;
+            esac
+            base="${file#jobs/}"
+            base="${base%.json}"
+            if [[ "$base" =~ $SKIP_SUFFIX ]]; then
+              echo "пропуск шаблона: $base"
+              continue
+            fi
+            JOBS+=("$base")
+          done <<< "$DIFF"
+
+          if [ ${#JOBS[@]} -eq 0 ]; then
+            echo "Новых спецификаций нет — только правка существующих jobs/*.json"
+            echo "jobs=[]" >> "$GITHUB_OUTPUT"
+            echo "stage=auto" >> "$GITHUB_OUTPUT"
+            echo "run_build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          JSON=$(printf '%s\n' "${JOBS[@]}" | python3 -c \
+            'import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+          echo "jobs=$JSON" >> "$GITHUB_OUTPUT"
+          echo "stage=auto" >> "$GITHUB_OUTPUT"
+          echo "run_build=true" >> "$GITHUB_OUTPUT"
+          echo "Автозапуск: $JSON (этап auto)"
+
   build:
+    needs: detect
+    if: needs.detect.outputs.run_build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 330      # лимит GitHub 360, оставляем запас на выкладку
+    strategy:
+      fail-fast: false
+      matrix:
+        job: ${{ fromJson(needs.detect.outputs.jobs) }}
 
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +220,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
           python -m pip install --upgrade pip --quiet
-          python -m pip install --quiet pillow requests numpy
+          python -m pip install --quiet -r requirements.txt
           fc-list | grep -qi dejavu || sudo apt-get install -y -qq fonts-dejavu
           echo "ffmpeg: $(ffmpeg -version | head -1)"
 
@@ -44,8 +228,8 @@ jobs:
         id: pick
         run: |
           set -e
-          JOB="${{ github.event.inputs.job }}"
-          STAGE="${{ github.event.inputs.stage }}"
+          JOB="${{ matrix.job }}"
+          STAGE="${{ needs.detect.outputs.stage }}"
           test -f "jobs/$JOB.json" || { echo "Нет файла jobs/$JOB.json"; exit 1; }
           # Папка работ называется по полю id ВНУТРИ спецификации, а не по
           # имени файла: они могут не совпадать, и тогда кэш и выкладка
@@ -100,10 +284,11 @@ jobs:
             material) need="" ; want="PEXELS_API_KEY PIXABAY_API_KEY MAGNIFIC_API_KEY" ;;
             vet)      need="" ; want="XAI_API_KEY" ;;
             render)   need="" ; want="" ;;
+            shorts)   need="" ; want="" ;;
             *)        need="ELEVENLABS_API_KEY PEXELS_API_KEY PIXABAY_API_KEY" ; want="ELEVENLABS_VOICE_ID XAI_API_KEY MAGNIFIC_API_KEY" ;;
           esac
           case "${{ steps.pick.outputs.stage }}" in
-            smoke|magnific|material|vet|render) ;;
+            smoke|magnific|material|vet|render|shorts) ;;
             *)
               if [ -z "$XAI_API_KEY" ] && [ -z "$MAGNIFIC_API_KEY" ]; then
                 echo "ПУСТО: и XAI_API_KEY, и MAGNIFIC_API_KEY — рисовать картинки нечем"
@@ -244,7 +429,7 @@ jobs:
           fail_on_unmatched_files: true
 
       - name: Этап 1 — озвучка, изображения, материал
-        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render' && steps.pick.outputs.stage != 'shorts' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         env:
           XAI_API_KEY:        ${{ secrets.XAI_API_KEY }}
           # 70% картинок, редкие вставки видео и библиотека графики.
@@ -269,27 +454,43 @@ jobs:
 
       # Только если что-то качали. На чистом перерендере папка не менялась.
       - name: Кладём материалы в кэш
-        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render' && steps.pick.outputs.stage != 'shorts'
         uses: actions/cache/save@v4
         with:
           path: work/${{ steps.pick.outputs.id }}/assets
           key: assets-${{ steps.pick.outputs.id }}-v1-${{ github.run_id }}
 
       - name: Этап 2 — монтаж
-        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'shorts'
         run: python pipeline/build.py jobs/${{ steps.pick.outputs.job }}.json
 
+      # Описание, главы, две обложки через xAI (крупный жёлтый текст на
+      # картинке). Без ключа covers.py уйдёт в запасной PIL-кадр из ролика.
       - name: Этап 3 — комплект для YouTube
-        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'shorts'
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: python pipeline/youtube.py jobs/${{ steps.pick.outputs.job }}.json
 
-      # Шортсы режутся из ГОТОВОГО ролика и не стоят ничего: ни озвучки,
-      # ни генерации, ни запросов к зрению. Падение здесь не должно
-      # уносить с собой сам ролик — он к этому моменту уже собран, а
-      # шортсы пересобираются отдельно за полторы минуты.
-      - name: Этап 4 — два шортса
+      # Только шортсы: final.mp4 берём из уже выложенного релиза, материалы
+      # — из кэша. Монтаж длинного ролика не повторяем.
+      - name: Достаём final.mp4 из релиза
+        if: steps.pick.outputs.stage == 'shorts'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ID="${{ steps.pick.outputs.id }}"
+          JOB="${{ steps.pick.outputs.job }}"
+          mkdir -p "work/$ID/out"
+          gh release download "final-$JOB" -p final.mp4 -D "work/$ID/out" --clobber
+          test -f "work/$ID/out/final.mp4"
+          ls -lh "work/$ID/out/final.mp4"
+
+      # Два вертикальных шортса: хук-вопрос сверху (с переносом), обычные
+      # субтитры по центру, спокойный Ken Burns. Ключей не тратит.
+      - name: Этап 4 — шортсы
         if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
-        continue-on-error: true
         run: python pipeline/shorts.py jobs/${{ steps.pick.outputs.job }}.json
 
       - name: Находим готовое
@@ -298,12 +499,17 @@ jobs:
         run: |
           set -e
           DIR=work/${{ steps.pick.outputs.id }}/out
-          test -f "$DIR/final.mp4" || { echo "final.mp4 не найден"; find work -type f | head -40; exit 1; }
+          STAGE="${{ steps.pick.outputs.stage }}"
+          if [ "$STAGE" = "shorts" ]; then
+            test -f "$DIR/shorts/short_1.mp4" || { echo "short_1.mp4 не найден"; find work -type f | head -40; exit 1; }
+          else
+            test -f "$DIR/final.mp4" || { echo "final.mp4 не найден"; find work -type f | head -40; exit 1; }
+          fi
           echo "dir=$DIR" >> $GITHUB_OUTPUT
-          ls -la "$DIR"
+          ls -la "$DIR" "$DIR/shorts" 2>/dev/null || ls -la "$DIR"
 
       - name: Выдаём ролик
-        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'shorts'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: final-${{ steps.pick.outputs.job }}
@@ -311,8 +517,22 @@ jobs:
           files: |
             ${{ steps.out.outputs.dir }}/final.mp4
             ${{ steps.out.outputs.dir }}/subs.srt
-            ${{ steps.out.outputs.dir }}/short_*.mp4
-          fail_on_unmatched_files: false
+            ${{ steps.out.outputs.dir }}/shorts/short_1.mp4
+            ${{ steps.out.outputs.dir }}/shorts/short_2.mp4
+            ${{ steps.out.outputs.dir }}/cover_1.jpg
+            ${{ steps.out.outputs.dir }}/cover_2.jpg
+          fail_on_unmatched_files: true
+
+      - name: Обновляем шортсы в релизе
+        if: steps.pick.outputs.stage == 'shorts'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: final-${{ steps.pick.outputs.job }}
+          name: Готово — ${{ steps.pick.outputs.job }}
+          files: |
+            ${{ steps.out.outputs.dir }}/shorts/short_1.mp4
+            ${{ steps.out.outputs.dir }}/shorts/short_2.mp4
+          fail_on_unmatched_files: true
 
       - name: Комплект для выкладки отдельно
         if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
@@ -321,10 +541,27 @@ jobs:
           name: youtube-${{ steps.pick.outputs.job }}
           path: |
             ${{ steps.out.outputs.dir }}/youtube.txt
+            ${{ steps.out.outputs.dir }}/cover_1.jpg
+            ${{ steps.out.outputs.dir }}/cover_2.jpg
             ${{ steps.out.outputs.dir }}/thumbnail.jpg
             ${{ steps.out.outputs.dir }}/subs.srt
-            ${{ steps.out.outputs.dir }}/shorts.txt
+            ${{ steps.out.outputs.dir }}/shorts/shorts.json
+          if-no-files-found: ignore
           retention-days: 30
+
+      # Если упали на этапе 3/4, монтаж уже съел 1–2 часа — final.mp4 и
+      # subs.srt спасаем артефактом, чтобы не терять их при «не нашёл главу».
+      - name: Спасаем final после падения монтажа
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: salvage-${{ steps.pick.outputs.job }}
+          path: |
+            work/${{ steps.pick.outputs.id }}/out/final.mp4
+            work/${{ steps.pick.outputs.id }}/out/subs.srt
+            work/${{ steps.pick.outputs.id }}/out/shots.json
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Диагностика при падении
         if: failure()

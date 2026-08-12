@@ -68,6 +68,14 @@
     "description_notes": "Technical test build, real API calls, minimal content.",
     "hashtags": ["#test"],
     "tags": ["test", "pipeline check"],
-    "thumbnail_at": 30.0
+    "thumbnail_at": 30.0,
+    "cover_texts": [
+      "IT BURNED FOR CENTURIES",
+      "STILL UNDER THE FORT"
+    ],
+    "shorts_questions": [
+      "How did ships find Alexandria at night?",
+      "What did the earthquakes leave behind?"
+    ]
   }
 }

@@ -8,11 +8,12 @@ youtube.py — готовит всё, что нужно для загрузки 
      предложение каждого блока сценария и берёт его время. Значит главы
      всегда совпадают с тем, что реально звучит в ролике.
   2. Собирает описание — вступление, главы, примечание, теги.
-  3. Режет превью из самого ролика и кладёт на него заголовок.
+  3. Две обложки через xAI с крупным жёлтым текстом на картинке
+     (pipeline/covers.py). PIL-кадр из ролика — только запасной путь.
 
-Редакторская часть (заголовок, названия глав, теги) живёт в блоке youtube
-внутри спецификации ролика. Здесь только механика. Так текст правится там
-же, где всё остальное про ролик, и не растворяется в коде.
+Редакторская часть (заголовок, названия глав, теги, cover_texts,
+shorts_questions) живёт в блоке youtube внутри спецификации ролика.
+Здесь только механика.
 
 Главы по правилам YouTube: первая обязательно с 00:00, минимум три штуки,
 каждая не короче десяти секунд. Всё это проверяется, а не подразумевается.
@@ -104,12 +105,54 @@ def stamp(sec: float) -> str:
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
 
 
+def first_sentence(text: str) -> str:
+    """
+    Первое предложение блока — ТА ЖЕ граница, что в assets.sentence_marks.
+
+    Раньше брали split('.')[0]: на «U.S. Air Force» ключ обрезался до «the U»,
+    а на «Chariots of the Gods? was published…» ключ включал «was…», хотя
+    субтитры режутся по «? » и реплика заканчивается на Gods?. Отсюда
+    «не нашёл её начало в субтитрах» уже ПОСЛЕ двух часов монтажа.
+    """
+    text = text.strip()
+    for i, ch in enumerate(text):
+        if ch in ".!?" and (i + 1 >= len(text) or text[i + 1] in " \n"):
+            return text[: i + 1].strip()
+    return text
+
+
+def _chapter_keys(block: str) -> list[str]:
+    """Ключи поиска от короткого к длинному — короткий влезает в одну реплику."""
+    words = norm(first_sentence(block)).split()
+    keys = []
+    for n in (5, 6, 8, 10, 12):
+        if len(words) >= n:
+            keys.append(" ".join(words[:n]))
+    full = norm(first_sentence(block))[:60]
+    if full and full not in keys:
+        keys.append(full)
+    # слишком короткие дают ложные попадания в середину ролика
+    return [k for k in keys if len(k) >= 12]
+
+
+def _cue_windows(cues, span=3):
+    """(t, текст) с склейкой соседних реплик — ключ может пересечь границу."""
+    out = []
+    for i, (t, txt) in enumerate(cues):
+        blob = txt
+        for j in range(i + 1, min(i + span, len(cues))):
+            blob = f"{blob} {cues[j][1]}"
+        out.append((t, blob))
+    return out
+
+
 def chapters(job, cues):
     """
     Сопоставляет блоки сценария с субтитрами и возвращает [(секунда, имя)].
 
-    Ищем по первому предложению блока: оно уникально и всегда попадает в
-    отдельную реплику, потому что субтитры режутся ровно по предложениям.
+    Ищем по первому предложению блока (граница как у sentence_marks). Главы
+    идут строго вперёд по времени — иначе короткий общий зачин мог бы
+    поймать более раннюю реплику.
     """
     names = job["youtube"]["chapters"]
     blocks = job["script_blocks"]
@@ -117,13 +160,24 @@ def chapters(job, cues):
         raise SystemExit(f"глав {len(names)}, а блоков сценария {len(blocks)} — "
                          "их должно быть поровну")
 
+    windows = _cue_windows(cues)
     out = []
+    min_t = -1.0
     for i, (block, name) in enumerate(zip(blocks, names)):
-        key = norm(block.strip().split(".")[0])[:45]
-        hit = next((t for t, txt in cues if key and key in txt), None)
+        keys = _chapter_keys(block)
+        hit = None
+        for key in keys:
+            hit = next((t for t, txt in windows
+                        if t + 0.05 >= min_t and key in txt), None)
+            if hit is not None:
+                break
         if hit is None:
-            raise SystemExit(f"глава {i+1} «{name}»: не нашёл её начало в субтитрах")
+            preview = " ".join(norm(first_sentence(block)).split()[:10])
+            raise SystemExit(
+                f"глава {i+1} «{name}»: не нашёл её начало в субтитрах "
+                f"(искал: {preview!r})")
         out.append((hit, name))
+        min_t = hit
 
     out[0] = (0.0, out[0][1])          # YouTube требует, чтобы первая шла с нуля
     for (a, _), (b, nm) in zip(out, out[1:]):
@@ -266,29 +320,20 @@ def main(job_path):
         f"\n\nТЕГИ ({len(tags)} из {TAGS_LIMIT} символов)\n" + tags + "\n",
         encoding="utf-8")
 
-    # Секунда превью обрезается длиной ролика. thumbnail_at пишется под
-    # получасовой ролик (900 — пятнадцатая минута), а на тестовой сборке в
-    # три минуты ffmpeg просто не находит там кадра: файл пустой, PIL падает
-    # на «cannot identify image file» — по симптому не догадаешься.
-    at = float(y.get("thumbnail_at", total * 0.35))
-    if not 0 <= at < total:
-        at = total * 0.35
-        log(f"  thumbnail_at за пределами ролика, беру {at:.0f} сек")
-    # Раскладку превью выбрал движок стиля при сборке — берём её оттуда,
-    # чтобы не бросать жребий второй раз и не получить у одного ролика
-    # разные превью при перезапуске этого шага.
-    style_card = out / "style.json"
-    thumb_style = "lower_left"
-    if style_card.exists():
-        thumb_style = json.loads(style_card.read_text(encoding="utf-8")).get(
-            "thumb_style", thumb_style)
-    thumb = thumbnail(video, out / "thumbnail.jpg", at, y["title"], thumb_style)
-    log(f"превью : раскладка {thumb_style}")
+    # ДВЕ ОБЛОЖКИ ЧЕРЕЗ xAI. Крупный жёлтый текст рисует модель прямо на
+    # картинке — как на канале. PIL-кадр из ролика остался внутри
+    # covers.pil_fallback на случай отсутствия ключа. Уже лежащие
+    # cover_*.jpg не перерисовываются: пересборка монтажа обложки не жжёт.
+    import covers
+    cover_paths = covers.build_covers(job, out, video)
+    thumb = out / "thumbnail.jpg"
 
     log(f"главы  : {len(chaps)}, первая с 00:00, последняя с {stamp(chaps[-1][0])}")
     log(f"теги   : {len(tags)} символов из {TAGS_LIMIT}")
     log(f"описание и заголовок: {card}")
-    log(f"превью : {thumb} ({thumb.stat().st_size // 1024} КБ)")
+    log(f"обложки: " + ", ".join(p.name for p in cover_paths))
+    if thumb.exists():
+        log(f"превью : {thumb.name} (= cover_1, {thumb.stat().st_size // 1024} КБ)")
 
 
 if __name__ == "__main__":
