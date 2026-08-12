@@ -43,6 +43,7 @@ vet.py — автоматическая отбраковка материала.
 """
 
 import base64
+import hashlib
 import io
 import json
 import os
@@ -177,7 +178,15 @@ def video_frames(path: Path, n=3):
     out = []
     for k in range(1, n + 1):
         at = dur * k / (n + 1)
-        tmp = path.with_suffix(f".probe{k}.png")
+        # Имя пробного кадра НЕ ДОЛЖНО начинаться с clip_ или arch_.
+        # Раньше он назывался clip_007.probe1.png и попадал под тот же
+        # glob, которым набирается материал. При обычной работе файл
+        # удаляется и это незаметно, но прогон, снятый по таймауту или
+        # отменённый в Actions, оставляет их на диске — и следующая
+        # сборка честно берёт png-заглушку за клип, вписывает ей вердикт
+        # и отдаёт монтажу. Ровно так у ролика и появляется «лишний»
+        # материал, которого никто не скачивал.
+        tmp = path.parent / f"_probe_{path.stem}_{k}.png"
         subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{at:.2f}",
                         "-i", str(path), "-frames:v", "1", "-y", str(tmp)],
                        check=False)
@@ -188,6 +197,37 @@ def video_frames(path: Path, n=3):
                 pass
             tmp.unlink(missing_ok=True)
     return out
+
+
+def frame_stats(im: Image.Image):
+    """(доля почти белого, средняя яркость, разброс) по одному кадру."""
+    small = im.convert("L").resize((64, 36))
+    try:
+        px = list(small.get_flattened_data())
+    except AttributeError:
+        px = list(small.getdata())
+    pale = sum(1 for p in px if p > 224) / len(px)
+    mean = sum(px) / len(px)
+    spread = (sum((p - mean) ** 2 for p in px) / len(px)) ** 0.5
+    return pale, mean, spread
+
+
+def frame_problems(im: Image.Image):
+    """Беды одного кадра, которые видно арифметикой. (список, доля белого)."""
+    bad = []
+    pale, mean, spread = frame_stats(im)
+    if pale > PALE_HARD:
+        bad.append(f"почти белый кадр ({pale*100:.0f}% площади)")
+    if mean < DARK_MEAN:
+        bad.append(f"кадр практически чёрный (яркость {mean:.0f})")
+    # ПУСТОЙ КАДР. Разброс яркости ниже порога означает заливку: ровное
+    # небо, ровная стена, титр на однотонном фоне, кадр не в фокусе
+    # целиком. На канале о находках такой проверки не было и она была не
+    # нужна — там кадр всегда предметный. Здесь половина материала это
+    # пейзаж, и пустых кадров приходит много.
+    if spread < FLAT_STDEV:
+        bad.append(f"пустой кадр без деталей (разброс яркости {spread:.1f})")
+    return bad, pale
 
 
 def cheap_problems(path: Path):
@@ -205,6 +245,13 @@ def cheap_problems(path: Path):
     первую и последнюю треть: если любая из них не годится, клип не
     годится целиком — резать его по кускам мы не умеем, а ClipCutter
     берёт из файла случайное место.
+
+    АРИФМЕТИКА СЧИТАЕТСЯ ПО ВСЕМ ТРЁМ КАДРАМ, а не по одной середине.
+    Раньше края уходили к зрению непроверенными: белую заставку архива и
+    чёрный кадр на входе клипа отбраковывала модель — то есть ровно тот
+    случай, ради которого края и смотрятся, оплачивался дважды (у видео
+    спрашивается по два кадра). Вердикт от этого не меняется, меняется
+    только цена: зрение и так отвечало «нет» на белый прямоугольник.
     """
     bad = []
     if path.suffix.lower() in (".mp4", ".m4v"):
@@ -234,27 +281,212 @@ def cheap_problems(path: Path):
     if w * h < MIN_PIXELS:
         bad.append(f"мелкое разрешение {w}x{h}")
 
-    small = im.convert("L").resize((64, 36))
-    try:
-        px = list(small.get_flattened_data())
-    except AttributeError:
-        px = list(small.getdata())
-    pale = sum(1 for p in px if p > 224) / len(px)
-    mean = sum(px) / len(px)
-    spread = (sum((p - mean) ** 2 for p in px) / len(px)) ** 0.5
-    if pale > PALE_HARD:
-        bad.append(f"почти белый кадр ({pale*100:.0f}% площади)")
-    if mean < DARK_MEAN:
-        bad.append(f"кадр практически чёрный (яркость {mean:.0f})")
-    # ПУСТОЙ КАДР. Разброс яркости ниже порога означает заливку: ровное
-    # небо, ровная стена, титр на однотонном фоне, кадр не в фокусе
-    # целиком. На канале о находках такой проверки не было и она была не
-    # нужна — там кадр всегда предметный. Здесь половина материала это
-    # пейзаж, и пустых кадров приходит много.
-    if spread < FLAT_STDEV:
-        bad.append(f"пустой кадр без деталей (разброс яркости {spread:.1f})")
+    mid_bad, pale = frame_problems(im)
+    bad += mid_bad
+    # Края клипа: те же проверки, но названные краем — иначе по логу не
+    # понять, почему забракован клип с приличной серединой.
+    for edge, eim in zip(("начало", "конец"), look):
+        if eim is im:
+            continue
+        edge_bad, edge_pale = frame_problems(eim)
+        pale = max(pale, edge_pale)
+        bad += [f"{edge} клипа: {b}" for b in edge_bad]
 
     return im, bad, pale, look
+
+
+# ─────────────────── ПОВТОРЫ И ПАМЯТЬ ВЕРДИКТОВ ───────────────────
+
+def dhash(im: Image.Image, side=8) -> int:
+    """
+    Перцептивный хэш кадра: сравнение соседних пикселей по горизонтали.
+
+    Нужен, чтобы не спрашивать зрение об одном и том же дважды. Стоки
+    отдают сериями с одной съёмки, а один и тот же ролик приходит из
+    Pexels и из Pixabay под разными именами — по запросу «server room
+    night» таких близнецов приезжает по три-четыре штуки. Модель отвечает
+    на них одинаково, а платится каждый раз.
+
+    Считается по яркости и по РАЗНИЦЕ соседей, поэтому не ломается от
+    смены экспозиции и сжатия — в отличие от хэша самого файла, который у
+    двух копий одного клипа с разных стоков всегда разный.
+    """
+    px = list(im.convert("L").resize((side + 1, side)).getdata())
+    bits = 0
+    for row in range(side):
+        base = row * (side + 1)
+        for col in range(side):
+            bits = (bits << 1) | int(px[base + col + 1] > px[base + col])
+    return bits
+
+
+# Насколько похожими считаем кадры. 64 бита всего; расхождение до четырёх
+# — это одна и та же съёмка с другой экспозицией или другим сжатием.
+# Больше брать нельзя: на восьми в одну корзину сваливаются просто два
+# тёмных кадра, и вердикт по одному уезжает на посторонний материал.
+DHASH_NEAR = 4
+
+# А вот расхождение до двух бит — это уже не «похоже», а ОДНО И ТО ЖЕ:
+# тот же клип, приехавший и с Pexels, и с Pixabay, или он же во второй раз
+# по соседнему запросу. Такие не просто делят вердикт, а отбраковываются.
+#
+# Иначе они обходят потолок повторов: build.MAX_CLIP_REPEATS считает показы
+# ОДНОГО ФАЙЛА, и два файла с одинаковой картинкой дают зрителю до шести
+# появлений одного кадра за ролик — при том, что весь редакторский слой
+# существует ровно затем, чтобы канал не выглядел конвейерным.
+DHASH_SAME = 2
+
+
+def file_key(path: Path) -> str:
+    """
+    Отпечаток файла для памяти вердиктов: имя, размер и края содержимого.
+
+    Целиком файл не читается сознательно: материала под четыре гигабайта,
+    а меняться после скачивания он не может — новый материал приезжает
+    под новым именем. Размер вместе с двумя кусками по 64 КБ отличает
+    подменённый файл от прежнего надёжнее, чем время правки, которое
+    сбрасывается при восстановлении из кэша Actions.
+    """
+    h = hashlib.sha1()
+    h.update(path.name.encode())
+    try:
+        size = path.stat().st_size
+        h.update(str(size).encode())
+        with path.open("rb") as f:
+            h.update(f.read(65536))
+            if size > 131072:
+                f.seek(-65536, os.SEEK_END)
+                h.update(f.read(65536))
+    except OSError as e:
+        h.update(str(e).encode())
+    return h.hexdigest()
+
+
+def policy_key(topic: str, desc: str, period_context: str,
+               queries, trusted) -> str:
+    """
+    Отпечаток УСЛОВИЙ отбраковки — всего, от чего зависит вердикт.
+
+    Память вердиктов действует, пока условия те же. Сюда входит ВСЁ, что
+    участвует в решении: промпт и порог оценки, тема и эпоха выпуска,
+    список запросов спецификации (по нему triage отличает старый материал
+    от текущего), доверенные источники и пороги дешёвого яруса. Меняется
+    любое из этого — ключ другой, память пуста, материал пересматривается
+    целиком.
+
+    Так правило канала «зрение обязано отработать заново, когда
+    изменились запросы, промпт отбраковки или состав скачанного»
+    перестаёт быть обещанием в документации и становится арифметикой
+    ключа. Забыть про него нельзя: не совпал ключ — нет и памяти.
+    """
+    h = hashlib.sha1()
+    thresholds = (PALE_HARD, PALE_SOFT, DARK_MEAN, FLAT_STDEV,
+                  MIN_PIXELS, STATIC_DELTA, MIN_QUALITY)
+    parts = [PROMPT, topic, desc, period_context,
+             "|".join(sorted(queries or ())), "|".join(sorted(trusted or ())),
+             ";".join(str(t) for t in thresholds)]
+    for part in parts:
+        h.update((part or "").encode("utf-8"))
+        h.update(b"\0")
+    return h.hexdigest()[:16]
+
+
+def load_cache(path: Path, pkey: str):
+    """
+    Вердикты прошлых прогонов, если условия отбраковки те же.
+
+    Пересборок у ролика пять-десять, а материал между ними тот же самый:
+    без памяти каждая заново платит зрению за весь пул целиком (на
+    dead-internet-01 это 853 запроса и полтора доллара за прогон). Смена
+    условий отбраковки обнуляет память целиком — см. policy_key.
+    """
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    if data.get("policy") != pkey:
+        log("  память вердиктов сброшена: условия отбраковки изменились "
+            "(тема, vet_context, промпт или порог оценки)")
+        return {}
+    return data.get("verdicts") or {}
+
+
+def save_cache(path: Path, pkey: str, verdicts: dict):
+    path.write_text(json.dumps({"policy": pkey, "verdicts": verdicts},
+                               indent=1, ensure_ascii=False), encoding="utf-8")
+
+
+def near_groups(keys: dict, near=DHASH_NEAR):
+    """
+    Раскладывает файлы по корзинам похожести. {файл: хэш} -> [[файл, ...]].
+
+    Перебор попарный и это осознанно: файлов сотни, не миллионы, а любая
+    хитрая схема на таком объёме экономит миллисекунды и добавляет способ
+    ошибиться.
+    """
+    groups, heads = [], []
+    for f, h in keys.items():
+        for gi, head in enumerate(heads):
+            if bin(head ^ h).count("1") <= near:
+                groups[gi].append(f)
+                break
+        else:
+            heads.append(h)
+            groups.append([f])
+    return groups
+
+
+def round_robin(items, key_of):
+    """Переставляет список так, чтобы соседи были из разных групп."""
+    lanes = {}
+    for it in items:
+        lanes.setdefault(key_of(it), []).append(it)
+    out = []
+    for i in range(max((len(v) for v in lanes.values()), default=0)):
+        for lane in lanes.values():
+            if i < len(lane):
+                out.append(lane[i])
+    return out
+
+
+# Во сколько раз годного материала должно быть больше, чем ролик покажет,
+# чтобы перестать платить за проверку остального. Порог применяется к
+# КАЖДОМУ виду отдельно, поэтому вдвое здесь — это вчетверо суммарно.
+#
+# Арифметика на dead-internet-01: сорок минут, 145 кадров, из них реальных
+# около восьмидесяти на оба вида вместе. Потолок повторов клипа — три
+# (build.MAX_CLIP_REPEATS), то есть полсотни клиповых слотов закрываются
+# семнадцатью разными файлами. Порог даёт по 118 годных на вид — вшестеро
+# больше, чем нужно для разнообразия, и вчетверо больше всей потребности
+# ролика в реальном материале.
+VET_POOL_FACTOR = 2.0
+
+
+def pool_budget(job, work: Path):
+    """
+    Сколько ГОДНОГО материала достаточно ролику. 0 — проверять всё подряд.
+
+    Формула та же, что в assets.fill_gaps и в смоуке: длина звука делится
+    на среднюю длину кадра, из этого вычитается доля генерации, и
+    остаётся число реальных файлов. Держать её в трёх местах одинаковой
+    важно — иначе одна проверка требует материала больше, чем другая
+    считает достаточным.
+    """
+    factor = float(job.get("vet_pool_factor", VET_POOL_FACTOR))
+    if factor <= 0:
+        return 0
+    try:
+        total = float(json.loads(
+            (work / "state.json").read_text(encoding="utf-8"))["total_audio"])
+    except (OSError, KeyError, ValueError, json.JSONDecodeError):
+        return 0          # длины звука ещё нет — проверяем всё, как раньше
+    ov = job.get("style_override") or {}
+    base = float((ov.get("base_duration_range") or [9.0, 16.0])[0]) or 11.0
+    gshare = float(ov.get("generated_share", 0.45))
+    need = int(max(8, int(total / base)) * (1 - gshare) / 2.5)
+    return max(24, int(need * factor))
 
 
 # ─────────────────────── ЗРЕНИЕ ───────────────────────
@@ -620,6 +852,17 @@ def vet_all(job, work: Path, use_vision=True):
     groups = {"clip": sorted((work / "footage").glob("clip_*")),
               "arch": sorted((work / "archive").glob("arch_*"))}
 
+    # Память вердиктов и её ключ. Живёт рядом с материалом, то есть
+    # переезжает вместе с ним в кэш Actions и обратно.
+    pkey = policy_key(topic, desc, period_context, current_queries, trusted)
+    cache_path = work / "vet_cache.json"
+    cache = load_cache(cache_path, pkey)
+    from_cache = twins = 0
+    budget = pool_budget(job, work)
+    if budget:
+        log(f"  достаточно {budget} годных файлов каждого вида — дальше "
+            f"зрение не спрашивается")
+
     verdicts = {"clip": {}, "arch": {}}
     tok_in = tok_out = asked = 0
     vision_ok = use_vision and bool(key)
@@ -656,20 +899,84 @@ def vet_all(job, work: Path, use_vision=True):
             continue
         log(f"── проверяю {kind}: {len(files)} шт")
 
-        decided, ask_list, frames = {}, [], {}
+        decided, ask_list, frames, fkeys, mids = {}, [], {}, {}, {}
+        cheap_n = cached_n = twin_n = 0
         for f in files:
+            # ПАМЯТЬ ПРОВЕРЯЕТСЯ ДО РАЗБОРА ФАЙЛА. Отпечаток считается по
+            # имени и краям содержимого, без декодирования: у клипа это
+            # три вызова ffmpeg, и на четырёх сотнях файлов именно они, а
+            # не зрение, занимают почти всё время шага. Пересборка, в
+            # которой ничего не менялось, теперь проходит его насквозь.
+            fkeys[f] = key = file_key(f)
+            hit = cache.get(key)
+            if hit is not None:
+                decided[f] = (bool(hit["keep"]), hit["why"])
+                cached_n += 1
+                continue
             im, bad, pale, look = cheap_problems(f)
             frames[f] = look or ([im] if im is not None else [])
+            mids[f] = im
             src, query = meta.get(f.name, ("", ""))
             verdict, why = triage(f, im, bad, pale, src, query,
                                   current_queries, trusted)
-            if verdict == "ask" and im is not None:
-                ask_list.append((f, why))
-            else:
+            if verdict != "ask" or im is None:
                 decided[f] = (verdict == "keep", why)
+                cache[key] = {"keep": verdict == "keep", "why": why}
+                cheap_n += 1
+                continue
+            ask_list.append((f, why))
 
-        log(f"   первый ярус решил {len(decided)} бесплатно, "
-            f"зрению осталось {len(ask_list)}")
+        # БЛИЗНЕЦЫ. Спрашиваем по одному представителю от корзины, вердикт
+        # ставим всей корзине.
+        #
+        # Корзины складываются ТОЛЬКО ВНУТРИ ОДНОГО ЗАПРОСА, и это не
+        # осторожность, а необходимость: перцептивный хэш считается по
+        # яркости, и два просто тёмных кадра из разных запросов попадают в
+        # одну корзину, ничем друг на друга не походя. Тогда вердикт по
+        # серверной уехал бы на архивное фото телефонистки. В пределах же
+        # одного запроса близнец — это ровно то, чем он кажется: один и
+        # тот же клип, приехавший и с Pexels, и с Pixabay, или соседние
+        # кадры одной съёмки.
+        rep_of, bucket_of, dups = {}, {}, {}
+        if len(ask_list) > 1:
+            why_of = dict(ask_list)
+            by_query = {}
+            for f, _w in ask_list:
+                q = meta.get(f.name, ("", ""))[1]
+                # Файл без записи в манифесте — материал неизвестного
+                # происхождения (старый кэш, ручная подкладка). Такие в
+                # корзины не сводятся вовсе: раз запрос неизвестен, нет и
+                # оснований считать два похожих по яркости кадра одним и
+                # тем же. Своя корзина у каждого — ключ по имени файла.
+                by_query.setdefault(q or f"?{f.name}", []).append(f)
+            reps = []
+            for lane in by_query.values():
+                hashes = {f: dhash(mids[f]) for f in lane}
+                for b in near_groups(hashes):
+                    bucket_of[b[0]] = b
+                    reps.append((b[0], why_of[b[0]]))
+                    for twin in b[1:]:
+                        rep_of[twin] = b[0]
+                        twin_n += 1
+                        gap = bin(hashes[b[0]] ^ hashes[twin]).count("1")
+                        if gap <= DHASH_SAME:
+                            dups[twin] = (b[0], gap)
+            ask_list = reps
+        from_cache += cached_n
+        twins += twin_n
+
+        # ПОРЯДОК ОПРОСА — ВПЕРЕМЕЖКУ ПО ЗАПРОСАМ. Файлы пронумерованы в
+        # порядке скачивания, то есть подряд идёт вся выдача одного
+        # запроса. При остановке по достатку (ниже) такой порядок оставил
+        # бы ролик на первых пяти запросах спецификации из двадцати восьми,
+        # а остальные темы не попали бы в кадр вовсе.
+        ask_list = round_robin(ask_list,
+                               lambda it: meta.get(it[0].name, ("", ""))[1])
+
+        log(f"   первый ярус решил {cheap_n} арифметикой" +
+            (f", {cached_n} из памяти прошлых прогонов" if cached_n else "") +
+            (f", {twin_n} как близнецов уже спрошенного" if twin_n else "") +
+            f", зрению осталось {len(ask_list)}")
 
         vision_out = {}
         if vision_ok and ask_list:
@@ -703,16 +1010,48 @@ def vet_all(job, work: Path, use_vision=True):
                         worst = res
                 return f, worst, tin, tout, calls
 
+            # ОСТАНОВКА ПО ДОСТАТКУ. Скачивается материала в разы больше,
+            # чем ролик покажет: overshoot, добор по дырам и запас на
+            # отбраковку вместе дают под четыре сотни файлов на ролик,
+            # которому нужно шесть десятков. Раньше зрение платно смотрело
+            # ВСЕ — то есть три четверти счёта уходило на материал, до
+            # экрана заведомо не доходящий.
+            #
+            # Считается по ГОДНЫМ, а не по просмотренным, поэтому на плохом
+            # материале остановка просто не наступает и поведение остаётся
+            # прежним. Порядок вперемежку по запросам (выше) держит темы
+            # ролика представленными поровну.
+            kept_now = sum(1 for keep, _ in decided.values() if keep)
+            pending, skipped = list(ask_list), []
+            chunk_n = max(WORKERS * 3, 15)
             with ThreadPoolExecutor(max_workers=WORKERS) as ex:
-                for f, res, tin, tout, calls in ex.map(one, ask_list):
-                    vision_out[f] = res
-                    tok_in += tin
-                    tok_out += tout
-                    asked += calls
-            unknown = sum(1 for v in vision_out.values() if v[0] is None)
-            if unknown == len(ask_list):
-                log(f"  ! зрение не ответило ни разу "
-                    f"({list(vision_out.values())[0][1]}) — "
+                while pending:
+                    if budget and kept_now >= budget:
+                        skipped = pending
+                        break
+                    chunk, pending = pending[:chunk_n], pending[chunk_n:]
+                    for f, res, tin, tout, calls in ex.map(one, chunk):
+                        vision_out[f] = res
+                        tok_in += tin
+                        tok_out += tout
+                        asked += calls
+                        if res and res[0]:
+                            # Дубли из корзины в пул не пойдут, значит и в
+                            # счёт достатка они не идут.
+                            kept_now += sum(1 for m in bucket_of.get(f, [f])
+                                            if m not in dups)
+            for f, _why in skipped:
+                for member in bucket_of.get(f, [f]):
+                    decided[member] = (
+                        False, f"проверка остановлена: годного уже {kept_now} "
+                               f"при достаточных {budget}")
+            if skipped:
+                log(f"   остановился на достатке: {kept_now} годных при "
+                    f"достаточных {budget}, не смотрел ещё "
+                    f"{sum(len(bucket_of.get(f, [f])) for f, _ in skipped)}")
+            done = [v for v in vision_out.values() if v]
+            if done and all(v[0] is None for v in done):
+                log(f"  ! зрение не ответило ни разу ({done[0][1]}) — "
                     f"спорное оставляю в работе")
         elif ask_list:
             log("   зрение недоступно — спорное оставляю в работе")
@@ -723,10 +1062,36 @@ def vet_all(job, work: Path, use_vision=True):
             if f in decided:
                 keep, why = decided[f]
             else:
-                keep, why, _u, _q = vision_out.get(
-                    f, (True, "зрение не спрашивалось", (0, 0), 0))
-                if keep is None:
-                    keep, why = True, f"неясный ответ зрения: {why}"
+                # Близнец берёт вердикт своего представителя: его и
+                # спрашивали вместо него.
+                asked_for = rep_of.get(f, f)
+                answer = vision_out.get(asked_for)
+                if f in dups:
+                    # Дубль: тот же кадр под другим именем. В пул не идёт
+                    # даже когда оригинал годный — иначе он появится в
+                    # ролике вдвое чаще, чем разрешает потолок повторов.
+                    twin_of, gap = dups[f]
+                    keep = False
+                    why = (f"дубль {twin_of.name} (расхождение {gap} бита "
+                           f"из 64) — тот же кадр из другого источника")
+                    cache[fkeys[f]] = {"keep": False, "why": why}
+                elif answer is None:
+                    # Зрения не было вовсе — спорное остаётся в работе.
+                    keep, why = True, "зрение не спрашивалось"
+                else:
+                    keep, why = answer[0], answer[1]
+                    if keep is None:
+                        keep, why = True, f"неясный ответ зрения: {why}"
+                    else:
+                        if asked_for != f:
+                            why = f"как у близнеца {asked_for.name}: {why}"
+                        # В память кладётся только то, что реально решило
+                        # зрение. «Не ответило» — это не вердикт, и
+                        # запоминать его значило бы закрепить сетевой сбой
+                        # на все будущие пересборки. Близнецы кладутся
+                        # тоже: иначе следующая пересборка соберёт корзины
+                        # заново и снова заплатит за представителя.
+                        cache[fkeys[f]] = {"keep": bool(keep), "why": why}
             verdicts[kind][str(n)] = {"keep": bool(keep), "why": why}
             kept += bool(keep)
 
@@ -734,6 +1099,11 @@ def vet_all(job, work: Path, use_vision=True):
         for n, v in sorted(verdicts[kind].items(), key=lambda x: int(x[0])):
             if not v["keep"]:
                 log(f"     {kind} {int(n):03d}: {v['why']}")
+
+    save_cache(cache_path, pkey, cache)
+    if from_cache or twins:
+        log(f"── сэкономлено запросов: {from_cache} из памяти прошлых "
+            f"прогонов, {twins} на близнецах")
 
     if asked:
         p_in, p_out = price_of(model or "")

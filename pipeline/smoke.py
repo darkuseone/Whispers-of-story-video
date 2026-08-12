@@ -221,6 +221,42 @@ def main(job_path):
     print(f"   самый долгий кадр {longest:.1f} с, все долгие идут "
           f"долгим ходом")
 
+    # ШОРТСЫ. Проверяются здесь, потому что стоят они ноль, а ломаются от
+    # опечатки в одном поле: якорь — это точная фраза из сценария, и
+    # достаточно перефразировать её в спецификации, чтобы шортс не
+    # собрался вовсе. Обнаруживать это ПОСЛЕ трёх часов сборки ролика
+    # незачем — здесь тот же расчёт делается за миллисекунды.
+    print("── шортсы")
+    import shorts as shorts_mod
+    specs = shorts_mod.specs_from(job)
+    if not specs:
+        print("   не заказаны (нет youtube.shorts / youtube.shorts_questions)")
+    for i, spec in enumerate(specs, 1):
+        q = spec.get("question") or spec.get("title") or ""
+        if not q:
+            raise SystemExit(f"шортс {i}: нет ни question, ни title — "
+                             f"нечего писать на экране")
+        payoff, how = shorts_mod.find_payoff(marks, q, spec.get("anchor"))
+        want = float(spec.get("seconds", shorts_mod.WANT_SECONDS))
+        lo, hi = shorts_mod.window(marks, payoff, want,
+                                   shorts_mod.MAX_SECONDS)
+        dur = marks[hi]["end"] - marks[lo]["start"]
+        if dur < shorts_mod.MIN_SECONDS:
+            raise SystemExit(
+                f"шортс {i}: вышло {dur:.0f} с при минимуме "
+                f"{shorts_mod.MIN_SECONDS:.0f} — предложения вокруг якоря "
+                f"слишком короткие, подними seconds")
+        # Считается по КОНЦУ отвечающего предложения: важно, когда ответ
+        # ДОГОВОРЁН, а не когда он начат. У этого канала предложения по
+        # десять-двадцать секунд, и разница между двумя этими числами
+        # доходит до трети шортса.
+        at = (marks[payoff]["end"] - marks[lo]["start"]) / dur
+        if not spec.get("anchor"):
+            print(f"   ! шортс {i} без anchor — кусок угадан по словам "
+                  f"вопроса, проверь глазами")
+        print(f"   {i}: {dur:.0f} с с {marks[lo]['start']/60:.0f} мин ролика, "
+              f"ответ договорён к {at*100:.0f}% длины, {how}")
+
     print("── подложки")
     beds = build.beds_for(st, job)
     if not beds:

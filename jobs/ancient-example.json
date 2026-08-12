@@ -17,6 +17,9 @@
   "_music_пример": ["assets/music/bed2.mp3", "assets/music/bed5.mp3"],
   "bed_gain_db": -27.0,
 
+  "_хвост": "После последнего слова ролик держит чёрный кадр без начитки: голос договорил, подложка уходит в ноль, дальше тишина. Так кончается КАЖДЫЙ ролик канала, поле нужно только чтобы отступить от умолчания в 4 секунды. Разумный диапазон 3-6.",
+  "tail_hold": 4.0,
+
   "_цветокор": "Без этих полей выпадает жребием из холодной семьи, разведённый с тремя последними роликами. Семья: moonlit_marble, nile_indigo, aegean_teal, temple_ash, starlit_lapis, bronze_frost. Архивная: archive_platinum, archive_cyanotype, archive_stone.",
   "lut": "nile_indigo",
   "archive_lut": "archive_cyanotype",
@@ -136,6 +139,16 @@
       "ancient greece",
       "sleep documentary"
     ],
-    "thumbnail_at": 900.0
+    "thumbnail_at": 900.0,
+
+    "_шортсы": "Два вертикальных ролика режутся из готового final.mp4 и не стоят ничего. anchor — ТОЧНАЯ фраза из script_blocks, вокруг неё и строится кусок: подводка, ответ, отбивка. Без anchor кусок ищется по словам вопроса и почти всегда промахивается; ненайденный якорь роняет смоук, а не сборку. seconds — желаемая длина, 25-45.",
+    "shorts": [
+      {
+        "title": "Short title as it goes on YouTube",
+        "question": "The question printed on screen for the whole short",
+        "anchor": "exact phrase from script_blocks that answers it",
+        "seconds": 40
+      }
+    ]
   }
 }

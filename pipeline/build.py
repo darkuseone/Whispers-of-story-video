@@ -111,6 +111,22 @@ CLIP_REPEAT_MOVES = ["drift_in", "drift_left", "drift_out", "drift_right",
 # делают финал финалом.
 TAIL_FADE_SECONDS = 6.0
 
+# ТИШИНА ПОСЛЕ ПОСЛЕДНЕГО СЛОВА. Уход в чёрное выше решал только половину
+# задачи: картинка гасла, а начитка при этом договаривала фразу до самого
+# конца файла и обрывалась вместе с ним. На готовом ролике это слышно как
+# щелчок — голос кончился, и сразу тишина без всякого перехода.
+#
+# Здесь ролик заканчивается иначе: последнее слово, потом несколько секунд
+# чёрного кадра, на которых подложка успевает договорить и уйти в ноль.
+# Ролик смотрят на ночь, и эти секунды — то самое послевкусие, за которым
+# его и включают. Стоит это один фильтр tpad на последней группе склейки,
+# то есть ноль.
+#
+# Четыре секунды: три читаются как обрыв, шесть на длинном ролике уже
+# похожи на зависший файл. Переопределяется полем tail_hold в спецификации.
+TAIL_HOLD_SECONDS = 4.0
+TAIL_HOLD_MAX = 10.0
+
 # Кадр короче этого не показывают — его вливают в предыдущий. Причина не
 # эстетическая: переход длиной полторы секунды не помещается в кадр
 # длиной треть секунды, и xfade молча обрывает всю группу склейки.
@@ -1583,6 +1599,15 @@ def join(group, out: Path, st, overlay, first=False, moments=None, last=False):
         seg = sum(sh["duration"] for sh in group)
         st_fade = max(0.0, seg - TAIL_FADE_SECONDS)
         post.append(f"fade=t=out:st={st_fade:.2f}:d={TAIL_FADE_SECONDS:.1f}")
+        # ...и держим чёрный кадр ещё несколько секунд после того, как
+        # начитка кончилась. Кадры дорисовывает tpad — тем же вызовом
+        # ffmpeg и тем же кодировщиком, поэтому финальная сшивка остаётся
+        # склейкой без перекодирования (concat -c copy требует совпадения
+        # параметров потока до последнего бита).
+        hold = float(getattr(st, "tail_hold", TAIL_HOLD_SECONDS))
+        if hold > 0:
+            post.append(f"tpad=stop_mode=add:stop_duration={hold:.2f}:"
+                        f"color=black")
     # Плашки ставятся ПОСЛЕ виньетки. Иначе виньетка гасит нижние углы, а
     # плашка стоит именно там — текст уходил бы в тень ровно у той половины
     # раскладок, где он внизу.
@@ -1766,6 +1791,11 @@ def main(job_path):
     # Отсутствующий .cube ffmpeg сообщает где-то на середине группы склейки,
     # а с заглушенным stderr — вообще никак.
     check_luts(st)
+    # Тихий чёрный хвост. Задаётся здесь, а не в движке стиля: это не ось
+    # разведения роликов, а общее правило канала — так кончается КАЖДЫЙ
+    # ролик, и жребий тут не при чём.
+    st.tail_hold = max(0.0, min(TAIL_HOLD_MAX,
+                                float(job.get("tail_hold", TAIL_HOLD_SECONDS))))
     log("стиль:", json.dumps(st.summary(), ensure_ascii=False))
     d = st.divergence
     log(f"  разведение: {d.get('note')}"
@@ -1914,7 +1944,7 @@ def main(job_path):
     render.build_audio(assets / "voice_full.m4a", beds or None, mixed, total,
                        bed_gain_db=job.get("bed_gain_db", st.bed_gain_db),
                        duck_points=ducks, duck_depth=st.duck_depth,
-                       switch_at=st.bed_switch_at)
+                       switch_at=st.bed_switch_at, tail=st.tail_hold)
 
     log("── финал")
     final = out / "final.mp4"
@@ -1927,7 +1957,16 @@ def main(job_path):
     vd = render.duration_of(final, "v")
     ad = render.duration_of(final, "a")
     size_gb = final.stat().st_size / 2**30
-    log(f"  видео {vd:.3f} с, звук {ad:.3f} с, тайм-коды {total:.3f} с")
+    log(f"  видео {vd:.3f} с, звук {ad:.3f} с, тайм-коды {total:.3f} с "
+        f"+ {st.tail_hold:.1f} с тихого хвоста")
+    # Хвост проверяется ЗАМЕРОМ. Он весь состоит из того, чего в логе не
+    # видно: tpad мог не дорисовать кадры, apad — не дотянуть дорожку, а
+    # mux с -shortest молча обрежет ролик по любому из них, и обнаружится
+    # это только на просмотре, как оно и обнаружилось в первый раз.
+    if st.tail_hold > 0 and vd < total + st.tail_hold - 0.5:
+        log(f"  ! тихий хвост не доехал: ролик {vd:.2f} с при ожидаемых "
+            f"{total + st.tail_hold:.2f} с — смотри tpad в join() и apad "
+            f"в render.build_audio")
     log(f"  файл  {size_gb:.2f} ГБ  ({final.stat().st_size * 8 / vd / 1e6:.1f} Мбит/с)")
     if abs(vd - ad) > 0.5:
         log(f"  ! видео и звук разошлись на {abs(vd - ad):.2f} с — "

@@ -283,6 +283,15 @@ jobs:
         if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
         run: python pipeline/youtube.py jobs/${{ steps.pick.outputs.job }}.json
 
+      # Шортсы режутся из ГОТОВОГО ролика и не стоят ничего: ни озвучки,
+      # ни генерации, ни запросов к зрению. Падение здесь не должно
+      # уносить с собой сам ролик — он к этому моменту уже собран, а
+      # шортсы пересобираются отдельно за полторы минуты.
+      - name: Этап 4 — два шортса
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        continue-on-error: true
+        run: python pipeline/shorts.py jobs/${{ steps.pick.outputs.job }}.json
+
       - name: Находим готовое
         id: out
         if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
@@ -302,7 +311,8 @@ jobs:
           files: |
             ${{ steps.out.outputs.dir }}/final.mp4
             ${{ steps.out.outputs.dir }}/subs.srt
-          fail_on_unmatched_files: true
+            ${{ steps.out.outputs.dir }}/short_*.mp4
+          fail_on_unmatched_files: false
 
       - name: Комплект для выкладки отдельно
         if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
@@ -313,6 +323,7 @@ jobs:
             ${{ steps.out.outputs.dir }}/youtube.txt
             ${{ steps.out.outputs.dir }}/thumbnail.jpg
             ${{ steps.out.outputs.dir }}/subs.srt
+            ${{ steps.out.outputs.dir }}/shorts.txt
           retention-days: 30
 
       - name: Диагностика при падении

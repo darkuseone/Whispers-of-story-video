@@ -220,6 +220,21 @@
     "shorts_questions": [
       "Is most of the internet already fake?",
       "What happens when AI learns from itself?"
-    ]
+    ],
+    "shorts": [
+      {
+        "title": "Is Most Of The Internet Already Fake?",
+        "question": "Is most of the internet already fake?",
+        "anchor": "fifty-one percent of everything moving",
+        "seconds": 42
+      },
+      {
+        "title": "What Happens When AI Learns From Itself",
+        "question": "What happens when AI learns from itself?",
+        "anchor": "photocopy of a photocopy of a photocopy",
+        "seconds": 42
+      }
+    ],
+    "shorts_note": "anchor — точная фраза из script_blocks, вокруг которой режется шортс. Без него кусок ищется по словам вопроса и почти всегда промахивается: на этом ролике оба шортса без якорей уехали в главу про происхождение теории, где ответа на вопрос нет вовсе."
   }
 }
