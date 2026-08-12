@@ -122,6 +122,35 @@ def main(job_path):
     end = shots[-1]["start"] + shots[-1]["duration"]
     print(f"   {len(shots)} кадров, {total/60:.1f} мин, "
           f"генерация {sec['gen']/mt*100:.1f}%")
+
+    # ХВАТАЕТ ЛИ ЗАПРОСОВ НА МАТЕРИАЛ. Считается по той же формуле, что и
+    # в assets.fill_gaps, и проверяется ЗДЕСЬ — до озвучки и генерации.
+    #
+    # Иначе нехватка обнаруживается только в боевом прогоне, причём в
+    # самом конце: конвейер честно докладывает «реального материала 48,
+    # под ролик нужно около 63», молча затыкает дырку генерацией и выдаёт
+    # ролик с 81.7% генерации при заказанных 45%. Деньги на озвучку и
+    # картинки к этому моменту уже потрачены, а починка — дописать
+    # запросов в спецификацию, то есть ровно то, что можно было сделать
+    # до первого потраченного цента.
+    ov = job.get("style_override") or {}
+    base = float(ov.get("base_duration_range", [9.0, 16.0])[0]) or 11.0
+    gshare = float(ov.get("generated_share", 0.45))
+    need_real = int(max(8, int(total / base)) * (1 - gshare) / 2.5)
+    have_real = (len(list((work / "footage").glob("clip_*"))) +
+                 len(list((work / "archive").glob("arch_*"))))
+    nq = len(job.get("footage_queries", [])) + len(job.get("archive_queries", []))
+    print(f"   реального материала {have_real} при нужных {need_real} "
+          f"({nq} запросов на {total/60:.0f} мин)")
+    if have_real < need_real:
+        raise SystemExit(
+            f"материала не хватит: {have_real} при нужных {need_real}.\n"
+            f"Запросов в спецификации {nq} "
+            f"(footage_queries + archive_queries) на {total/60:.0f} минут — "
+            f"мало. Дописать запросов и прогнать смоук заново.\n"
+            f"Ориентир: примерно один запрос на минуту ролика. Иначе дырку "
+            f"молча закроет генерация, и её доля уедет много выше "
+            f"заказанных {gshare*100:.0f}%.")
     if abs(end - total) > 0.5:
         raise SystemExit(f"таймлайн разошёлся со звуком на {abs(end-total):.2f} с")
     print(f"   таймлайн сходится со звуком ({abs(end-total):.3f} с)")
