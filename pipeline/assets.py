@@ -209,12 +209,33 @@ def tts_block(text, out_mp3: Path, voice_id, api_key, stability=0.50,
         attempts.append(vs2)
     last_err = None
     for body_vs in attempts:
-        r = requests.post(url, timeout=TIMEOUT,
-                          headers={"xi-api-key": api_key,
-                                   "Content-Type": "application/json"},
-                          json={"text": text,
-                                "model_id": model_id,
-                                "voice_settings": body_vs})
+        # СЕТЕВОЙ ТАЙМАУТ — НЕ ПОВОД ТЕРЯТЬ УЖЕ ОПЛАЧЕННЫЕ БЛОКИ. Кэш
+        # сохраняется только после успеха ВСЕГО этапа 1 (см. CLAUDE.md),
+        # а build_voice идёт по блокам подряд: одна пропавшая посреди
+        # ответа TCP-сессия на шестом блоке из пятнадцати роняла прогон
+        # целиком, и пять уже оплаченных блоков синтеза улетали в никуда
+        # — retry заново заплатил бы за них второй раз. ReadTimeout и
+        # ConnectionError — это не «модель отклонила запрос», у них нет
+        # смысла менять voice_settings, здесь просто нужно попробовать
+        # ту же самую посылку ещё раз.
+        r = None
+        for net_attempt in range(3):
+            try:
+                r = requests.post(url, timeout=TIMEOUT,
+                                  headers={"xi-api-key": api_key,
+                                           "Content-Type": "application/json"},
+                                  json={"text": text,
+                                        "model_id": model_id,
+                                        "voice_settings": body_vs})
+                break
+            except requests.exceptions.RequestException as e:
+                if net_attempt + 1 >= 3:
+                    raise RuntimeError(
+                        f"ElevenLabs не ответил после 3 попыток: {e}") from e
+                wait = 5 * (net_attempt + 1)
+                log(f"  ! сеть ElevenLabs: {e} — повтор через {wait} с "
+                    f"({net_attempt + 1}/3)")
+                time.sleep(wait)
         if r.status_code == 200:
             data = r.json()
             import base64
