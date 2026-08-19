@@ -808,6 +808,32 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
                       bool(clips),
                       clip_intro=st.intro_clip_share,
                       clip_body=st.body_clip_share)
+    def picky(phase: str) -> bool:
+        """
+        Можно ли сейчас отказаться от клипа, который не бьётся со словами.
+
+        ДВА ПРАВИЛА КАНАЛА СПОРЯТ, и спор надо решать, а не выбирать одно.
+        Первое: под фразу про Пентагон не ставить чужой Египет — за это
+        отвечает require_match в ClipPicker.take. Второе: во вступлении
+        70-80% экранного времени занимает видео, в теле 20-30% — это
+        требование к формату, а не пожелание.
+
+        Безусловный отказ побеждал второе правило молча. Замер на
+        dead-internet-01: 5.9% видео в теле при заказанных 18% и 10.8% во
+        вступлении при заказанных 78% — то есть ролик из одних картинок,
+        собранный без единой ошибки в логе. Причина простая: запросы к
+        стоку пишутся ЗРИТЕЛЬНЫМИ образами («server room data center
+        night»), а начитка идёт про ботов и трафик, и пересечения по
+        словам у них нет почти нигде.
+
+        Поэтому привередничаем, только пока доля видео НЕ ОТСТАЁТ. Отстала
+        — берём лучшее, что есть: пул к этому моменту уже прошёл
+        отбраковку по теме выпуска (vet_context), то есть заведомо не
+        «чужой Египет», а просто менее удачный кадр. Совпадение по словам
+        — предпочтение, доля по времени — требование.
+        """
+        return not mix.clip_behind(phase)
+
     if not archive:
         log("  ! подлинных фото нет — под места и предметы пойдёт генерация; "
             "добери архив этапом material")
@@ -971,7 +997,7 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
 
         said = intro_said(t, dur)
         if got == "clip":
-            src, _ = clip_pick.take(t, said, require_match=True)
+            src, _ = clip_pick.take(t, said, require_match=picky("intro"))
             if src is None:
                 # нет футажа под эту фразу — не ставим чужой клип, рисуем
                 got = "gen"
@@ -1175,7 +1201,7 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         meta = dict(why=cfg.get("why", ""), beat_kind=cfg.get("beat_kind"))
 
         if got == "clip":
-            src, _ = clip_pick.take(start, said, require_match=True)
+            src, _ = clip_pick.take(start, said, require_match=picky("body"))
             if src is None:
                 got = "gen"
                 since_clip += 1
