@@ -1,0 +1,218 @@
+{
+  "id": "cahokia-01",
+  "_": "Запрошенная тема: 'загадки США / как появилась Америка', вирусный потенциал, чего ещё не было в каталоге канала. Экран показывает уже вышедшие: LHC, Antarctica, ocean floor 2026, Titanic 2026, Bermuda Triangle (листикл 25), Pyramid mysteries (листикл 25). Ни одной темы про доколумбову Северную Америку не было. Угол: Cahokia — крупнейший доколумбов город севернее Мексики, у Сент-Луиса, размером с Лондон XII века, полностью исчез за пару веков. Это одновременно (1) 'США мистика, о которой никто не рассказывает' и (2) настоящий детектив с честным 'we don't know' в финале, и (3) содержит разоблачение реального расистского 'Mound Builder myth' 19 века — сильный эпистемический поворот в духе формата канала. Использованы: находка Mitchell Log (опубликована в конце 2025), исследование Greater Cahokia LiDAR (опубликовано в начале 2026) и сенатский билл 2025 года — даёт эффект актуальности/новизны.",
+  "_проверить": [
+    "Численность населения Кахокии — спорная цифра. В сценарии использован осторожный диапазон 10 000-20 000 (UNESCO / Illinois Historic Preservation / NGA) с оговоркой, что отдельные исследователи называют 30 000-40 000+ с учётом 'Greater Cahokia'. Не завышать до 100 000 без пометки 'по некоторым оценкам'.",
+    "Сравнение с населением Лондона XII века (~15 000-20 000) — по историческим демографическим оценкам, не по переписи (переписей тогда не было ни там, ни там). В сценарии это прямо оговорено как приблизительное сравнение с обеих сторон.",
+    "Сравнение площади основания Monks Mound с площадью основания пирамиды Хеопса — часто повторяемое в источниках сравнение (обе ~5-5,5 га), но точные цифры по Гизе у разных источников чуть отличаются — стоит перепроверить перед публикацией, если это принципиально.",
+    "Деталь про 'некоторые погребённые боролись, вырывая землю ногтями' в Mound 72 — спорная интерпретация, не все археологи согласны; в сценарии это прямо помечено как неоднозначное.",
+    "Упоминание связи 'Mound Builder myth' с ранней историей мормонизма — сформулировано максимально нейтрально и коротко, со ссылкой на то, что это документированная историками тема, без оценочных высказываний о религии. При желании можно убрать/смягчить эту фразу целиком без вреда для сюжета.",
+    "Точная связь между Кахокией и конкретными современными индейскими народами — предмет активных научных дискуссий; сценарий сознательно НЕ называет конкретные племена как 'потомков', чтобы не делать непроверенных утверждений.",
+    "voice_settings (stability/similarity/speed) — стандартные значения канала по памяти, не сверены с реальным свежим jobs/*.json, если он есть в репозитории — сверить перед стартом сборки."
+  ],
+  "_структура": "Не листикл (в отличие от двух последних роликов '25 mysteries'), не формат 'we found it?' с вопросом-заголовком. Форма: одиночный детективный нарратив с хронологической дугой (расцвет -> инженерия -> религия -> торговля -> насилие -> упадок -> ошибочный миф -> открытый вопрос) и кольцевой композицией — открывается и закрывается одним и тем же образом (курган у Сент-Луиса, автор физически стоит рядом). Хронометраж короче обычного полного формата канала (27-35 мин вместо 30-40) по прямой просьбе автора.",
+  "_длительность": "27-35 минут озвучки (по явному запросу автора в этом заказе — короче стандартных 30-40 мин). Ориентир: ~4300 слов по script_blocks, при 140-160 слов/мин это соответствует ~27-31 минуте. Тема: историческая загадка / доколумбова Северная Америка.",
+  "voice_settings": {
+    "stability": 0.65,
+    "similarity": 0.85,
+    "speed": 0.91,
+    "style": 0
+  },
+  "bed_gain_db": -27,
+  "batch": false,
+  "magnific_share": 0.7,
+  "vet_vision": true,
+  "material_overshoot": 1.45,
+  "fill_limit": 27,
+  "photo_sources": [
+    "openverse"
+  ],
+  "video_sources": [
+    "archive_org"
+  ],
+  "lut": "aegean_teal",
+  "archive_lut": "archive_platinum",
+  "topic": {
+    "slug": "cahokia-lost-city",
+    "keywords": [
+      "Cahokia",
+      "Mississippian culture",
+      "Mound Builders",
+      "pre-Columbian America",
+      "Monks Mound",
+      "Cahokia Woodhenge",
+      "ancient American city",
+      "lost civilization USA",
+      "American Bottom Illinois",
+      "Mound Builder myth"
+    ]
+  },
+  "script_blocks": [
+    "There's a hill outside St. Louis that isn't a hill. It's earth, moved by hand, one basket at a time, until it rose a hundred feet into the Illinois sky. Stand at the base of it today and you'll see joggers, a gravel path, maybe a school group with clipboards. Nobody's in a hurry. Nobody looks up and gasps.\n\nBut I think they should. Because a thousand years ago, that hill was the center of a city. Not a village, not a ceremonial ground - a city, with tens of thousands of people, wide public plazas, and neighborhoods stretching farther than the eye could follow from its summit. At its peak, some archaeologists believe it held as many people as London did in the same century. And this wasn't in Mexico, or Peru, or anywhere the story of \"ancient America\" usually points a camera. It was built two hours from where I could get a cheeseburger tonight, in what's now the American Midwest, roughly seven hundred years before English colonists ever set foot on this continent.\n\nThen it emptied out. Not slowly, the way cities usually fade, but on an archaeological timescale, fast. Within a couple of centuries the plazas were quiet, the defensive walls were gone, and by the time European explorers finally passed through, there was no city left to find. Just mounds. Grass-covered, half-forgotten, and eventually plowed over by farmers who had no idea what they were standing on.\n\nThis is Cahokia. And the strange part isn't just that most Americans have never heard the name. It's that for a hundred years, the country that inherited this place refused to believe its own history could have been built by the ancestors of the people already living here.",
+    "To understand how strange Cahokia's rise really was, you have to picture the land before it happened. This stretch of the Mississippi floodplain, which archaeologists simply call the American Bottom, was rich, flat, prone to flooding, and dotted with small farming villages. People here grew corn, squash, and a handful of local seed crops. They lived in settlements of maybe twenty or thirty people, scattered along the river. Nothing about the ninth or tenth century suggests what's coming.\n\nThen, sometime around the year 1050, something changes. Archaeologists have a name for it that sounds almost like a joke, until you look at what it's describing: the \"Cahokia Big Bang.\" In the space of a single generation, scattered villages reorganize into one dense center. Plazas are laid out. Mounds go up. And the population doesn't just grow, it seems to multiply, as if thousands of people from the surrounding countryside decided, more or less at once, to move in.\n\nWe don't fully know why. It might have been a religious movement, a new set of rituals tied to the sky and the harvest that pulled people toward a shared center. It might have been political, one group of leaders consolidating power over a wider territory than anyone in the region had managed before. It's probably some mix of both, and honestly, that's where solid evidence runs out and informed speculation begins.\n\nWhat we do know is what the city looked like once it existed. Cahokia at its height covered close to six square miles, organized around open plazas, with roughly 120 earthen mounds rising out of the floodplain - platform mounds for temples and elite residences, ridge-top mounds for burial, conical mounds whose exact purpose still isn't entirely settled. About 70 of those mounds survive today, on protected land. The other fifty were leveled by nineteenth and twentieth century farming and construction, before anyone understood what they were destroying.",
+    "So how many people actually lived here? That's a harder question than it sounds, and I'd rather give you the honest range than pick whichever number makes the best headline.\n\nThe figure most commonly cited, the one you'll see in the state historic site's own materials and in UNESCO's listing, is somewhere between ten and twenty thousand people at the city's peak, roughly between 1050 and 1150 CE. Some archaeologists push that considerably higher, into the thirty or forty thousand range, once you count the satellite towns and farmsteads spread across what researchers now call Greater Cahokia. A few older estimates go even further, but most current scholars treat those as unreliable.\n\nEven the conservative number is remarkable. For comparison, historians generally estimate London's population in the twelfth century at somewhere around fifteen to twenty thousand people, which means Cahokia, at its low estimate, was roughly the same size as London, and by the higher estimates, larger. I want to flag something here: comparing population figures from two societies that left no census, seven centuries before either had reliable record-keeping, is approximate on both sides of the comparison. But even the cautious version should stop you. There was a city here, in what's now Illinois, that could stand shoulder to shoulder with the major urban centers of contemporary Europe. Almost nobody grows up learning that.\n\nThe city itself was planned, not accidental. Houses were arranged in rows around open plazas, organized into what look like distinct neighborhoods. Some areas show clear evidence of craft specialization, workshops where people made shell beads or worked stone into tools, which means part of the population didn't have to farm to eat. That's a hallmark of urban complexity anywhere in the world. When people can spend their days making things instead of growing food, you're not looking at a large village anymore. You're looking at a city.",
+    "If there's one image that belongs on this city's business card, it's Monks Mound. It's the largest prehistoric earthen structure anywhere in the Americas, and by any standard it's staggering to think about it as something people built entirely with their hands.\n\nThe numbers alone are worth sitting with. It stands roughly one hundred feet tall, about the height of a ten-story building, and its base stretches nearly a thousand feet long and over seven hundred feet wide. Multiple surveys have found that its footprint, the actual ground it covers, comes close to the footprint of the Great Pyramid of Giza. It isn't nearly as tall, and it isn't built from cut stone, it's built from earth, hauled basket by basket, across roughly fourteen construction stages that archaeologists have traced through excavation. And yet the sheer volume of material moved puts it in a similar league of ambition.\n\nHere's the part that gets me. There were no wheelbarrows here. No draft animals, no cranes, no metal tools. The people who built Monks Mound carried soil in woven baskets, load after load, and they weren't just piling dirt at random. Different layers used different types of soil and clay, almost certainly chosen deliberately for drainage and structural stability, which is likely why the mound has survived nearly a thousand years of Midwestern rain and freeze-thaw cycles largely intact, while plenty of modern earthworks fail in a fraction of that time.\n\nWe know the mound wasn't a monument for its own sake. Archaeologists believe its flat summit once supported a large wooden building, probably a residence or temple for the city's ruling elite, positioned so that from the top, a person could look out over the entire central plaza and, by extension, over the city itself. Power, visibility, and religion, all compressed into a hundred vertical feet of packed earth.\n\nWhat strikes me most is how quiet this achievement has stayed. Ask most people to name the largest prehistoric structure in the Americas, and you'll get guesses about Mexico or Peru. Almost nobody points two hours down the highway from St. Louis.",
+    "West of Monks Mound, there's a circle of wooden posts that almost got paved over by a highway.\n\nIn the early 1960s, archaeologist Warren Wittry was doing routine salvage work ahead of an interstate interchange near Collinsville, Illinois, the kind of project where you dig fast, document what you find, and get out of the way of construction crews. Most of what he expected were house foundations. Instead, he kept turning up unusually large, sloped postholes, spaced out in gentle arcs. When he plotted them on a map, the arcs closed into circles.\n\nOver the following two decades, further excavation revealed at least five successive circles, built one after another over roughly two centuries, each one larger than the last. The biggest may have held as many as sixty or more posts, some an estimated twenty feet tall, set in a ring hundreds of feet across. Wittry gave the site an obvious nickname, Woodhenge, after England's Stonehenge, and the comparison isn't just poetic. Stand at the center post and watch the sun rise on the spring equinox, and it comes up in perfect alignment with a specific post on the eastern arc. The same happens at the summer and winter solstices. This wasn't decoration. It was a working solar calendar, built centuries before any written record-keeping existed in this part of the continent, and precise enough to tell Cahokia's farmers exactly when to plant, when to harvest, and when to hold the ceremonies that structured the city's year.\n\nSome archaeologists think the posts served more than four calendar dates. There are more of them than you'd strictly need just to mark the solstices and equinoxes, which has led a few researchers to wonder whether the circle also tracked the moon, or the Pleiades star cluster, or even served as a surveying tool for aligning the construction of mounds and roadways elsewhere in the city. None of that is confirmed. But even the conservative interpretation, a purpose-built astronomical calendar oriented with genuine precision, tells you something about the level of organized knowledge running through this place. Somebody here was watching the sky closely enough, for long enough, to build a machine out of tree trunks that still works, if you know when to look.",
+    "None of this, the mound, the calendar, the tens of thousands of residents, happened in isolation. Cahokia sat at the center of a trade network that reached across most of the middle of the continent, and the objects buried in its mounds prove it.\n\nMarine shell, used for the thousands of beads found in burials here, came from the Gulf Coast, hundreds of miles south. Copper arrived from deposits around the Great Lakes. Sheets of mica, the shimmering mineral used in ornaments, came from the southern Appalachians. Finely worked stone points and tools have been traced to sources in Wisconsin, Tennessee, and as far as what's now Oklahoma, where Caddoan peoples lived. None of this moved by accident. Cahokia had built, or plugged into, a logistics network stretching across an enormous span of the continent, centuries before horses, wheeled carts, or any of the tools we usually assume long-distance trade requires.\n\nAnd this part of the story is still being written. In late 2025, researchers announced the analysis of what's now called the Mitchell Log, a massive wooden timber, four to five tons in weight, excavated near Cahokia and pinned to a remarkably precise date using tree-ring wiggle-matching: cut sometime around 1122 to 1126, or possibly 1129 to 1132 CE, right at the height of Cahokia's influence. What makes the log remarkable isn't only its size. Chemical analysis of the wood ruled out a local origin. This tree grew somewhere far away, possibly southern Illinois, western Tennessee, or even northern Louisiana, and someone hauled it, whole, across that distance to be raised as a post at Cahokia.\n\nThink about the logistics that requires. Moving a four-to-five-ton log without wheels, without draft animals strong enough for the job, across dozens or hundreds of miles of forest and river, as part of a program organized and precise enough to leave behind matching examples elsewhere in the region. Researchers have drawn a direct comparison to Chaco Canyon in the American Southwest, where the Ancestral Puebloans hauled timber from mountain forests dozens of miles away to build their great houses. Cahokia and Chaco developed independently, in different environments, and yet both societies arrived at the same conclusion: if the wood you need for your most important buildings isn't nearby, you go get it anyway, whatever it costs in labor. That's not a footnote. That's a statement about how seriously these people took what they were building.",
+    "Not everything at Cahokia points to farming and astronomy. Some of it points to something much darker, and much harder to look away from.\n\nAbout half a mile south of Monks Mound sits a low ridge-top earthwork known today only by its excavation number, Mound 72. In 1967, archaeologist Melvin Fowler began digging here and uncovered one of the most significant, and most disturbing, burial complexes ever found in North America.\n\nAt the center lay what's become known as the beaded burial, a figure laid on a bed of more than twenty thousand marine shell disc beads, arranged in the unmistakable shape of a bird, wings and tail extending beneath the body. Archaeologists connect this bird imagery to the Southeastern Ceremonial Complex, a shared set of religious symbols found across Mississippian sites, where a falcon or \"birdman\" figure marks elite or supernatural status again and again. For decades, this was read as the grave of two high-ranking men, possibly among Cahokia's early rulers, buried together with extraordinary ceremony.\n\nThen, in 2016, a team led by archaeologist Thomas Emerson went back to the remains with tools Fowler never had access to: strontium isotope analysis and detailed dental comparison, both capable of revealing biological sex and even geographic origin with far more precision than 1960s methods allowed. What they found revised the story. The beaded burial wasn't two men. It included both men and women. Half a century of textbooks had been repeating a version of this grave that turned out to be wrong in a fairly basic way, a useful reminder that even our most confident readings of the ancient past stay provisional, waiting for the next set of tools to correct them.\n\nThe burial complex around this central grave is where the story turns grim. Excavators found the remains of more than 270 people at Mound 72, many in mass graves. One pit held 53 young women, laid out in careful rows, with no signs of violent trauma, which points toward death by strangulation or a similarly bloodless method. A separate pit held 39 men and women who died violently, arrow wounds, blunt trauma, and in some interpretations, injuries consistent with people who struggled against their own burial, though not every archaeologist reads that detail the same way. What isn't disputed is that this was mass, organized human sacrifice, almost certainly tied to the death of the high-status individuals at the mound's center.\n\nThat practice wasn't unique to Cahokia, or even unprecedented for the wider Mississippian world. Nearly seven centuries later, in 1725, French colonists documented the funeral of a Natchez war chief in what's now Mississippi, and recorded the ritual killing of his retainers as part of the ceremony. Mound 72 may be the earliest clearly documented evidence of that belief system, but it wasn't the last time it appeared in this cultural tradition. Whatever this practice was built on, it held for hundreds of years, and it demanded blood at the death of its most important people.",
+    "By the early 1200s, something in Cahokia is changing, and not for the better. Archaeologists find a defensive wooden wall built around the city's central precinct, the kind of structure you build when you're worried about being attacked, not when things are going well. Craft production shifts. House sizes and shapes change. Population, after roughly a century and a half of explosive growth, starts to shrink.\n\nBy 1400, the city is empty. Completely abandoned, its plazas overgrown, its wooden buildings gone. For a long time, the leading explanations were the ones you'd expect for any pre-modern society under strain: drought, crop failure, resource depletion from centuries of building, farming, and burning firewood for tens of thousands of people concentrated in one place. All of that is plausible, and none of it has been ruled out.\n\nBut in 2015, a research team led by geographer Samuel Munoz, then at the University of Wisconsin-Madison, found something nobody had specifically gone looking for. They'd traveled to Horseshoe Lake, right next to the old city center, to pull sediment cores for an entirely different study, tracking ancient land use through pollen records. What the cores actually contained was nearly two thousand years of flood history, layer by layer, reaching back long before Cahokia existed.\n\nThe pattern that emerged was almost too clean. Cahokia rose to prominence during an unusually long stretch, roughly six centuries, when the Mississippi River valley saw very few major floods, a relatively dry, stable window that would have made intensive floodplain farming safer and more productive than it had been before. Then, around 1200, right as the archaeological record shows the first signs of stress at Cahokia, the sediment cores show a major flood event. The dry centuries that helped build the city gave way to a wetter, less predictable river, and the city's decline tracks almost exactly alongside it.\n\nMunoz and his colleagues were careful not to claim this was the whole story, and I want to be equally careful repeating it. As one archaeologist not involved in the study put it, societies like this rarely fall to a single cause, they fall when several bad years stack on top of each other: a flood, then a drought, then political instability, then another flood, until a system that worked for two centuries can no longer absorb one more shock. The sediment cores didn't give us a final answer. They gave us one more piece of a puzzle that's still, honestly, not fully assembled.",
+    "Here's something that surprised me when I looked into this more closely: Cahokia's story doesn't actually end with abandonment in 1400. That's the version that gets repeated in most retellings, a lost city, empty, its mystery sealed, and it isn't quite accurate.\n\nIn 2020, a research team led by archaeologist A.J. White, working with colleagues from several universities, published a study in the journal American Antiquity that reconstructed the region's post-Cahokia history using an unusual mix of evidence: fossil pollen, charcoal deposits, and biomarkers preserved in ancient sediment, essentially tracing centuries of human activity through the chemical fingerprints left in the landscape itself.\n\nWhat they found complicates the tidy \"lost civilization\" framing considerably. Rather than staying empty, the American Bottom saw new waves of Native American settlement return to the area starting in the 1500s, and this presence continued through the 1600s and into the 1700s. These later communities farmed maize, hunted bison on the surrounding grasslands, and may have used controlled burning to manage the land, a set of practices that left a clear signature in the pollen and charcoal record, layered directly on top of Cahokia's own.\n\nIt wasn't until the collision with European colonization, disease, warfare, and the broader disruption of Indigenous life across the continent, that this later population also declined. In other words, the region wasn't a silent ruin for four centuries, waiting to be discovered. It was inhabited, on and off, by descendant and related Indigenous communities for nearly the entire span, right up until the same forces that displaced Native peoples everywhere else in North America reached this stretch of the Mississippi too. The mystery of the vanished city is real. The idea that the land itself went silent afterward isn't.",
+    "Now I want to talk about the part of this story that has nothing to do with archaeology, and everything to do with what people wanted to be true.\n\nFor most of the nineteenth century, educated Americans overwhelmingly refused to believe that the ancestors of the Native peoples they were actively displacing could have built anything like Cahokia, or the thousands of other mounds scattered from the Great Lakes to the Gulf Coast. Structures this large, this organized, implying farming surpluses, specialized labor, and centralized authority, simply didn't match what many nineteenth century Americans had already decided about Native American history. So a different explanation took hold: the mounds, they decided, must have been built by someone else. A vanished race. Depending on who was arguing the theory, that lost race was imagined as Vikings, Phoenicians, wandering Israelites, or refugees from a fallen Old World civilization, anyone except the actual ancestors of the people already living on the continent.\n\nThe strange thing is, the correct answer had already been found, decades earlier, by one of the country's own founders. In the 1780s, Thomas Jefferson personally excavated a burial mound on his Virginia property using a genuinely careful, stratigraphic method, digging in layers and recording what he found at each depth, that historians consider one of the first scientific excavations conducted anywhere. Jefferson's own conclusion was that the mound had been built by the ancestors of Native Americans. He was right. And for the better part of a century afterward, his own country mostly chose not to believe him.\n\nThe myth wasn't just an intellectual curiosity, it did real damage. Historians researching the period have documented how the idea of a vanished, superior \"mound-builder\" race got folded into the political justification for Indian Removal in the 1830s: if Native peoples had themselves displaced some earlier, more advanced civilization, then removing them from their land could be framed as history simply repeating itself, rather than what it actually was. The theory surfaces, directly or indirectly, in statements from more than one American president of the era, and historians also point to it as part of the cultural backdrop surrounding the founding narrative of Mormonism in the same period, though that's a far larger topic than I can do justice to here.\n\nIt took until 1894 for the myth to be formally, scientifically dismantled. Cyrus Thomas, working for the Smithsonian's Bureau of American Ethnology, spent roughly two decades surveying mound sites across the country before publishing a report that reached the same conclusion Jefferson had reached over a hundred years earlier: no lost race, no vanished outsiders, just the direct ancestors of the Native nations who were, by 1894, already living under the consequences of the myth Thomas had just proven false. The correct answer existed before the myth even fully took hold. It just wasn't the answer some people wanted.",
+    "Even now, this story is still being written. In early 2026, researchers published a new study mapping what they call Greater Cahokia, using LiDAR and spatial analysis to trace the network of smaller villages, farmsteads, and satellite mound groups that surrounded the central city and grew alongside it. It's slow, careful work, matching remote sensing data against decades of site records, and it's still reshaping estimates of how large Cahokia's full sphere of influence actually was.\n\nThere's also a live push, right now, to formally recognize what this site is. In 2025, U.S. Senators Tammy Duckworth and Dick Durbin reintroduced legislation asking the National Park Service to conduct a formal study toward elevating Cahokia Mounds from its current status as a National Historic Landmark to a full National Historical Site, the kind of federal designation that would bring it more protection, and frankly more public attention, than it currently gets, especially compared to how well known equivalent sites in Mexico or Peru have become.\n\nBut I don't want to end this pretending every question has been answered, because it hasn't. There's still no single, confirmed trigger for Cahokia's decline, flooding, drought, and internal conflict all appear to have played a role, and researchers are still arguing about how to weigh them against each other. Cahokia left no writing system behind, which means every interpretation of its religion, its politics, and its social structure has to be built indirectly, from burials, postholes, and trade goods, rather than from anyone's own words. And the exact relationship between Cahokia's population and the specific Native nations living in the region today remains an active, sometimes contested area of research, oral tradition, archaeology, and linguistic history don't always line up neatly, and honest scholars are still working through it rather than claiming certainty they don't have.\n\nI'd rather leave you with that honestly than manufacture a clean resolution. Some of what happened here, we may never fully recover.",
+    "So I keep coming back to that hill outside St. Louis. A hundred feet of packed earth, carried up basket by basket, by people who built a city the size of London, aligned a calendar out of tree trunks precisely enough to still work a thousand years later, and moved trade goods across half a continent without wheels or horses. And then, within a couple of lifetimes, walked away from most of it, for reasons we're still only partly able to reconstruct.\n\nWhat gets me isn't just the scale of what they built. It's how thoroughly this country managed to forget it, and then, for the better part of a century, actively refused to believe its own ancestors' descendants had built it at all. Cahokia sat here the entire time this country was inventing its own founding story, through the Revolution, through Indian Removal, through the myths people told each other about who deserved credit for this continent's deep past. The truth was under the grass the whole time, in the same field where you can walk today.\n\nIf you're ever near St. Louis, it's worth the drive. Climb the mound. Stand at the top where a ruler once looked out over tens of thousands of people, and try to imagine the noise, the smoke, the plazas full of life, on a piece of land that's mostly quiet grass now. I think that's the real ending to this story, not a final answer, but a place you can still stand in, if you know to look for it."
+  ],
+  "image_prompts": [
+    "wide aerial view of a massive flat-topped earthen mound rising from a green floodplain at golden hour, cinematic documentary photography, 16:9, photoreal, no people facing camera, no text",
+    "reconstructed pre-Columbian earthen city with rows of thatched houses around open plazas seen from a distance at dusk, cinematic wide shot, photoreal, 16:9, no people facing camera, no text",
+    "extreme low-angle photoreal shot of a massive stepped earthen mound against a dramatic sky, cinematic lighting, 16:9, no people facing camera, no text",
+    "cinematic cross-section illustration style render of layered earth and clay inside an ancient mound structure, muted earth tones, 16:9, no text, no people",
+    "circle of tall weathered wooden posts in an open prairie field at sunrise, long shadows, solstice alignment, cinematic photoreal, 16:9, no people facing camera, no text",
+    "close up of a single ancient wooden post silhouetted against a rising sun over grassland, atmospheric, 16:9, no text, no people",
+    "assortment of ancient marine shell beads, copper fragments and mica sheets laid on dark earth, macro cinematic still life, photoreal, 16:9, no text, no people",
+    "massive fallen tree log being hauled on wooden rollers through forest by a large group in silhouette at dusk, cinematic wide shot, no faces visible, 16:9, no text",
+    "ceremonial burial chamber interior with a bed of thousands of small pale shell beads arranged in a bird silhouette, dim torchlight, reverent cinematic tone, 16:9, no people facing camera, no text",
+    "archaeological excavation trench with exposed ancient burial layers, brushes and tools, soft overcast light, documentary photoreal, 16:9, no faces, no text",
+    "wide shot of a swollen muddy river overflowing into a floodplain forest at dusk, dramatic storm light, cinematic photoreal, 16:9, no people, no text",
+    "abandoned wooden palisade wall silhouette on a hill at twilight, ominous atmosphere, cinematic photoreal, 16:9, no people facing camera, no text",
+    "small Native American farming settlement with maize fields at the edge of a floodplain under soft morning light, cinematic documentary photoreal, 16:9, no people facing camera, no text",
+    "wide grassland landscape with scattered wisps of smoke from controlled burning at dusk, atmospheric, cinematic, 16:9, no text, no people",
+    "19th-century style engraving-inspired illustration of gentlemen surveyors measuring an earthen mound with period instruments, sepia tone, cinematic, 16:9, no text, no modern people facing camera",
+    "old weathered leather-bound survey ledger and brass measuring instruments on a wooden desk beside a window, warm lamp light, cinematic still life, 16:9, no text, no people",
+    "modern LiDAR-style topographic scan visualization of a forested landscape revealing hidden mound outlines in false color, cinematic tech-documentary look, 16:9, no text, no people",
+    "wide aerial drone-style view of the Cahokia region floodplain today with the modern St. Louis skyline faint on the horizon, cinematic photoreal, 16:9, no people facing camera, no text",
+    "lone wide shot of a grassy earthen mound under a darkening evening sky with the first stars appearing, quiet contemplative mood, cinematic photoreal, 16:9, no people facing camera, no text",
+    "close-up of tall prairie grass swaying at dusk with a soft-focus mound silhouette in the background, cinematic, 16:9, no text, no people"
+  ],
+  "footage_queries": [
+    "Cahokia Mounds Illinois aerial drone footage",
+    "Monks Mound State Historic Site walking tour",
+    "Mississippi River floodplain aerial footage",
+    "prairie grassland wind time lapse Midwest USA",
+    "Cahokia Mounds visitor center exhibit footage",
+    "American Bottom Illinois farmland aerial",
+    "Monks Mound stairs climb POV footage",
+    "earthen mound construction reenactment documentary",
+    "Cahokia Woodhenge reconstruction sunrise footage",
+    "solstice sunrise timelapse prairie",
+    "Mississippi River barge trade route footage",
+    "Native American shell bead craft demonstration",
+    "archaeological excavation dig site footage",
+    "museum display ancient burial artifacts glass case",
+    "Mississippi River flood footage historic",
+    "storm clouds over river floodplain time lapse",
+    "Native American cultural demonstration farming footage",
+    "tallgrass prairie controlled burn footage",
+    "19th century American archives sepia footage",
+    "old library archive documents flipping pages",
+    "LiDAR remote sensing scan visualization footage",
+    "drone flyover St Louis Illinois river region",
+    "sunset time lapse over grassland field",
+    "quiet rural Illinois dusk footage"
+  ],
+  "archive_queries": [
+    "Cahokia Mounds State Historic Site",
+    "Monks Mound Illinois historic photograph",
+    "American Bottom Mississippi floodplain map",
+    "Mississippian culture village illustration",
+    "Cahokia Mounds UNESCO World Heritage",
+    "pre-Columbian North American city map",
+    "Monks Mound Cahokia photograph",
+    "Cahokia Mounds excavation report 1900s",
+    "Cahokia Woodhenge solstice photograph",
+    "Warren Wittry Cahokia woodhenge excavation",
+    "Mississippian culture shell bead artifact",
+    "Southeastern Ceremonial Complex artifact",
+    "Mound 72 Cahokia burial excavation",
+    "Mississippian birdman tablet artifact",
+    "Mississippi River historic flood photograph",
+    "Horseshoe Lake Illinois photograph",
+    "Native American Illinois historic photograph",
+    "tallgrass prairie Illinois historic photograph",
+    "Cyrus Thomas Bureau of American Ethnology report 1894",
+    "Mound Builder myth 19th century illustration",
+    "Cahokia LiDAR survey map",
+    "Greater Cahokia archaeological site map",
+    "Cahokia Mounds sunset photograph",
+    "Illinois prairie landscape photograph"
+  ],
+  "video_prompts": [
+    "quiet grass field with a distant earthen mound, subtle wind movement, 3s loop, cinematic, no text",
+    "slow push-in over floodplain grassland at dawn, 3s, cinematic, no text",
+    "slow pan across reconstructed plaza houses at dusk, 3s, cinematic, no text",
+    "slow tilt up along the face of a massive earthen mound, 3s, cinematic, no text",
+    "sun rising through a circle of wooden posts, subtle lens flare, 3s, cinematic, no text",
+    "macro shot of shell beads slowly rotating light, 3s, cinematic, no text",
+    "slow dolly across a dim excavation trench, dust motes in light beam, 3s, cinematic, no text",
+    "storm clouds rolling over a river floodplain, 3s, cinematic, no text",
+    "smoke drifting across grassland at dusk, 3s, cinematic, no text",
+    "candlelight flicker over an old ledger page, 3s, cinematic, no text",
+    "slow reveal of a false-color topographic scan over dark forest, 3s, cinematic, no text",
+    "stars slowly appearing over a dark mound silhouette, 3s, cinematic, no text"
+  ],
+  "reject": {
+    "clip": [],
+    "arch": []
+  },
+  "style_override": {
+    "crf": 22,
+    "fps": 30
+  },
+  "youtube": {
+    "title": "The Lost American City That Rivaled London — Then Vanished",
+    "title_alternatives": [
+      "Cahokia: America's Forgotten Pyramid City",
+      "The US Mystery They Didn't Teach You In School"
+    ],
+    "description_intro": "Seven hundred years before Columbus, a city rose from the Mississippi floodplain near modern St. Louis and grew as large as London. It had plazas, a working solar calendar, trade routes stretching across half the continent — and then it emptied out, leaving only earthen mounds behind. This is the story of Cahokia: how it was built, why it may have fallen, and how nineteenth-century America invented a myth rather than believe its own history.",
+    "chapters": [
+      "A Field in Illinois",
+      "Before Anyone Called It America",
+      "As Big As London",
+      "The Mound That Rivals a Pyramid",
+      "America's Own Stonehenge",
+      "A City Wired to a Continent",
+      "The Grave of the Birdman",
+      "When the River Turned Against the City",
+      "It Was Never Really a Ghost Town",
+      "The Lie America Told About Its Own Mounds",
+      "What We Still Don't Know",
+      "Whispers Under the Grass"
+    ],
+    "description_notes": "Population figures for Cahokia and comparisons to medieval European cities are scholarly estimates, not census data, and vary between sources. Some interpretations discussed here (such as details of the Mound 72 mass burials) remain debated among archaeologists; this is noted in the narration itself where relevant.",
+    "hashtags": [
+      "#archaeology",
+      "#ancienthistory",
+      "#cahokia",
+      "#history",
+      "#mystery"
+    ],
+    "tags": [
+      "Cahokia",
+      "lost civilizations",
+      "ancient history documentary",
+      "pre-Columbian America",
+      "Mississippian culture",
+      "Mound Builders",
+      "archaeology mystery",
+      "ancient American city",
+      "US history mysteries",
+      "Monks Mound",
+      "Native American history",
+      "history channel",
+      "ancient civilizations",
+      "archaeological discoveries 2025"
+    ],
+    "thumbnail_at": 1100,
+    "cover_texts": [
+      "AMERICA'S FORGOTTEN CITY",
+      "BIGGER THAN LONDON"
+    ],
+    "shorts_questions": [
+      "Why did America's biggest ancient city disappear before Columbus?",
+      "Was this US mound really bigger than the Great Pyramid?"
+    ]
+  },
+  "vet_context": "ACCEPT if the frame shows: earthen mounds and platform mounds, archaeological excavation sites and trenches, museum displays of Native American / Mississippian-culture artefacts (shell beads, copper, mica, pottery, stone tools), circles of wooden posts (Woodhenge-style reconstructions), Mississippi River floodplain and prairie/grassland landscape of the American Midwest, aerial or drone footage of Illinois farmland and river country, storm clouds and flooding over a river floodplain, night sky and stars over open grassland. This episode's story spans three periods and all three are period-correct, not anachronisms: (1) the Mississippian city itself, roughly 1050-1400 CE — no metal tools, no wheels, no modern objects in shot for this layer; (2) the 19th-century American 'Mound Builder myth' and its debunking — sepia archival photographs, engravings, surveyors with period instruments, old ledgers and library archives ARE desired material for this layer specifically; (3) present-day archaeology — modern excavation photography, LiDAR/topographic scan visualisations in false colour, and a modern St. Louis skyline seen faint on the horizon in a drone shot of the region today ARE desired material for this layer specifically, not an anachronism to reject.\n\nREJECT anything that breaks the period: Mediterranean or Near Eastern antiquity presented as this subject (columns, hieroglyphs, cuneiform, Egyptian or Greco-Roman ruins — wrong civilisation entirely for this episode), medieval European imagery (castles, knights, cathedrals), and any modern tourist, jogger, or bystander clearly in shot at a present-day mound site unless the frame is explicitly illustrating the site as it looks today for the closing chapter.",
+  "vet_context_note": "Без этого поля отбраковка канала (DEFAULT_PERIOD_CONTEXT в pipeline/vet.py) заточена под древний мир Средиземноморья и Ближнего Востока и забраковала бы собственный материал этого ролика как «не тот регион» — курганы Кахокии, LiDAR-сканы и архивы XIX века туда не укладываются ни при какой натяжке. Тот же приём, что и на dead-internet-01.",
+  "_техправки": "Файл пришёл со структурой, сгруппированной по главам сценария (footage_queries/archive_queries/image_prompts — по 12 подсписков, по числу script_blocks), а конвейер везде ждёт ПЛОСКИЕ списки строк — gather() отдаёт запрос напрямую в HTTP-параметр, build_images шлёт prompts[i] в API генерации как готовый текст. Списки распрямлены (24 запроса стока, 24 архивных, 20 промптов генерации), порядок глав сохранён. archive_queries нёс ещё и поле source на каждый элемент ('archive_org' | 'openverse') — этот конвейер источник запроса не читает, он берётся глобально из photo_sources/video_sources; то же намерение перенесено туда: archive_org (умеет только видео в этом коде) — в video_sources, openverse (умеет только фото) — в photo_sources, они были перепутаны местами в присланном файле."
+}
