@@ -835,6 +835,71 @@ def triage(path: Path, im, bad, pale, src, query, current_queries, trusted):
     return "ask", "локальные признаки молчат"
 
 
+# ─────────────────── ВТОРОЙ ЯРУС: КРИТИК ───────────────────
+
+# Пороги критика. Все три подобраны с запасом в сторону «пропустить»:
+# ошибка критика стоит дороже ошибки зрения, потому что она бесплатная и
+# потому молчаливая — забракованный им кадр никто не пересматривает.
+SHARP_MIN = 12.0       # разброс лапласиана на кадре 320 px по ширине
+
+
+def sharpness(im: Image.Image) -> float:
+    """
+    Насколько кадр в фокусе. Разброс лапласиана — классическая мера, и
+    считается она четырьмя сдвигами массива, без scipy и OpenCV.
+
+    Ширина приводится к 320 px: мера зависит от размера, и без нормировки
+    один и тот же кадр в 4K и в 640x360 даёт цифры, различающиеся на
+    порядок. Сравнивать их между собой было бы нельзя.
+    """
+    import numpy as np
+    g = np.asarray(im.convert("L").resize((320, 180)), float)
+    lap = (4 * g[1:-1, 1:-1] - g[:-2, 1:-1] - g[2:, 1:-1]
+           - g[1:-1, :-2] - g[1:-1, 2:])
+    return float(lap.var())
+
+
+def critic(im, look, kind):
+    """
+    ВТОРОЙ ЯРУС. Бесплатный, между жёстким отбором и зрением.
+
+    Возвращает "reject" | "ask" и причину. Ничего не одобряет: сказать
+    «годится» про содержание кадра арифметика не может, это работа зрения.
+    Задача критика ровно обратная — снять со зрения то, за что не стоит
+    платить, потому что кадр негоден по ФОРМЕ, а не по смыслу.
+
+    Первый ярус ловит брак грубый: белый прямоугольник, чёрный кадр,
+    стоп-кадр вместо видео. Между ним и «нужен взгляд» остаётся широкая
+    полоса, которую тоже видно без модели: расфокус, поля от оцифровки на
+    полкадра. На cahokia-01 зрению уходило по 89 файлов на проход, и
+    заметная часть этого — именно такие кадры.
+
+    У видео критик смотрит ВСЕ кадры и берёт худший, по той же причине,
+    что и первый ярус: ClipCutter возьмёт из файла случайное место, и
+    честной серединой расфокусированный хвост не искупается.
+    """
+    frames = [f for f in ([im] + list(look or [])) if f is not None]
+    if not frames:
+        return "ask", ""
+
+    soft = min(sharpness(f) for f in frames)
+    if soft < SHARP_MIN:
+        return "reject", f"кадр не в фокусе (резкость {soft:.0f})"
+
+    # ПРОВЕРКИ НА ПОЛЯ ОЦИФРОВКИ ЗДЕСЬ НЕТ, И ЭТО РЕШЕНИЕ, А НЕ ПРОБЕЛ.
+    # Она была написана и выброшена: отличить чёрную рамку от ночного неба
+    # арифметикой не выходит. После сжатия кадра до сетки, на которой такое
+    # считают, редкие звёзды пропадают, и строка неба становится ровной и
+    # тёмной — то есть неотличимой от рамки. На замере ночной кадр с
+    # силуэтом земли уверенно определялся как «поля на весь кадр».
+    #
+    # Канал ночной. Критик бесплатный и потому молчаливый: забракованное им
+    # никто не пересматривает. Ошибаться так на основном материале канала
+    # он права не имеет, а рамку и без него увидит зрение — оно как раз
+    # умеет отличать чёрную полосу от тёмного неба.
+    return "ask", ""
+
+
 def vet_all(job, work: Path, use_vision=True):
     topic, desc = topic_text(job)
     period_context = period_context_of(job)
@@ -842,7 +907,19 @@ def vet_all(job, work: Path, use_vision=True):
     # картинке. Раньше на этом месте стояла зашитая константа с угаданным
     # именем — она и оказалась несуществующей.
     model = None
-    key = (os.environ.get("XAI_API_KEY") or "").strip()
+    # ИМЯ ЗДЕСЬ ЗНАЧАЩЕЕ, НЕ ПЕРЕИМЕНОВЫВАТЬ ОБРАТНО В key. Ниже по циклу
+    # у каждого файла есть свой «ключ» — отпечаток содержимого для памяти
+    # вердиктов, — и пока обе величины звались key, вторая затирала первую
+    # на первом же файле. Проба модели идёт ДО цикла и потому проходила, а
+    # все реальные запросы уходили с отпечатком файла вместо ключа и
+    # получали 400 «Incorrect API key provided».
+    #
+    # Стоило это целого ролика: на cahokia-01 зрение не ответило ни разу
+    # (97 запросов, ноль токенов), отбраковка весь прогон держалась на
+    # одном локальном ярусе, и в ролик ушло всё, что не является прямым
+    # мусором. В логе это выглядело как отказ сервиса, а не как своя
+    # ошибка, — потому и прожило несколько прогонов.
+    api_key = (os.environ.get("XAI_API_KEY") or "").strip()
     trusted = tuple(job.get("trusted_sources", TRUSTED_SOURCES))
     current_queries = set(job.get("footage_queries", []) +
                           job.get("archive_queries", []))
@@ -865,8 +942,8 @@ def vet_all(job, work: Path, use_vision=True):
 
     verdicts = {"clip": {}, "arch": {}}
     tok_in = tok_out = asked = 0
-    vision_ok = use_vision and bool(key)
-    if use_vision and not key:
+    vision_ok = use_vision and bool(api_key)
+    if use_vision and not api_key:
         log("  ! нет XAI_API_KEY — зрение выключено, работает только "
             "локальный ярус")
 
@@ -886,7 +963,7 @@ def vet_all(job, work: Path, use_vision=True):
         if probe is None:
             vision_ok = False
         else:
-            model, why = choose_model(probe, topic, desc, key,
+            model, why = choose_model(probe, topic, desc, api_key,
                                       job.get("vet_model"),
                                       period_context=period_context)
             if not model:
@@ -900,15 +977,15 @@ def vet_all(job, work: Path, use_vision=True):
         log(f"── проверяю {kind}: {len(files)} шт")
 
         decided, ask_list, frames, fkeys, mid_hash = {}, [], {}, {}, {}
-        cheap_n = cached_n = twin_n = 0
+        cheap_n = cached_n = twin_n = critic_n = 0
         for f in files:
             # ПАМЯТЬ ПРОВЕРЯЕТСЯ ДО РАЗБОРА ФАЙЛА. Отпечаток считается по
             # имени и краям содержимого, без декодирования: у клипа это
             # три вызова ffmpeg, и на четырёх сотнях файлов именно они, а
             # не зрение, занимают почти всё время шага. Пересборка, в
             # которой ничего не менялось, теперь проходит его насквозь.
-            fkeys[f] = key = file_key(f)
-            hit = cache.get(key)
+            fkeys[f] = fkey = file_key(f)
+            hit = cache.get(fkey)
             if hit is not None:
                 decided[f] = (bool(hit["keep"]), hit["why"])
                 cached_n += 1
@@ -917,9 +994,17 @@ def vet_all(job, work: Path, use_vision=True):
             src, query = meta.get(f.name, ("", ""))
             verdict, why = triage(f, im, bad, pale, src, query,
                                   current_queries, trusted)
+            # ВТОРОЙ ЯРУС. Спрашивается только о том, что первый отправил
+            # к зрению, и только про форму кадра. Забракованное критиком
+            # до платного запроса не доходит.
+            if verdict == "ask" and im is not None:
+                crit, crit_why = critic(im, look, kind)
+                if crit == "reject":
+                    verdict, why = "reject", crit_why
+                    critic_n += 1
             if verdict != "ask" or im is None:
                 decided[f] = (verdict == "keep", why)
-                cache[key] = {"keep": verdict == "keep", "why": why}
+                cache[fkey] = {"keep": verdict == "keep", "why": why}
                 cheap_n += 1
                 continue
             # КАДРЫ ДЕРЖИМ ТОЛЬКО ДЛЯ ТЕХ, КОГО СПРОСИМ, а от среднего
@@ -990,6 +1075,7 @@ def vet_all(job, work: Path, use_vision=True):
         log(f"   первый ярус решил {cheap_n} арифметикой" +
             (f", {cached_n} из памяти прошлых прогонов" if cached_n else "") +
             (f", {twin_n} как близнецов уже спрошенного" if twin_n else "") +
+            (f", {critic_n} снял критик" if critic_n else "") +
             f", зрению осталось {len(ask_list)}")
 
         vision_out = {}
@@ -1010,7 +1096,7 @@ def vet_all(job, work: Path, use_vision=True):
                 # занижает счёт вдвое на всём видео ролика.
                 tin = tout = calls = 0
                 for im in frames[f][:2]:
-                    res = ask_vision(im, topic, desc, model, key,
+                    res = ask_vision(im, topic, desc, model, api_key,
                                      period_context=period_context)
                     tin += res[2][0]
                     tout += res[2][1]

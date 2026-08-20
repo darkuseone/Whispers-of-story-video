@@ -135,7 +135,15 @@ def trim_long_clip(path: Path, limit: float = MAX_CLIP_SECONDS) -> None:
     res = subprocess.run(
         ["ffmpeg", "-v", "error", "-y", "-i", str(path), "-t", f"{limit:.2f}",
          "-c", "copy", "-an", str(tmp)], capture_output=True)
-    if res.returncode == 0 and tmp.exists() and tmp.stat().st_size > 20000:
+    # КОД ВОЗВРАТА НУЛЬ ЕЩЁ НЕ ЗНАЧИТ ЦЕЛЫЙ ФАЙЛ. Потоковое копирование в
+    # mp4 молча собирает нерабочий контейнер, когда исходник пришёл в чужом
+    # кодеке (архивная хроника — MPEG-2, DivX, что угодно), и ffmpeg при
+    # этом честно выходит с нулём. Такой файл заменял целый оригинал и
+    # обнаруживался только отбраковкой, как «файл не открылся». Не
+    # открылся — оставляем длинный оригинал: лишние секунды на диске
+    # дешевле выброшенной находки.
+    if res.returncode == 0 and tmp.exists() and tmp.stat().st_size > 20000 \
+            and playable(tmp)[0]:
         was = path.stat().st_size // 1048576
         tmp.replace(path)
         log(f"    подрезан с {dur:.0f} до {limit:.0f} с "
@@ -177,13 +185,68 @@ def cap_clip_resolution(path: Path, max_width: int = CLIP_MAX_WIDTH) -> None:
         ["ffmpeg", "-v", "error", "-y", "-i", str(path),
          "-vf", f"scale={max_width}:-2", "-c:v", "libx264", "-crf", "20",
          "-preset", "veryfast", "-an", str(tmp)], capture_output=True)
-    if res.returncode == 0 and tmp.exists() and tmp.stat().st_size > 20000:
+    if res.returncode == 0 and tmp.exists() and tmp.stat().st_size > 20000 \
+            and playable(tmp)[0]:
         was = path.stat().st_size // 1048576
         tmp.replace(path)
         log(f"    даунскейл {width}p -> {max_width}p "
             f"({was} -> {path.stat().st_size // 1048576} МБ)")
     else:
         tmp.unlink(missing_ok=True)
+
+
+def playable(path: Path):
+    """
+    Открывается ли скачанный файл вообще. Возвращает (годен, чем плох).
+
+    ПОЧЕМУ ЭТО СТОИТ ОТДЕЛЬНОГО ШАГА. На cahokia-01 отбраковка выбросила
+    63 клипа из 70, и почти все — с одним и тем же «файл не открылся».
+    Ролик собрался практически без видео в теле (0.0% при заказанных 21%),
+    а стоило это полного прогона: битый файл занимает номер в пуле, съедает
+    бюджет скачивания и обнаруживается только на отбраковке — то есть
+    после того, как добирать материал уже поздно.
+
+    Причин у битого файла хватает: оборванная докачка, отдача HTML вместо
+    видео, контейнер, который ffmpeg не разбирает, неудачная порезка
+    потоковым копированием. Разбирать их по отдельности незачем — важен
+    один вопрос, и задать его надо СРАЗУ, пока файл ещё можно молча
+    выбросить и взять следующее предложение источника.
+
+    Проверка не верит ffprobe на слово: контейнер бывает цел, а поток
+    внутри не декодируется. Поэтому у видео ещё и вынимается настоящий
+    кадр — ровно то, что потом делает монтаж.
+    """
+    if not path.exists():
+        return False, "файла нет"
+    # Порог по весу РАЗНЫЙ у видео и картинки, и путать их нельзя. Двадцать
+    # килобайт видео — это заведомо заглушка, а картинка такого веса
+    # совершенно нормальна: кадр 640x360 в jpeg занимает пятнадцать. Общий
+    # порог на оба вида честно браковал годные архивные фото.
+    floor = 20000 if path.suffix.lower() in (".mp4", ".m4v") else 1000
+    if path.stat().st_size < floor:
+        return False, f"пустой файл ({path.stat().st_size} Б)"
+    if path.suffix.lower() in (".mp4", ".m4v"):
+        r = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=codec_name,width,height",
+             "-of", "csv=p=0", str(path)], capture_output=True, text=True)
+        if r.returncode != 0 or not r.stdout.strip():
+            return False, "ffprobe не видит видеопотока"
+        probe = subprocess.run(
+            ["ffmpeg", "-v", "error", "-i", str(path), "-frames:v", "1",
+             "-f", "null", "-"], capture_output=True)
+        if probe.returncode != 0:
+            return False, f"поток не декодируется ({r.stdout.strip()})"
+        return True, r.stdout.strip()
+    from PIL import Image
+    try:
+        with Image.open(path) as im:
+            im.verify()
+        with Image.open(path) as im:      # verify() закрывает файл для чтения
+            im.convert("RGB").load()
+    except Exception as e:
+        return False, f"картинка не открылась: {e}"
+    return True, ""
 
 
 def log(*a):
@@ -1573,6 +1636,7 @@ def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET):
 
     got = []
     by_src = {}
+    bad_files = 0
     for q in queries:
         for fn in sources:
             if time.time() > deadline:
@@ -1600,6 +1664,17 @@ def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET):
                     if it["kind"] == "video":
                         trim_long_clip(dst)
                         cap_clip_resolution(dst)
+                    # ПРОВЕРКА ЗДЕСЬ, А НЕ НА ОТБРАКОВКЕ. Битый файл, дошедший
+                    # до пула, занимает номер и съедает бюджет скачивания, а
+                    # узнаётся о нём через полчаса — когда добирать поздно.
+                    # Здесь он просто выбрасывается, и цикл берёт следующее
+                    # предложение источника, ничего на него не потратив.
+                    ok_file, why_bad = playable(dst)
+                    if not ok_file:
+                        log(f"  ! {dst.name}: {why_bad} — выбрасываю")
+                        dst.unlink(missing_ok=True)
+                        bad_files += 1
+                        continue
                     # запрос сохраняется рядом с файлом: по нему build.py потом
                     # подбирает кадр под то, что звучит в эту секунду
                     got.append({"file": str(dst), "q": q, **it})
@@ -1617,6 +1692,12 @@ def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET):
     if by_src:
         log("  по источникам: " + ", ".join(
             f"{s} {c}" for s, c in sorted(by_src.items(), key=lambda x: -x[1])))
+    # Битые названы вслух. Источник, у которого не открывается половина
+    # отданного, — это не «немного брака», а сломанный источник, и молчание
+    # о нём однажды уже стоило ролика без видео.
+    if bad_files:
+        log(f"  ! битых при скачивании: {bad_files} — выброшены сразу, "
+            f"в пул не попали")
     log(f"  {kind}: добавлено {len(got)}, всего {len(old) + len(got)}")
     return got
 
@@ -1795,6 +1876,51 @@ def magnific_fallback(job, work: Path, queries, got, folder, kind, media):
     return extra
 
 
+def purge_broken(work: Path):
+    """
+    Выметает из УЖЕ ЛЕЖАЩЕГО пула файлы, которые не открываются.
+
+    Проверка при скачивании (playable в gather) закрывает дорогу новым
+    битым файлам, но ничего не делает с теми, что накопились раньше и
+    уехали в кэш Actions. А там их может быть большинство: на cahokia-01
+    в пуле осело 63 неоткрывающихся клипа из 70, и они переживали бы
+    любую пересборку — кэш восстанавливается целиком, номера заняты,
+    место занято, а отбраковка честно браковала их снова и снова.
+
+    Метётся один раз перед сбором. Файл удаляется вместе со своей записью
+    в манифесте: запись без файла превращает материал в «неизвестного
+    происхождения», а такой не сводится с близнецами и не подбирается по
+    смыслу. Дыры в нумерации безвредны — следующий номер берётся от
+    наибольшего, а не по счёту файлов.
+    """
+    total = 0
+    for folder, kind in (("footage", "clip"), ("archive", "arch")):
+        out = work / folder
+        if not out.exists():
+            continue
+        gone = set()
+        for f in sorted(out.glob(f"{kind}_*")):
+            ok, why = playable(f)
+            if not ok:
+                log(f"  ! {f.name}: {why} — выметаю из пула")
+                gone.add(f.name)
+                f.unlink(missing_ok=True)
+        if not gone:
+            continue
+        total += len(gone)
+        man = out / "_manifest.json"
+        if man.exists():
+            try:
+                rows = json.loads(man.read_text())
+            except json.JSONDecodeError:
+                rows = []
+            man.write_text(json.dumps(
+                [r for r in rows
+                 if Path(r.get("file", "")).name not in gone], indent=1))
+    if total:
+        log(f"── вымел {total} битых файлов из пула прошлых прогонов")
+
+
 def fetch_material(job, work: Path):
     """
     Только футаж и архивные фото. Ни озвучки, ни генерации — денег не тратит.
@@ -1803,6 +1929,7 @@ def fetch_material(job, work: Path):
     правятся после того, как посмотришь, что по ним нашлось, и гонять ради
     этого заново озвучку за деньги незачем.
     """
+    purge_broken(work)
     vids = sources_from(job, "video_sources", VIDEO_SOURCES)
     phot = sources_from(job, "photo_sources", PHOTO_SOURCES)
     # ЗАПАС 40%. Робот отбраковывает материал сам (vet.py), и часть подборки
@@ -1816,7 +1943,18 @@ def fetch_material(job, work: Path):
     # получасовой ролик, и их пришлось крутить по кругу десятки раз. У фото
     # выход куда лучше (на том же прогоне годных было две трети), поэтому
     # множитель для архива не трогаем.
-    over = float(job.get("material_overshoot", 1.4))
+    # ЗАПАС ПОДНЯТ С 1.4 ДО 1.8 ПО ЗАМЕРУ, а не на глаз. На cahokia-01
+    # отбраковка оставила 7 клипов из 70 — брак 90%, и вторая волна
+    # докачки уже ничего не спасала, потому что запросов к тому моменту
+    # было опрошено всё. Прежние 1.4 рассчитывались на брак около трети;
+    # реальный разброс по темам оказался куда шире, а перебор не стоит
+    # ничего: лишнее просто не попадает в монтаж.
+    #
+    # Главная часть той же беды чинится не здесь, а в gather(): битые
+    # файлы теперь выбрасываются сразу после скачивания (playable) и не
+    # занимают места в пуле. Запас и проверка работают в паре — без
+    # проверки любой запас уходил в файлы, которые не открываются.
+    over = float(job.get("material_overshoot", 1.8))
     footage_q = focused_search_list(job, job.get("footage_queries") or [])
     archive_q = focused_search_list(job, job.get("archive_queries") or [])
     if len(footage_q) > len(job.get("footage_queries") or []):

@@ -442,11 +442,27 @@ jobs:
           PIXABAY_API_KEY:    ${{ secrets.PIXABAY_API_KEY }}
         run: python pipeline/assets.py jobs/${{ steps.pick.outputs.job }}.json
 
-      # Счётчик Magnific уезжает обратно тем же ключом с датой. Если
-      # сегодня к библиотеке не обращались, файла нет и шаг тихо ничего не
-      # сохраняет — это нормально.
+      # ОБА СОХРАНЕНИЯ ИДУТ ЧЕРЕЗ always() — И ЭТО НЕ ПЕРЕСТРАХОВКА.
+      #
+      # Раньше здесь стояло обычное условие, а значит любое падение Этапа 1
+      # пропускало сохранение целиком: Actions не выполняет следующие шаги
+      # после упавшего. Озвучка и генерация к этому моменту УЖЕ ОПЛАЧЕНЫ и
+      # уже лежат на диске поблочно, но уезжали в мусор вместе с раннером, и
+      # повторный запуск платил за них второй раз. На cahokia-01 так сгорели
+      # два прогона подряд: сеть ElevenLabs обрывалась на седьмом блоке из
+      # двенадцати, шесть готовых блоков выбрасывались дважды.
+      #
+      # Теперь оплаченное сохраняется независимо от исхода шага. assets.py и
+      # так пропускает готовое (block_NN.mp3 + block_NN.json, уже
+      # нарисованные картинки, _batch.json пакета), поэтому следующий запуск
+      # продолжает с места обрыва и доплачивает только за остаток.
+      #
+      # Счётчику Magnific always() нужен ещё и по второй причине: суточный
+      # лимит библиотеки списывается по факту скачивания. Не сохранить его
+      # после падения — значит забыть про уже потраченные файлы и на повторе
+      # пробить лимит, который лимитом быть перестал.
       - name: Кладём суточный счётчик Magnific обратно
-        if: steps.pick.outputs.diag != 'true' && hashFiles('channel/magnific_usage.json') != ''
+        if: always() && steps.pick.outputs.diag != 'true' && hashFiles('channel/magnific_usage.json') != ''
         uses: actions/cache/save@v4
         with:
           path: channel/magnific_usage.json
@@ -454,7 +470,7 @@ jobs:
 
       # Только если что-то качали. На чистом перерендере папка не менялась.
       - name: Кладём материалы в кэш
-        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render' && steps.pick.outputs.stage != 'shorts'
+        if: always() && steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'render' && steps.pick.outputs.stage != 'shorts' && hashFiles(format('work/{0}/assets/**', steps.pick.outputs.id)) != ''
         uses: actions/cache/save@v4
         with:
           path: work/${{ steps.pick.outputs.id }}/assets

@@ -1,0 +1,132 @@
+name: Cleanup old material
+
+# ЗАЧЕМ ЭТО ЕСТЬ. Тарифы бесплатные, а один ролик оставляет после себя
+# заметный след: кэш материала на 300-1000 МБ, артефакт с комплектом
+# выкладки и файл final.mp4 на полгигабайта в релизе. Кэш Actions на
+# репозиторий ограничен 10 ГБ, и когда он переполняется, GitHub молча
+# вытесняет САМЫЕ СТАРЫЕ записи — то есть ровно те, ради которых кэш и
+# заводился (озвучка ролика, который сейчас пересобирают).
+#
+# Поэтому старое убирается по расписанию, а не когда упрёмся.
+#
+# ЧТО УДАЛЯЕТСЯ, А ЧТО НЕТ — граница проведена по одному признаку:
+# восстановимо ли это без денег.
+#
+#   кэши старше недели      — да, удаляются. Материал перекачивается
+#                             бесплатно, а озвучка ролика недельной
+#                             давности уже не нужна: он собран и выложен.
+#   артефакты старше недели — да, удаляются. Это копия того, что и так
+#                             лежит в релизе.
+#   final.mp4 старше недели — да, удаляется ИЗ РЕЛИЗА. Полгигабайта на
+#                             ролик, который давно скачан и залит на
+#                             YouTube. Сам релиз, субтитры, оба шортса и
+#                             обе обложки ОСТАЮТСЯ: они весят мегабайты,
+#                             и по ним видно, что за выпуск это был.
+#   jobs/*.json, channel/   — не трогаются никогда. Это история канала:
+#                             журнал разведения роликов и спецификации,
+#                             без которых новый выпуск станет похож на
+#                             старые.
+#
+# Срок задаётся входом days при ручном запуске. Ручной запуск с
+# dry_run: true ничего не удаляет, только печатает список — им и стоит
+# проверять, прежде чем менять срок.
+
+on:
+  schedule:
+    # каждый день в 04:00 UTC — заведомо мимо сборок
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Старше скольких дней убирать'
+        required: true
+        default: '7'
+      dry_run:
+        description: 'true — только показать, ничего не удалять'
+        required: true
+        default: 'false'
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Убираем старое
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          DAYS: ${{ github.event.inputs.days || '7' }}
+          DRY: ${{ github.event.inputs.dry_run || 'false' }}
+        run: |
+          set -euo pipefail
+          CUTOFF=$(date -u -d "-${DAYS} days" +%Y-%m-%dT%H:%M:%SZ)
+          echo "Рубеж: всё старше $CUTOFF (то есть $DAYS дней)"
+          [ "$DRY" = "true" ] && echo ">>> ПРОБНЫЙ ПРОГОН: ничего не удаляю"
+
+          drop() {   # drop <метод> <путь> <человеческое имя>
+            if [ "$DRY" = "true" ]; then
+              echo "    (пробный прогон) удалил бы: $3"
+            else
+              gh api -X "$1" "$2" --silent && echo "    удалено: $3" \
+                || echo "    ! не вышло удалить: $3"
+            fi
+          }
+
+          echo "── кэши Actions"
+          gh api "repos/$REPO/actions/caches?per_page=100" \
+            --jq ".actions_caches[] | select(.created_at < \"$CUTOFF\") | \
+                  [.id, .key, (.size_in_bytes/1048576|floor)] | @tsv" \
+            > caches.tsv || true
+          if [ -s caches.tsv ]; then
+            while IFS=$'\t' read -r id key mb; do
+              [ -z "$id" ] && continue
+              drop DELETE "repos/$REPO/actions/caches/$id" "кэш $key (${mb} МБ)"
+            done < caches.tsv
+          else
+            echo "    старых кэшей нет"
+          fi
+
+          echo "── артефакты"
+          gh api "repos/$REPO/actions/artifacts?per_page=100" \
+            --jq ".artifacts[] | select(.created_at < \"$CUTOFF\") | \
+                  [.id, .name, (.size_in_bytes/1048576|floor)] | @tsv" \
+            > arts.tsv || true
+          if [ -s arts.tsv ]; then
+            while IFS=$'\t' read -r id name mb; do
+              [ -z "$id" ] && continue
+              drop DELETE "repos/$REPO/actions/artifacts/$id" "артефакт $name (${mb} МБ)"
+            done < arts.tsv
+          else
+            echo "    старых артефактов нет"
+          fi
+
+          # Из релизов убираем ТОЛЬКО тяжёлое видео. Сам релиз, субтитры,
+          # шортсы и обложки остаются — по ним видно, что за выпуск это был,
+          # а весят они мегабайты против полугигабайта у final.mp4.
+          echo "── final.mp4 в релизах старше рубежа"
+          gh api "repos/$REPO/releases?per_page=100" \
+            --jq ".[] | select(.published_at < \"$CUTOFF\") | .id" \
+            > rels.txt || true
+          if [ -s rels.txt ]; then
+            while read -r rid; do
+              [ -z "$rid" ] && continue
+              tag=$(gh api "repos/$REPO/releases/$rid" --jq .tag_name)
+              gh api "repos/$REPO/releases/$rid/assets" \
+                --jq '.[] | select(.name == "final.mp4") | \
+                      [.id, (.size/1048576|floor)] | @tsv' > assets.tsv || true
+              while IFS=$'\t' read -r aid mb; do
+                [ -z "$aid" ] && continue
+                drop DELETE "repos/$REPO/releases/assets/$aid" \
+                  "final.mp4 из $tag (${mb} МБ)"
+              done < assets.tsv
+            done < rels.txt
+          else
+            echo "    старых релизов нет"
+          fi
+
+          echo "── готово"
