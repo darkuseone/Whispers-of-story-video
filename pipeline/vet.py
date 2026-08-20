@@ -164,16 +164,59 @@ def log(*a):
 
 # ─────────────────────── ДЕШЁВЫЙ ПРОХОД ───────────────────────
 
+def clip_seconds(path: Path) -> float:
+    """
+    Длительность клипа. Спрашивается ТРЕМЯ способами, а не одним.
+
+    Раньше здесь стоял единственный запрос `format=duration`, и когда
+    контейнер её не несёт, дальше срабатывал `if dur <= 0: return []`, а
+    отбраковка печатала «файл не открылся». Формулировка вводила в
+    заблуждение: файл открывается прекрасно, у него просто нет длительности
+    в заголовке. На cahokia-01 так «не открылись» 136 клипов — при том, что
+    playable() в assets.py те же файлы честно декодировал, и выметено из
+    пула было всего три.
+
+    Порядок: длительность контейнера, длительность видеопотока, и наконец
+    пересчёт по пакетам — последнее медленно, поэтому спрашивается, только
+    когда первые два промолчали.
+    """
+    probes = (
+        ["-show_entries", "format=duration"],
+        ["-select_streams", "v:0", "-show_entries", "stream=duration"],
+        ["-select_streams", "v:0", "-count_packets",
+         "-show_entries", "stream=duration"],
+    )
+    for args in probes:
+        r = subprocess.run(["ffprobe", "-v", "error", *args,
+                            "-of", "csv=p=0", str(path)],
+                           capture_output=True, text=True)
+        try:
+            dur = float(r.stdout.strip().rstrip(",").split(",")[0])
+        except ValueError:
+            continue
+        if dur > 0:
+            return dur
+    return 0.0
+
+
 def video_frames(path: Path, n=3):
     """n кадров, равномерно по клипу. Первые кадры у стоков часто чёрные."""
-    r = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-         "-of", "csv=p=0", str(path)], capture_output=True, text=True)
-    try:
-        dur = float(r.stdout.strip())
-    except ValueError:
-        dur = 0.0
+    dur = clip_seconds(path)
     if dur <= 0:
+        # Длительности нет, но кадр в файле может быть. Берём первый без
+        # перемотки: -ss по файлу без длительности не работает, а
+        # единственный кадр из начала лучше, чем ложное «не открылся».
+        tmp = path.parent / f"_{path.stem}_probe0.png"
+        subprocess.run(["ffmpeg", "-v", "error", "-i", str(path),
+                        "-frames:v", "1", "-y", str(tmp)], check=False)
+        if tmp.exists():
+            try:
+                im = Image.open(tmp).convert("RGB").copy()
+                tmp.unlink(missing_ok=True)
+                return [im]
+            except Exception:
+                pass
+            tmp.unlink(missing_ok=True)
         return []
     out = []
     for k in range(1, n + 1):
@@ -933,6 +976,22 @@ def vet_all(job, work: Path, use_vision=True):
     pkey = policy_key(topic, desc, period_context, current_queries, trusted)
     cache_path = work / "vet_cache.json"
     cache = load_cache(cache_path, pkey)
+    # ВЕРДИКТЫ СЛОМАННОЙ ПРОВЕРКИ ЗАБЫВАЮТСЯ. «файл не открылся» до правки
+    # clip_seconds означало всего лишь отсутствие длительности в заголовке
+    # контейнера — файл при этом открывался и декодировался (assets.playable
+    # те же самые честно пропускал). Отпечаток файла от правки кода не
+    # меняется, поэтому память вернула бы старый отказ, не перепроверяя, и
+    # починенная проверка не получила бы ни одного шанса.
+    #
+    # Выбрасываются ТОЛЬКО эти записи. Вердикты зрения стоят денег и
+    # остаются на месте: обнулять их из-за чужой ошибки незачем.
+    stale = [k for k, v in cache.items()
+             if not v.get("keep") and "не открылся" in (v.get("why") or "")]
+    for k in stale:
+        cache.pop(k, None)
+    if stale:
+        log(f"  забыто {len(stale)} отказов «файл не открылся» — их выносила "
+            f"сломанная проверка длительности, материал пересмотрится")
     from_cache = twins = 0
     skipped_files = set()
     budget = pool_budget(job, work)
