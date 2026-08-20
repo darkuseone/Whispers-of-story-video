@@ -25,13 +25,19 @@ vet.py — автоматическая отбраковка материала.
 Отбраковка на этом канале СТРОЖЕ, чем на соседнем, и это заказано отдельно.
 Три отличия:
 
-  — доверенных источников нет вовсе (TRUSTED_SOURCES пуст): здесь
-    отсеивается не «не тот предмет», а не та эпоха, и музейный источник от
-    этого не спасает;
+  — доверенных источников нет вовсе (TRUSTED_SOURCES пуст): сток отдаёт по
+    археологическому запросу чаек и спорткары, и никакой источник от этого
+    не страхует;
   — у видео проверяются ДВА кадра, начало и конец, а не один из середины:
     именно на краях живут заставки оцифровщиков и титры;
   — мало сказать «годится»: кадр с оценкой ниже трёх не берётся, потому
     что материала всегда больше, чем нужно ролику.
+
+Но строгость эта — про КАЧЕСТВО, а не про чистоту эпохи. Кадр годится, если
+он про предмет выпуска: музейный зал с посетителями, археологи за работой и
+съёмка места таким, какое оно сегодня, — это не порча древности, а то, как
+она доходит до зрителя. См. DEFAULT_PERIOD_CONTEXT, там же цена прежнего
+правила: 9 годных клипов из 315.
 
 Второй проход НЕОБЯЗАТЕЛЕН. Нет ключа, модель недоступна, сеть легла — работает
 только первый, в лог уходит внятное предупреждение, сборка не останавливается.
@@ -545,29 +551,62 @@ def pool_budget(job, work: Path):
 # качество) остались общими для всех жанров; то, что считается «своей
 # эпохой» и что — анахронизмом, у каждого выпуска своё и приходит из
 # спецификации через PERIOD_CONTEXT, а не из константы модуля.
-DEFAULT_PERIOD_CONTEXT = """ACCEPT if the frame shows: ruins, excavation \
-sites, temples, columns, statues, reliefs, hieroglyphs, cuneiform, \
-inscriptions, mosaics, frescoes, pottery, bronze and gold artefacts, coins, \
-jewellery, papyri, manuscripts, maps or engravings of antiquity, museum \
-objects, archaeological work, desert, sea, cliffs, night sky, stars, water, \
-stone, sand, fire and other elemental textures that carry atmosphere, or \
-period-appropriate landscape of the Mediterranean, Nile, Aegean or Near \
-East.
+# ПРАВИЛА ОТБОРА СМЯГЧЕНЫ ПО ЗАКАЗУ, И СМЯГЧЕНЫ ОСМЫСЛЕННО.
+#
+# Прежний текст требовал чистоты эпохи: «если в кадре виден турист или
+# современный предмет — отбраковывай, даже если само место то самое».
+# Замер на cahokia-01 показал, во что это обходится: из 315 клипов годными
+# остались 9, из 270 фото — 23, и ролик собрался почти целиком из
+# генерации. При этом ни одного отказа по ОЦЕНКЕ не было — все 306 отказов
+# модель вынесла словом «нет», то есть виноват был именно этот текст, а не
+# порог MIN_QUALITY.
+#
+# Новое правило простое: кадр годится, если он про предмет выпуска.
+# Музейный зал с посетителями, археологи за работой, съёмка места таким,
+# какое оно сегодня, — это не порча эпохи, а то, как древность доходит до
+# зрителя. Отбраковывается теперь то, что к выпуску отношения не имеет
+# вовсе (чайки и спорткары по археологическому запросу) и чужая
+# цивилизация, поданная КАК предмет разговора.
+DEFAULT_PERIOD_CONTEXT = """ACCEPT if the frame serves the subject of THIS \
+episode. That includes:
 
-REJECT anything that breaks the period:
+- The subject itself: ruins, excavation sites, temples, mounds, statues, \
+reliefs, inscriptions, pottery, artefacts, coins, manuscripts, maps and \
+engravings.
 
-- ANYTHING MODERN IN SHOT. Cars, roads, road signs, power lines, street \
-lamps, scaffolding, safety railings, glass and steel buildings, plastic, \
-modern clothing, backpacks, sunglasses, phones, cameras, tourists. This is \
-the single most common failure with ruins footage: the temple is genuine \
-and there is a coach party in front of it. If a tourist or a modern object \
-is clearly visible, reject even though the site itself is right.
+- MUSEUM AND ARCHIVE FOOTAGE, INCLUDING VISITORS IN SHOT. A display case \
+with people looking at it, a lit museum hall, a curator handling an object, \
+a reading room. This is how the subject survives into the present and it \
+belongs in the video.
 
-- WRONG CIVILISATION OR WRONG ERA presented as the subject. Medieval \
-castles, knights, Vikings, samurai, cathedrals, Renaissance painting, \
-Victorian interiors, industrial machinery. They are historical but they are \
-not the ancient world, and a viewer who knows the period will see it at \
-once."""
+- PRESENT-DAY WORK AND PLACES. Archaeologists digging, survey and scanning \
+equipment, drone and aerial views of the site as it looks today, paths and \
+signage at the site. Modern clothing and modern tools in such frames are \
+expected, not a defect.
+
+- ATMOSPHERE. Landscape, weather, sky, stars, water, stone, sand, fire, \
+forest, river, prairie — anything carrying the mood of the place the \
+episode is about.
+
+REJECT only these:
+
+- NOTHING TO DO WITH THE EPISODE. This is by far the commonest failure: \
+stock libraries answer an archaeological query with wildlife, flowers, \
+sports cars, city traffic, office desks, weddings. If you cannot say in one \
+sentence how the frame relates to the subject, reject it.
+
+- WRONG CIVILISATION OR ERA PRESENTED AS THE SUBJECT. An Egyptian pyramid \
+in an episode about North America, a medieval castle in an episode about \
+antiquity. A foreign monument filling the frame misleads the viewer about \
+what is being discussed.
+
+- MODERN LIFE AS THE SUBJECT rather than as context: shop windows, \
+advertising, motorway traffic, sports events, people at leisure with no \
+link to the topic.
+
+Judge by RELEVANCE, not by period purity. A frame with people in modern \
+clothes is fine when the frame is about the subject. A spotless \
+period-accurate frame of the wrong civilisation is not."""
 
 PROMPT = """You are the picture editor of a slow, atmospheric documentary \
 channel. Videos run 30-40 minutes, are cool-toned, and are meant to be \
