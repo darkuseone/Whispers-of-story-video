@@ -524,8 +524,44 @@ jobs:
           echo "dir=$DIR" >> $GITHUB_OUTPUT
           ls -la "$DIR" "$DIR/shorts" 2>/dev/null || ls -la "$DIR"
 
+      # ПУБЛИКАЦИЯ ИДЁТ С ПОВТОРОМ, И ПОВТОР ЗДЕСЬ НЕ ЛИШНИЙ.
+      #
+      # final.mp4 весит под полгигабайта, и заливка такого файла время от
+      # времени обрывается на стороне GitHub: «##[error]other side closed».
+      # Само по себе это полбеды — беда в том, что action СНАЧАЛА удаляет
+      # прежние файлы релиза и только потом заливает новые. Оборвалась
+      # заливка ролика — в релизе остаются свежие обложки, субтитры и
+      # шортсы, а самого ролика нет ни нового, ни старого. Ровно так и
+      # закончился прогон 32317163091: полтора часа монтажа, готовый
+      # ролик на диске раннера и пустой релиз.
+      #
+      # Первый заход помечен continue-on-error, поэтому его обрыв не
+      # роняет джоб, а второй идёт обычным шагом: не вышло дважды —
+      # сборка честно падает. Обрыв закачки — дело случая (на прошлом
+      # прогоне те же полгигабайта уехали без единой заминки), и одного
+      # повтора для него достаточно.
+      #
+      # Даже если упадут оба захода, ролик не пропадёт: шаг «Спасаем
+      # final после падения монтажа» ниже кладёт его артефактом.
       - name: Выдаём ролик
+        id: release
         if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'shorts'
+        continue-on-error: true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: final-${{ steps.pick.outputs.job }}
+          name: Готово — ${{ steps.pick.outputs.job }}
+          files: |
+            ${{ steps.out.outputs.dir }}/final.mp4
+            ${{ steps.out.outputs.dir }}/subs.srt
+            ${{ steps.out.outputs.dir }}/shorts/short_1.mp4
+            ${{ steps.out.outputs.dir }}/shorts/short_2.mp4
+            ${{ steps.out.outputs.dir }}/cover_1.jpg
+            ${{ steps.out.outputs.dir }}/cover_2.jpg
+          fail_on_unmatched_files: true
+
+      - name: Выдаём ролик — второй заход после обрыва
+        if: steps.release.outcome == 'failure'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: final-${{ steps.pick.outputs.job }}
