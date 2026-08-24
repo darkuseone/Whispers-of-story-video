@@ -63,13 +63,75 @@ MIN_LEN_SOFT = 12.0       # тестовые короткие ролики (mock
 CUT_RANGE = (2.8, 4.8)
 CUT_MERGED_MAX = 7.0
 
-# Safe zone Shorts: верх ~12% UI, низ ~18% кнопки.
-# Вопрос — в верхней безопасной трети; субтитры — строго по центру.
-QUESTION_Y = 220
-CAPTION_Y = 960
-CTA_Y = 1480
+# ─────────────── ФИРМЕННАЯ ТИПОГРАФИКА КАНАЛА ───────────────
+#
+# ШРИФТЫ ЛЕЖАТ В РЕПОЗИТОРИИ, А НЕ БЕРУТСЯ ИЗ СИСТЕМЫ. Узнаваемость —
+# это когда все шортсы канала выглядят ОДИНАКОВО, а системный набор
+# шрифтов на раннере не гарантирован ничем: libass молча подставит
+# что найдёт, и один выпуск выйдет не похожим на остальные. Раньше
+# здесь стоял DejaVu Sans — шрифт, который есть везде и не значит
+# ничего.
+#
+#   Anton      — вопрос наверху. Плотный гротеск без вариантов
+#                начертания: одна ширина, одна насыщенность, всегда
+#                одинаковый. В чёрной плашке читается на любом кадре.
+#   Montserrat — субтитры и призыв. Геометричный, спокойный, не спорит
+#     ExtraBold  с вопросом за внимание.
+#
+# Менять эту пару — значит менять лицо канала. Если когда-нибудь
+# понадобится, менять надо СРАЗУ ВЕЗДЕ и осознанно, а не подставлять
+# другой шрифт одному выпуску.
+FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
+FONT_QUESTION = "Anton"
+# Имя ИМЕННО такое, с начертанием. У файла два имени семейства:
+# «Montserrat» со стилем ExtraBold и «Montserrat ExtraBold» со
+# стилем Regular. По первому libass ищет обычный вес, не находит
+# его в папке и молча подставляет системный шрифт — субтитры
+# выходили набранными не тем, чем задумано, и заметить это можно
+# было только глазами на готовом кадре.
+FONT_CAPTION = "Montserrat ExtraBold"
 
-HOOK_SECONDS = 4.2        # первые секунды: вопрос крупнее, интрига
+# Размеры (pt в координатах PlayRes 1080x1920).
+QSIZE = 54               # вопрос в постоянном положении наверху
+CAPSIZE = 48             # субтитр
+CTASIZE = 40
+
+# Цвета ASS: &HAABBGGRR. Жёлтый вопрос — фирменный акцент канала.
+C_QUESTION = "&H0000D4FF"        # #FFD400
+C_CAPTION = "&H00FFFFFF"
+C_CTA = "&H00E6EFF3"
+
+# ─────────────── РАСКЛАДКА КАДРА ───────────────
+#
+# Safe zone Shorts: верх ~12% занято UI, низ ~18% кнопками.
+#
+# ВОПРОС ВСЕГДА НАВЕРХУ, СУБТИТРЫ ВСЕГДА ВНИЗУ. Раньше субтитры стояли
+# по центру (CAPTION_Y = 960) и ложились ровно на середину кадра —
+# то есть на то, ради чего кадр и показывают. Теперь они прижаты к
+# нижней границе безопасной зоны.
+#
+# У субтитра выравнивание по НИЗУ (\an2), и это принципиально: строк в
+# нём от одной до трёх, и при верхней привязке текст рос бы вниз, в
+# зону кнопок, каждый раз на разную величину. С нижней привязкой низ
+# стоит на месте, а растёт блок вверх, в пустую часть кадра.
+QUESTION_TOP_Y = 210             # верх блока вопроса
+CAPTION_BOTTOM_Y = 1560          # низ блока субтитров
+CTA_BOTTOM_Y = 1560              # призыв встаёт на место субтитров
+
+# ХУК. Первые секунды вопрос идёт КРУПНО почти во весь кадр, потом
+# уменьшается и уезжает наверх, где и висит до конца. Это один
+# непрерывный ход, а не два разных титра: у зрителя, долиставшего до
+# шортса, должен успеть отпечататься вопрос, а дальше он не мешает
+# смотреть.
+#
+# Делается ОДНИМ событием ASS с \move и \t. Двумя титрами со стыком
+# получался скачок: у крупного и мелкого разная высота блока, и в
+# момент подмены текст дёргался.
+HOOK_BIG_Y = 820                 # центр крупного вопроса
+HOOK_SCALE = 158                 # % от постоянного размера
+HOOK_HOLD = 1.25                 # сколько секунд держим крупным
+HOOK_SHRINK = 0.45               # за сколько уменьшается и уезжает
+
 CTA_TEXT = "FULL STORY ON THE CHANNEL"
 CTA_SECONDS = 2.4
 
@@ -454,7 +516,7 @@ def render_cut(c, out: Path, canvas_cache, tmp: Path):
 
 # ─────────────────────── КАПШЕНЫ ───────────────────────
 
-CAPTION_LINE = 34          # символов в строке обычного субтитра
+CAPTION_LINE = 32          # символов в строке обычного субтитра
 CAPTION_MAX_LINES = 3
 
 
@@ -531,66 +593,82 @@ def captions_from_marks(marks, t0, dur):
 
 def write_ass(marks, t0, dur, out: Path, question: str):
     """
-    Два слоя:
+    Три слоя, и место у каждого своё на всю длину шортса.
 
-      Question  сверху, 2–3 строки — хук на всю длину шортса.
-      Caption   обычные предложения ПО ЦЕНТРУ safe zone.
-      Cta       внизу safe zone, не под кнопками.
+      Question  наверху. Первые секунды — крупно во весь кадр, потом
+                уменьшается, уезжает наверх и висит там до конца.
+      Caption   ВНИЗУ, прижат к нижней границе безопасной зоны.
+      Cta       в самом конце, на месте субтитров.
+
+    Картинку не перекрывает ничто: середина кадра свободна всегда.
     """
-    # ASS цвета: &HAABBGGRR. Жёлтый вопрос читается на тёмном и светлом.
     head = (
         "[Script Info]\n"
-        f"PlayResX: {SW}\nPlayResY: {SH}\nWrapStyle: 2\nScaledBorderAndShadow: yes\n\n"
+        f"PlayResX: {SW}\nPlayResY: {SH}\nWrapStyle: 2\n"
+        "ScaledBorderAndShadow: yes\n\n"
         "[V4+ Styles]\n"
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour,"
         " OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut,"
         " ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow,"
         " Alignment, MarginL, MarginR, MarginV, Encoding\n"
-        # QuestionHook — крупный хук 0..HOOK_SECONDS: белый текст на тёмной
-        # плашке (BorderStyle 3). Жёлтый на жёлтом архивном фото/mock
-        # пропадал; плашка держит контраст на любом кадре.
-        "Style: QuestionHook,DejaVu Sans,62,&H00FFFFFF,&H00FFFFFF,&H00000000,"
-        "&HC0000000,-1,0,0,0,100,100,0,0,3,12,0,8,64,64,0,1\n"
-        # Question — дальше чуть мельче, та же плашка
-        "Style: Question,DejaVu Sans,50,&H0000F0FF,&H0000F0FF,&H00000000,"
-        "&HC0000000,-1,0,0,0,100,100,0,0,3,10,0,8,64,64,0,1\n"
-        # Caption — центр, обычный субтитр (предложение), белый с обводкой.
-        # Alignment 5 = середина кадра; MarginL/R дают поля под safe zone.
-        "Style: Caption,DejaVu Sans,58,&H00FFFFFF,&H00FFFFFF,&H00000000,"
-        "&H80000000,-1,0,0,0,100,100,0,0,1,8,2,5,70,70,0,1\n"
-        "Style: Cta,DejaVu Sans,44,&H00E6EFF3,&H00FFFFFF,&H00000000,"
-        "&H90000000,-1,0,0,0,100,100,1,0,3,8,0,2,72,72,0,1\n\n"
+        # Вопрос. BorderStyle 3 = сплошная плашка за текстом: жёлтый на
+        # светлом архивном кадре без неё пропадает.
+        f"Style: Question,{FONT_QUESTION},{QSIZE},{C_QUESTION},{C_QUESTION},"
+        f"&H00000000,&HBE000000,0,0,0,0,100,100,0,0,3,9,0,5,60,60,0,1\n"
+        # Субтитр. Alignment 2 = низ по центру, блок растёт вверх.
+        f"Style: Caption,{FONT_CAPTION},{CAPSIZE},{C_CAPTION},{C_CAPTION},"
+        f"&H00000000,&HA0000000,0,0,0,0,100,100,0,0,3,9,0,2,80,80,0,1\n"
+        f"Style: Cta,{FONT_CAPTION},{CTASIZE},{C_CTA},{C_CTA},"
+        f"&H00000000,&HB4000000,0,0,0,0,100,100,1,0,3,10,0,2,80,80,0,1\n\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR,"
         " MarginV, Effect, Text\n")
+
     rows = []
     q = _ass_esc(question.strip())
     if q:
-        hook_end = min(HOOK_SECONDS, dur)
-        # Alignment 8 + pos: верхний центр. \q2 = wrap по словам (на всякий).
+        # Куда приезжает вопрос. Привязка у него по ЦЕНТРУ блока (\an5) —
+        # иначе крупный и мелкий вариант пришлось бы сшивать двумя
+        # титрами, а на стыке текст дёргается. Центр считается от верхней
+        # границы и реальной высоты блока, поэтому верх стоит на
+        # QUESTION_TOP_Y при любом числе строк.
+        lines = q.count("\\N") + 1
+        anchor = QUESTION_TOP_Y + lines * QSIZE * 1.25 / 2
+        t1 = int(HOOK_HOLD * 1000)
+        t2 = int((HOOK_HOLD + HOOK_SHRINK) * 1000)
         rows.append(
-            f"Dialogue: 0,{_ass_t(0)},{_ass_t(hook_end)},QuestionHook,,0,0,0,,"
-            f"{{\\pos(540,{QUESTION_Y})\\q2\\fad(180,0)}}{q}")
-        if hook_end < dur - 0.05:
-            rows.append(
-                f"Dialogue: 0,{_ass_t(hook_end)},{_ass_t(dur)},Question,,0,0,0,,"
-                f"{{\\pos(540,{QUESTION_Y})\\q2}}{q}")
+            f"Dialogue: 0,{_ass_t(0)},{_ass_t(dur)},Question,,0,0,0,,"
+            # Растёт и падает КЕГЛЬ (\\fs), а не масштаб (\\fscx/\\fscy).
+            # У масштаба подложка BorderStyle 3 считается по исходному
+            # межстрочью и не растягивается вместе с буквами: под крупным
+            # хуком оставался лишний пустой чёрный блок в целую строку.
+            f"{{\\an5\\move(540,{HOOK_BIG_Y},540,{anchor:.0f},{t1},{t2})"
+            f"\\fs{QSIZE * HOOK_SCALE // 100}"
+            f"\\t({t1},{t2},\\fs{QSIZE})\\q2\\fad(160,0)}}{q}")
 
+    # Субтитры гаснут раньше призыва: место у них одно, и наложить их
+    # друг на друга значило бы получить кашу в последние две секунды.
+    cta_from = max(dur - CTA_SECONDS, 0.0)
     phrases = captions_from_marks(marks, t0, dur)
+    shown = 0
     for p in phrases:
         txt = _ass_esc(p["text"].strip())
         if not txt:
             continue
+        end_t = min(p["end"], cta_from - 0.10)
+        if end_t - p["start"] < 0.20:
+            continue
+        shown += 1
         rows.append(
-            f"Dialogue: 1,{_ass_t(p['start'])},{_ass_t(p['end'])},Caption,,0,0,0,,"
-            f"{{\\pos(540,{CAPTION_Y})\\q2\\fad(80,60)}}{txt}")
+            f"Dialogue: 1,{_ass_t(p['start'])},{_ass_t(end_t)},Caption,,0,0,0,,"
+            f"{{\\an2\\pos(540,{CAPTION_BOTTOM_Y})\\q2\\fad(80,60)}}{txt}")
 
     rows.append(
-        f"Dialogue: 2,{_ass_t(max(dur - CTA_SECONDS, 0))},{_ass_t(dur)},"
-        f"Cta,,0,0,0,,{{\\pos(540,{CTA_Y})\\fad(250,0)}}"
+        f"Dialogue: 2,{_ass_t(cta_from)},{_ass_t(dur)},Cta,,0,0,0,,"
+        f"{{\\an2\\pos(540,{CTA_BOTTOM_Y})\\fad(250,0)}}"
         + _ass_esc(CTA_TEXT))
     out.write_text(head + "\n".join(rows) + "\n", encoding="utf-8")
-    return len(phrases)
+    return shown
 
 
 # ─────────────────────── СБОРКА ОДНОГО ШОРТСА ───────────────────────
@@ -624,7 +702,10 @@ def render_short(n, win, shots, words, marks, final: Path, sdir: Path,
     out = sdir / f"short_{n}.mp4"
     fade_st = max(dur - 0.40, 0.0)
     ass_esc = str(ass.resolve()).replace("\\", "/").replace(":", "\\:")
-    filt = (f"[0:v]ass={ass_esc}:fontsdir=/usr/share/fonts/truetype/dejavu,"
+    # Шрифты канала берутся из репозитория, а не из системы —
+    # см. FONT_DIR. Без этого libass подставит что найдёт.
+    fdir = str(FONT_DIR.resolve()).replace("\\", "/").replace(":", "\\:")
+    filt = (f"[0:v]ass={ass_esc}:fontsdir={fdir},"
             f"fade=t=in:d=0.12,fade=t=out:st={fade_st:.2f}:d=0.40[v];"
             f"[1:a]afade=t=out:st={fade_st:.2f}:d=0.40[a]")
     run(f"ffmpeg -y -i {shlex.quote(str(body))} "
