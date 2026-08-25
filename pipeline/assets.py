@@ -382,16 +382,30 @@ def sentence_marks(text, align, offset):
     """
     Превращает посимвольные тайм-коды в границы предложений.
     Это и есть точки, где робот будет менять кадр.
+
+    Точка перед пробелом сама по себе границу не держит: у инициального
+    сокращения из БУКВЫ-ТОЧКИ-БУКВЫ-ТОЧКИ (R.C., U.S.) последняя точка
+    тоже стоит перед пробелом и неотличима от конца предложения. На
+    georgia-guidestones-01 «R.C. Christian» встречается тринадцать раз, и
+    без этой проверки почти каждое упоминание рвало реплику пополам —
+    "R." отдельной репликой, "C. Christian was…" следующей — а дальше по
+    этому же месту не находил себя youtube.chapters (та же граница у
+    youtube.first_sentence). Все точки внутри такого сокращения, включая
+    последнюю, из кандидатов на разрыв исключены.
     """
     chars, starts, ends = align["chars"], align["starts"], align["ends"]
     if not chars:
         return []
+    joined = "".join(chars)
+    abbrev_end = {m.end() - 1
+                  for m in re.finditer(r"\b(?:[A-Z]\.){2,}", joined)}
     marks, buf, buf_start = [], [], None
     for i, ch in enumerate(chars):
         if buf_start is None:
             buf_start = starts[i]
         buf.append(ch)
-        if ch in ".!?" and i + 1 < len(chars) and chars[i + 1] in " \n":
+        if ch in ".!?" and i + 1 < len(chars) and chars[i + 1] in " \n" \
+                and i not in abbrev_end:
             marks.append({"text": "".join(buf).strip(),
                           "start": round(buf_start + offset, 3),
                           "end": round(ends[i] + offset, 3)})

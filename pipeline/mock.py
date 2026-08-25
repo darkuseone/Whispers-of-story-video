@@ -25,6 +25,7 @@ testsrc2.
 import json
 import math
 import random
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -46,11 +47,25 @@ def run(cmd):
 
 
 def split_sentences(text: str):
-    """Режет блок на предложения по тем же знакам, что и sentence_marks."""
+    """
+    Режет блок на предложения по тем же знакам, что и sentence_marks.
+
+    Тем же — значит буквально тем же условием: разрыв только перед пробелом
+    или переносом, и не внутри инициального сокращения (R.C., U.S.). Раньше
+    здесь резалось по ЛЮБОМУ встреченному знаку без этих условий вовсе, и
+    на georgia-guidestones-01 «For thirty-five years, "R.C. Christian»
+    распадалось на три обрывка вместо одной реплики — ничего похожего на
+    то, что складывает assets.sentence_marks из настоящей озвучки. Такое
+    расхождение уже роняло смоук месяц назад: он проверял не тот путь,
+    который работает в бою.
+    """
+    abbrev_end = {m.end() - 1
+                  for m in re.finditer(r"\b(?:[A-Z]\.){2,}", text)}
     out, buf = [], ""
-    for ch in text:
+    for i, ch in enumerate(text):
         buf += ch
-        if ch in ".!?":
+        if ch in ".!?" and i + 1 < len(text) and text[i + 1] in " \n" \
+                and i not in abbrev_end:
             out.append(buf.strip())
             buf = ""
     if buf.strip():
