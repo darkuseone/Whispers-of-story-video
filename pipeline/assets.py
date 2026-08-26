@@ -1610,7 +1610,8 @@ def fetch(url, dst: Path, limit=MAX_FILE_BYTES, seconds=FETCH_SECONDS):
         return False
 
 
-def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET):
+def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET,
+          max_total=None):
     """
     Обходит источники и качает материал, укладываясь в отведённое время.
 
@@ -1628,6 +1629,14 @@ def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET):
     clip_000 другим содержимым — и номера, которые человек отметил на листе
     отбора, стали бы указывать на другие файлы. Уже скачанные ссылки
     пропускаются: платить временем за то же самое незачем.
+
+    max_total — жёсткий потолок на число СКАЧАННЫХ файлов за этот вызов.
+    Нужен источникам с суточным лимитом (библиотека Magnific): без него
+    per_query ограничивает только штук на один запрос, а сам вызов, идя по
+    списку голодных запросов, легко уходит далеко за оставшийся дневной
+    остаток — ровно это и случилось на georgia-guidestones-01 (31 файл
+    при потолке 12), когда отбраковка оставила без материала сразу много
+    запросов за один прогон.
     """
     out.mkdir(parents=True, exist_ok=True)
     deadline = time.time() + budget
@@ -1694,9 +1703,14 @@ def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET):
                     got.append({"file": str(dst), "q": q, **it})
                     log(f"  {kind} {n:03d}: {it['src']}  «{q}»")
                     n += 1
-            if time.time() > deadline:
+                    if max_total is not None and len(got) >= max_total:
+                        log(f"  … суточный лимит выбран, беру что успел")
+                        break
+            if time.time() > deadline or (max_total is not None
+                                          and len(got) >= max_total):
                 break
-        if time.time() > deadline:
+        if time.time() > deadline or (max_total is not None
+                                      and len(got) >= max_total):
             break
     man.write_text(json.dumps(old + got, indent=1))
     # Сколько предложил КАЖДЫЙ источник. Источник, стабильно отдающий ноль,
@@ -1880,9 +1894,12 @@ def magnific_fallback(job, work: Path, queries, got, folder, kind, media):
         f"материала, лимита на сутки осталось {left}")
     src = [src_magnific_video if media == "video" else src_magnific_image]
     # По одному-два файла на запрос: лимит маленький, и размазать его по
-    # разным темам полезнее, чем закрыть одну.
+    # разным темам полезнее, чем закрыть одну. max_total=left — жёсткий
+    # потолок на СУММУ по всем голодным запросам этого вызова, а не
+    # только «есть ли вообще остаток»: без него список голодных запросов
+    # длиннее left/2 пробивал суточный лимит библиотеки насквозь.
     extra = gather(starving, 2, src, work / folder, kind,
-                   budget=min(GATHER_BUDGET, 180))
+                   budget=min(GATHER_BUDGET, 180), max_total=left)
     n = sum(1 for row in extra if row.get("src") == "magnific")
     if n:
         magnific.note_library(n)
