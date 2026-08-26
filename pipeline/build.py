@@ -122,10 +122,19 @@ TAIL_FADE_SECONDS = 6.0
 # его и включают. Стоит это один фильтр tpad на последней группе склейки,
 # то есть ноль.
 #
-# Четыре секунды: три читаются как обрыв, шесть на длинном ролике уже
-# похожи на зависший файл. Переопределяется полем tail_hold в спецификации.
-TAIL_HOLD_SECONDS = 4.0
-TAIL_HOLD_MAX = 10.0
+# Было четыре секунды. Стало одиннадцать — под финальный титр, и делятся
+# они так (см. textcard.THE_END_AT / THE_END_HOLD):
+#
+#   0.0 - 1.2   чёрный кадр, пусто
+#   1.2 - 5.2   THE END проявляется, висит и уходит
+#   5.2 - 11.0  настоящая тишина без единого знака на экране
+#
+# Последний отрезок и есть послевкусие, ради которого хвост заведён:
+# титр, доигрывающий до самого конца файла, съедал бы его целиком. Ролик
+# смотрят на ночь, и эти секунды здесь работают на формат, а не против
+# него. Переопределяется полем tail_hold в спецификации.
+TAIL_HOLD_SECONDS = 11.0
+TAIL_HOLD_MAX = 16.0
 
 # Кадр короче этого не показывают — его вливают в предыдущий. Причина не
 # эстетическая: переход длиной полторы секунды не помещается в кадр
@@ -1807,7 +1816,7 @@ def film_look():
     )
 
 
-def text_for_group(group, moments):
+def text_for_group(group, moments, seg=None):
     """
     Плашки, попадающие в эту группу склейки, с пересчётом в локальное время.
 
@@ -1822,6 +1831,16 @@ def text_for_group(group, moments):
     g1 = group[-1]["start"] + group[-1]["duration"]
     out = []
     for m in moments:
+        # Титр с anchor="tail" (THE END) живёт на ЧЁРНЫХ кадрах, которых
+        # на таймлайне ролика ещё нет: их дорисует tpad уже после склейки.
+        # Поэтому его место считается не из абсолютной секунды, а от конца
+        # своей группы — и только в последней группе, где хвост и есть.
+        if m.get("anchor") == "tail":
+            if seg is not None:
+                it = dict(m)
+                it["t_local"] = round(seg + float(m.get("offset", 1.0)), 3)
+                out.append(it)
+            continue
         if g0 <= m["t"] < g1:
             it = dict(m)
             it["t_local"] = max(0.0, m["t"] - g0)
@@ -1915,7 +1934,12 @@ def join(group, out: Path, st, overlay, first=False, moments=None, last=False):
     # Плашки ставятся ПОСЛЕ виньетки. Иначе виньетка гасит нижние углы, а
     # плашка стоит именно там — текст уходил бы в тень ровно у той половины
     # раскладок, где он внизу.
-    chain = textcard.filter_chain(text_for_group(group, moments or []))
+    # Длина группы нужна титру на чёрном хвосте: он отсчитывается от её
+    # конца, а не от абсолютной секунды ролика (см. text_for_group).
+    # Считается тем же способом, что и точка затухания выше.
+    tail_seg = sum(sh["duration"] for sh in group) if last else None
+    chain = textcard.filter_chain(
+        text_for_group(group, moments or [], seg=tail_seg))
     if chain:
         post.append(chain)
     post.append("setsar=1")
@@ -2199,7 +2223,24 @@ def main(job_path):
                                          getattr(st, "chapter_edges", []),
                                          st.rng)
         if titles:
-            log(f"── титулы глав: {len(titles)} шт.")
+            log(f"── титулы глав: {len(titles)} шт. (в паузе диктора)")
+
+    # НАЗВАНИЕ РОЛИКА в первые секунды и THE END на чёрном хвосте.
+    # Оба — то же семейство титров, что и титулы глав, и живут тем же
+    # списком: join() различает слои по стилю.
+    opening = textcard.opening_title(job)
+    if opening:
+        log(f"── заставка: «{opening[0]['text']}» "
+            f"с {opening[0]['t']:.1f} с, кегль {opening[0]['size']}")
+    else:
+        log("── заставка: нет шрифта титров либо пустой заголовок")
+    # THE END отсчитывается от КОНЦА НАЧИТКИ: чёрный хвост начинается
+    # ровно там, где кончилось последнее слово (tpad в join).
+    ending = textcard.the_end(total)
+    if ending:
+        log(f"── финальный титр: «{ending[0]['text']}» "
+            f"с {ending[0]['t']:.1f} с, хвост {st.tail_hold:.1f} с")
+    titles = opening + titles + ending
     # дальше все три слоя живут одним списком: join() различает их по стилю
     moments = sorted(cards + moments + titles, key=lambda m: m["t"])
 
