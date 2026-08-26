@@ -141,6 +141,19 @@ TAIL_HOLD_MAX = 16.0
 # длиной треть секунды, и xfade молча обрывает всю группу склейки.
 MIN_SHOT_ON_SCREEN = 1.2
 
+# ПЕРВЫЕ СЕКУНДЫ ИДУТ ТОЛЬКО НА НАСТОЯЩЕМ МАТЕРИАЛЕ.
+#
+# За это время зритель решает, что он открыл — документальное
+# расследование или нарезку из нейросети. Решает он по картинке, а не по
+# тексту, и сгенерированный кадр на десятой секунде читается мгновенно.
+# Дальше по ролику та же генерация проходит незаметно: на двадцатой
+# минуте кадры уже никто не разбирает, там держит рассказ.
+#
+# Поэтому в этом окне сток и архив идут вперёд генерации, а сама
+# генерация остаётся только на случай, когда реального нет вовсе.
+# Тридцать секунд — это примерно первые три-пять кадров вступления.
+OPENING_REAL_SECONDS = 30.0
+
 
 def log(*a):
     print(*a, flush=True)
@@ -978,8 +991,21 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         if kind == "arch":
             src, tag = picker.take(t_pos, said, require_match=True)
             if src is None:
-                src, tag = gen_pick.take(t_pos, said)
-                kind = "gen"
+                # ТРЕТИЙ ПУТЬ В ГЕНЕРАЦИЮ, и в первые секунды он закрыт.
+                #
+                # Обычно так и надо: архив без совпадения по смыслу — это
+                # чужой музей под чужой абзац, генерация честнее. Но в
+                # открывающем окне выбор другой: не «точное фото против
+                # неточного», а «неточное настоящее против нарисованного».
+                # Зритель на десятой секунде не проверяет, тот ли это
+                # архив, — он проверяет, настоящее ли это вообще.
+                if t_pos - intro_start < OPENING_REAL_SECONDS:
+                    src, tag = picker.take(t_pos, said)
+                    if src is not None:
+                        real_saved[0] += 1
+                if src is None:
+                    src, tag = gen_pick.take(t_pos, said)
+                    kind = "gen"
         else:
             src, tag = picker.take(t_pos, said)
         fr_name, fr = st.framing(src.name)
@@ -1012,6 +1038,9 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
 
     since_clip = 0       # сколько кадров-картинок подряд уже прошло
     next_gap = st.body_clip_every_n_shots
+    # Сколько кадров в первые секунды удалось увести из генерации в
+    # настоящий материал — печатается в конце плана, см. OPENING_REAL_SECONDS.
+    real_saved = [0]
 
     # --- вступление ---
     t = marks[0]["start"] if marks else 0.0
@@ -1072,6 +1101,14 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
                 and "clip" in (["clip"] if clip_available() else [])):
             allowed = ["clip"]
         got = mix.pick(allowed, phase="intro")
+        # Тот же запрет на генерацию в первые секунды, но на ДРУГОМ пути:
+        # выше жребий мог выбрать "gen" сам, без всякой неудачи стока.
+        # Оба пути надо закрывать — закрытый один выглядит как работающее
+        # правило ровно до первого ролика, где сработал второй.
+        if (got == "gen" and archive
+                and t - intro_start < OPENING_REAL_SECONDS):
+            got = "arch"
+            real_saved[0] += 1
         kind = "clip" if got == "clip" else "image"
         run_len = run_len + 1 if kind == run_kind else 1
         run_kind = kind
@@ -1102,8 +1139,22 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         if got == "clip":
             src, _ = clip_pick.take(t, said, require_match=picky("intro"))
             if src is None:
-                # нет футажа под эту фразу — не ставим чужой клип, рисуем
+                # Нет футажа под эту фразу — рисуем. Но НЕ В ПЕРВЫЕ
+                # СЕКУНДЫ: там сначала пробуем настоящее архивное фото.
+                #
+                # За эти секунды зритель решает, что он открыл —
+                # документальное расследование или нарезку из нейросети,
+                # и решает по КАРТИНКЕ, а не по тексту. Сгенерированный
+                # кадр на десятой секунде читается мгновенно и стоит
+                # ролику отвала ещё до первой главы, тогда как на
+                # двадцатой минуте тот же кадр никто не разбирает.
+                #
+                # Правило уступает молча, если архива нет вовсе: ролик без
+                # вступления хуже ролика с рисованным вступлением.
                 got = "gen"
+                if t - intro_start < OPENING_REAL_SECONDS and archive:
+                    got = "arch"
+                    real_saved[0] += 1
                 kind = "image"
                 run_kind = "image"
                 run_len = 1
@@ -1439,6 +1490,19 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     log(f"  подбор: генерация — {gen_pick.report()}")
     log(f"  подбор: архив     — {arch_pick.report()}")
     log(f"  подбор: сток      — {clip_pick.report()}")
+    # Первые секунды: сколько кадров ушло в настоящий материал вместо
+    # генерации. Ноль здесь — это НЕ поломка: значит, стока хватило и
+    # подменять было нечего. Строка нужна, чтобы правило было видно в
+    # логе прогона, а не только в коде.
+    opening_shots = [s for s in shots
+                     if s["start"] - (marks[0]["start"] if marks else 0.0)
+                     < OPENING_REAL_SECONDS]
+    if opening_shots:
+        gen_n = sum(1 for s in opening_shots if s.get("tag") == "gen")
+        log(f"  первые {OPENING_REAL_SECONDS:.0f} с: {len(opening_shots)} "
+            f"кадров, генерации {gen_n}"
+            + (f", уведено в реальный материал {real_saved[0]}"
+               if real_saved[0] else ""))
     # Числа отдельно от строк: смоук проверяет их порогом, а не парсит лог
     st.match_report = {"gen": (gen_pick.hits, gen_pick.calls),
                        "arch": (arch_pick.hits, arch_pick.calls),
