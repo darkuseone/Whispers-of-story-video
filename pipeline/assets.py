@@ -819,11 +819,22 @@ def build_images(job, prompts, out: Path, xai_model, xai_key):
     share = float(job.get("magnific_share", MAGNIFIC_SHARE))
     mag_key = magnific.available()
     if not mag_key:
-        log("  ! MAGNIFIC_API_KEY не задан — всё рисует xAI")
+        # Отключён выключателем или ключа нет — причины разные, и в логе
+        # они должны различаться: «не задан ключ» на отключённом канале
+        # отправляет чинить то, что не сломано.
+        why = ("отключён (magnific.MAGNIFIC_ENABLED)"
+               if magnific.key() else "MAGNIFIC_API_KEY не задан")
+        log(f"  Magnific {why} — всё рисует xAI")
         share = 0.0
     if not xai_key:
-        log("  ! XAI_API_KEY не задан — всё рисует Magnific")
-        share = 1.0
+        if mag_key:
+            log("  ! XAI_API_KEY не задан — всё рисует Magnific")
+            share = 1.0
+        else:
+            # Оба поставщика недоступны. Сваливать всё на выключенный
+            # Magnific бессмысленно и врёт в логе: пусть причина будет
+            # названа здесь, а не в невнятном «генерация вернула ноль».
+            log("  ! ни XAI_API_KEY, ни Magnific — рисовать нечем")
 
     mag, xai = split_providers(prompts, share, seed=style_seed(job["id"]))
     log(f"  делёж: Magnific {len(mag)}, xAI {len(xai)} "
@@ -929,8 +940,8 @@ def src_pexels(q, n):
         out.append({"url": best["link"], "src": "pexels",
                     "dur": v.get("duration", 0), "kind": "video",
                     "tags": slug, "title": slug})
-        if len(out) >= n:
-            break
+    # n ЛУЧШИХ, а не первых n прошедших порог — см. relevance_score.
+    out = _best_by_relevance(out, q, n)
     if longish:
         log(f"    pexels «{q}»: отсеяно {longish} длиннее "
             f"{MAX_CLIP_SECONDS * 2} с")
@@ -971,25 +982,71 @@ def relevant(query: str, tags: str) -> bool:
     отсеивает заведомо чужое, но теперь делает это до того, как за файл
     заплачено.
     """
-    stop = {"the", "a", "an", "of", "and", "or", "in", "on", "at", "to",
-            "with", "closeup", "close", "up", "detail", "shot", "old",
-            "cinematic", "pan", "wide", "aerial", "clip",
-            "overcast", "dawn", "sunset"}
-    # Слова, которые есть у всего подряд: улика нулевой ценности. Сюда же
-    # «video» — оно стоит в КАЖДОМ адресе страницы pexels.
-    weak = {"dark", "night", "light", "lights", "room", "background",
-            "view", "scene", "macro", "slow", "motion", "footage", "video",
-            "stock", "abstract", "beautiful", "nature", "time", "lapse",
-            "timelapse", "white", "black", "colour", "color", "screen"}
-    want = {w for w in re.findall(r"[a-z]+", query.lower())
-            if len(w) > 2 and w not in stop and w not in weak}
+    want, have, hits = _match_words(query, tags)
     if not want:
         return True
-    have = {w for w in re.findall(r"[a-z]+", (tags or "").lower())
-            if w not in weak}
-    hits = want & have
     need = 2 if (len(want) >= 3 and len(have) >= 5) else 1
     return len(hits) >= need
+
+
+# Служебные слова запроса: в улику не годятся.
+_REL_STOP = {"the", "a", "an", "of", "and", "or", "in", "on", "at", "to",
+             "with", "closeup", "close", "up", "detail", "shot", "old",
+             "cinematic", "pan", "wide", "aerial", "clip",
+             "overcast", "dawn", "sunset"}
+# Слова, которые есть у всего подряд: улика нулевой ценности. Сюда же
+# «video» — оно стоит в КАЖДОМ адресе страницы pexels.
+_REL_WEAK = {"dark", "night", "light", "lights", "room", "background",
+             "view", "scene", "macro", "slow", "motion", "footage", "video",
+             "stock", "abstract", "beautiful", "nature", "time", "lapse",
+             "timelapse", "white", "black", "colour", "color", "screen"}
+
+
+def _match_words(query: str, tags: str):
+    """Значимые слова запроса, слова находки и их пересечение."""
+    want = {w for w in re.findall(r"[a-z]+", (query or "").lower())
+            if len(w) > 2 and w not in _REL_STOP and w not in _REL_WEAK}
+    have = {w for w in re.findall(r"[a-z]+", (tags or "").lower())
+            if w not in _REL_WEAK}
+    return want, have, want & have
+
+
+def relevance_score(query: str, tags: str) -> float:
+    """
+    НАСКОЛЬКО находка близка к запросу, а не просто «близка ли».
+
+    relevant() отвечает да/нет по порогу, и источник берёт ПЕРВЫЕ n
+    прошедших. Но выдача стока отсортирована по популярности, а не по
+    теме: первыми идут самые скачиваемые ролики, едва зацепившие запрос
+    одним словом. Замер на georgia-guidestones-01: по запросу «rural
+    Georgia main street» в пул уехало 11 файлов, зрение оставило ноль —
+    все были просто «улица», и за каждый заплачено дважды, скачиванием
+    и запросом к зрению.
+
+    Здесь тот же разбор возвращает ЧИСЛО, а источник берёт n ЛУЧШИХ.
+    Длинное слово весит больше короткого: «guidestones» и «elberton»
+    отличают тему, «field» и «road» есть у половины стока.
+    """
+    want, have, hits = _match_words(query, tags)
+    if not want:
+        return 0.0
+    score = 0.0
+    for w in hits:
+        score += 3.0 if len(w) >= 7 else 2.0
+    # Доля запроса, которую находка закрыла: два слова из трёх лучше двух
+    # из десяти. Иначе длинный запрос всегда выигрывал бы у точного.
+    return round(score + 2.0 * len(hits) / len(want), 3)
+
+
+def _best_by_relevance(cands, q, n):
+    """
+    n лучших по совпадению с запросом, порядок источника — как тай-брейк.
+
+    Сортировка УСТОЙЧИВАЯ: при равном совпадении остаётся выдача
+    источника, то есть его собственное представление о качестве.
+    """
+    ranked = sorted(cands, key=lambda c: -relevance_score(q, c.get("tags", "")))
+    return ranked[:n]
 
 
 def script_grounded_queries(job, limit: int = 14) -> list:
@@ -1093,8 +1150,9 @@ def src_pixabay(q, n):
         out.append({"url": link, "src": "pixabay",
                     "dur": v.get("duration", 0), "kind": "video",
                     "tags": tags, "title": tags})
-        if len(out) >= n:
-            break
+    # n ЛУЧШИХ, а не первых n прошедших порог — см. relevance_score.
+    # Именно здесь ролик набирал по десятку «просто улиц» на запрос.
+    out = _best_by_relevance(out, q, n)
     if longish:
         log(f"    pixabay «{q}»: отсеяно {longish} длиннее "
             f"{MAX_CLIP_SECONDS * 2} с")

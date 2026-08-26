@@ -153,16 +153,32 @@ class ClipCutter:
     несколько секунд, и один и тот же файл, попадаясь второй раз, показывает
     другое место.
 
-    Курсор идёт по файлу вперёд и заворачивается в начало, когда упирается
-    в конец. Между кусками пропуск в полсекунды: соседние отрезки одного
-    файла не должны выглядеть как склейка внутри одного движения камеры.
+    ОДИН И ТОТ ЖЕ КУСОК НЕ ВЫДАЁТСЯ ДВАЖДЫ, и это главное здесь.
+
+    Раньше курсор, упершись в конец файла, возвращался ровно в 0.0 — то
+    есть второй показ клипа начинался с той же секунды, что и первый.
+    На длинном стоке это незаметно, а на коротком (6-10 секунд — таких
+    большинство) означает буквально один и тот же кадр по три раза за
+    ролик. На georgia-guidestones-01 это и увидел зритель: отбраковка
+    оставила 13 клипов на 39 слотов, и каждый короткий файл крутился
+    одним и тем же куском.
+
+    Теперь файл разбит на сетку непересекающихся кусков, выданные куски
+    запоминаются, и take_start отдаёт ещё не показанный. Между кусками
+    пропуск в полсекунды: соседние отрезки одного файла не должны
+    выглядеть как склейка внутри одного движения камеры.
+
+    Когда куски честно кончились, берётся точка, максимально удалённая
+    от всех показанных. Но доходить до этого не должно: capacity()
+    говорит монтажу, сколько кусков файл вообще способен дать, и
+    ShotPicker больше столького раз его не выдаёт (см. caps в plan_shots).
     """
 
     GAP = 0.5
 
     def __init__(self):
         self.length = {}
-        self.cursor = {}
+        self.taken = {}
 
     def duration(self, path: Path) -> float:
         key = str(path)
@@ -180,16 +196,50 @@ class ClipCutter:
                 self.length[key] = 0.0
         return self.length[key]
 
-    def take_start(self, path: Path, dur: float) -> float:
-        """Отдаёт секунду начала следующего куска этого файла."""
-        key = str(path)
+    def _grid(self, path: Path, dur: float):
+        """Сетка непересекающихся кусков длиной dur от начала файла."""
         total = self.duration(path)
-        start = self.cursor.get(key, 0.0)
-        # кусок не помещается в остаток файла — заходим на второй круг
-        if total and start + dur > total - 0.15:
-            start = 0.0
-        self.cursor[key] = start + dur + self.GAP
-        return round(start, 3)
+        room = max(total - dur, 0.0)
+        # Файл короче куска (или длина не прочиталась) — куска ровно один,
+        # дальше его дотянет петля или замедление в clip_timing.
+        if not total or room <= 0:
+            return [0.0]
+        step = dur + self.GAP
+        out, s = [], 0.0
+        while s <= room + 1e-6:
+            out.append(round(s, 3))
+            s += step
+        return out or [0.0]
+
+    def capacity(self, path: Path, dur: float) -> int:
+        """
+        Сколько РАЗНЫХ кусков длиной dur способен дать файл.
+
+        По этому числу монтаж решает, сколько раз клип вообще можно
+        показать: просить у восьмисекундного файла три разных куска по
+        пять секунд бессмысленно, он даст один и тот же.
+        """
+        return len(self._grid(path, dur))
+
+    def take_start(self, path: Path, dur: float) -> float:
+        """Отдаёт секунду начала ещё НЕ ПОКАЗАННОГО куска этого файла."""
+        key = str(path)
+        grid = self._grid(path, dur)
+        used = self.taken.setdefault(key, [])
+        step = dur + self.GAP
+        fresh = [g for g in grid
+                 if all(abs(g - u) >= step - 1e-6 for u in used)]
+        if fresh:
+            pick = fresh[0]
+        elif used:
+            # Файл кончился раньше, чем спрос на него. Возвращаться в 0.0
+            # нельзя — это ровно тот повтор, ради которого всё и писалось;
+            # берём место, максимально далёкое от уже показанного.
+            pick = max(grid, key=lambda g: min(abs(g - u) for u in used))
+        else:
+            pick = grid[0]
+        used.append(pick)
+        return round(pick, 3)
 
 
 STOP_WORDS = {
@@ -298,10 +348,16 @@ class ShotPicker:
     # а материала на канале конечное количество.
     PRIOR_WEIGHT = 0.5
 
-    def __init__(self, pool, total: float, prior=None):
+    def __init__(self, pool, total: float, prior=None, caps=None):
         # pool: [(path, tag, keywords), ...]
         self.pool = pool
         self.total = max(total, 0.001)
+        # СВОЙ ПОТОЛОК ПОКАЗОВ У КАЖДОГО ФАЙЛА, по индексу в пуле.
+        # Для стока приходит из ClipCutter.capacity: сколько разных кусков
+        # файл способен дать, столько раз его и можно показать. Без этого
+        # общий MAX_CLIP_REPEATS просил у восьмисекундного клипа три
+        # куска, и все три оказывались одним и тем же кадром.
+        self.caps = dict(caps or {})
         self.used = {}
         self.last = None
         self.hits = 0          # сколько раз попали по смыслу
@@ -351,7 +407,11 @@ class ShotPicker:
             else:
                 overlap = raw * 3 + (2 if raw >= 2 else 0) - used
             same = 1 if path == self.last else 0
-            return (same, -overlap, used, abs(j - k), j)
+            # Файл, у которого кончились НЕПОКАЗАННЫЕ куски, уступает
+            # любому другому — но не запрещён совсем: если весь пул
+            # исчерпан, показать повтор лучше, чем упасть.
+            over = 1 if self.used.get(j, 0) >= self.caps.get(j, 10 ** 6) else 0
+            return (same, over, -overlap, used, abs(j - k), j)
 
         best = min(range(n), key=score)
         matched = bool(want & self.pool[best][2])
@@ -385,11 +445,17 @@ class ShotPicker:
         Не «средний повтор», а именно минимум по пулу: пока есть хоть один
         файл младше потолка, score() в take() и так предпочтёт его — ждать
         нужно, пока честно закончатся вообще все варианты.
+
+        У файла может быть СВОЙ потолок ниже общего (caps): короткий клип
+        не даёт трёх разных кусков, и требовать с него три показа значит
+        требовать повтора. Такой файл считается исчерпанным на своём
+        числе, а не на общем.
         """
         n = len(self.pool)
         if not n:
             return True
-        return min(self.used.get(j, 0) for j in range(n)) >= cap
+        return all(self.used.get(j, 0) >= min(cap, self.caps.get(j, cap))
+                   for j in range(n))
 
 
 class MaterialMix:
@@ -746,9 +812,34 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     if prior:
         log(f"  память канала: {len(prior)} файлов уже шли в эфир")
 
+    # Нарезчик заводится ЗДЕСЬ, а не перед вступлением: по нему считаются
+    # потолки показов для стока, а они нужны уже при сборке пула.
+    cutter = ClipCutter()
+
+    # СКОЛЬКО РАЗ МОЖНО ПОКАЗАТЬ КАЖДЫЙ КЛИП.
+    #
+    # Считается по самому файлу: сколько разных кусков он способен дать
+    # при типичной длине клипового кадра. У пятнадцатисекундного стока
+    # это два-три куска, у шестисекундного — один, и просить у второго
+    # три показа значит просить три одинаковых кадра.
+    #
+    # Типичная длина берётся по верхней границе вступления: там кадры
+    # короче всего, то есть оценка получается оптимистичной, а не
+    # заниженной — занижать нельзя, иначе пул схлопнется на ровном месте.
+    typical = max(st.intro_clip_duration_range)
+    clip_caps = {j: min(MAX_CLIP_REPEATS, cutter.capacity(p, typical))
+                 for j, p in enumerate(clips)}
+
     gen_pick = ShotPicker([(p, "gen", kw_of(p)) for p in images], total, prior)
     arch_pick = ShotPicker([(p, "arch", kw_of(p)) for p in archive], total, prior)
-    clip_pick = ShotPicker([(p, "clip", kw_of(p)) for p in clips], total, prior)
+    clip_pick = ShotPicker([(p, "clip", kw_of(p)) for p in clips], total, prior,
+                           caps=clip_caps)
+    if clips:
+        once = sum(1 for v in clip_caps.values() if v <= 1)
+        log(f"  сток: {len(clips)} клипов, "
+            f"суммарно {sum(clip_caps.values())} неповторяющихся кусков"
+            + (f", из них {once} файлов короткие (по одному куску)"
+               if once else ""))
 
     # ── РАЗБОР СЦЕНАРИЯ НА ДОЛИ ──────────────────────────────────────
     # Считается по тайм-кодам и по тексту, без единого запроса к модели:
@@ -800,8 +891,12 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
             return True
         if not clip_cap_hit[0]:
             clip_cap_hit[0] = True
-            log(f"  сток: весь пул ({len(clips)}) показан по {MAX_CLIP_REPEATS} "
-                f"раз — дальше слоты видео уходят фото и генерации")
+            # Потолок у каждого файла СВОЙ (см. clip_caps), поэтому здесь
+            # честнее назвать сумму кусков, а не общий множитель: «показан
+            # по 3 раза» на пуле из коротких клипов было бы неправдой.
+            log(f"  сток: весь пул ({len(clips)} клипов, "
+                f"{sum(clip_caps.values())} кусков) показан целиком — "
+                f"дальше слоты видео уходят фото и генерации")
         return False
 
     mix = MaterialMix(st.generated_share, bool(images), bool(archive),
@@ -908,7 +1003,6 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
 
     since_clip = 0       # сколько кадров-картинок подряд уже прошло
     next_gap = st.body_clip_every_n_shots
-    cutter = ClipCutter()
 
     # --- вступление ---
     t = marks[0]["start"] if marks else 0.0
