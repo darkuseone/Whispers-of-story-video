@@ -111,10 +111,48 @@ CLIP_REPEAT_MOVES = ["drift_in", "drift_left", "drift_out", "drift_right",
 # делают финал финалом.
 TAIL_FADE_SECONDS = 6.0
 
+# ТИШИНА ПОСЛЕ ПОСЛЕДНЕГО СЛОВА. Уход в чёрное выше решал только половину
+# задачи: картинка гасла, а начитка при этом договаривала фразу до самого
+# конца файла и обрывалась вместе с ним. На готовом ролике это слышно как
+# щелчок — голос кончился, и сразу тишина без всякого перехода.
+#
+# Здесь ролик заканчивается иначе: последнее слово, потом несколько секунд
+# чёрного кадра, на которых подложка успевает договорить и уйти в ноль.
+# Ролик смотрят на ночь, и эти секунды — то самое послевкусие, за которым
+# его и включают. Стоит это один фильтр tpad на последней группе склейки,
+# то есть ноль.
+#
+# Было четыре секунды. Стало одиннадцать — под финальный титр, и делятся
+# они так (см. textcard.THE_END_AT / THE_END_HOLD):
+#
+#   0.0 - 1.2   чёрный кадр, пусто
+#   1.2 - 5.2   THE END проявляется, висит и уходит
+#   5.2 - 11.0  настоящая тишина без единого знака на экране
+#
+# Последний отрезок и есть послевкусие, ради которого хвост заведён:
+# титр, доигрывающий до самого конца файла, съедал бы его целиком. Ролик
+# смотрят на ночь, и эти секунды здесь работают на формат, а не против
+# него. Переопределяется полем tail_hold в спецификации.
+TAIL_HOLD_SECONDS = 11.0
+TAIL_HOLD_MAX = 16.0
+
 # Кадр короче этого не показывают — его вливают в предыдущий. Причина не
 # эстетическая: переход длиной полторы секунды не помещается в кадр
 # длиной треть секунды, и xfade молча обрывает всю группу склейки.
 MIN_SHOT_ON_SCREEN = 1.2
+
+# ПЕРВЫЕ СЕКУНДЫ ИДУТ ТОЛЬКО НА НАСТОЯЩЕМ МАТЕРИАЛЕ.
+#
+# За это время зритель решает, что он открыл — документальное
+# расследование или нарезку из нейросети. Решает он по картинке, а не по
+# тексту, и сгенерированный кадр на десятой секунде читается мгновенно.
+# Дальше по ролику та же генерация проходит незаметно: на двадцатой
+# минуте кадры уже никто не разбирает, там держит рассказ.
+#
+# Поэтому в этом окне сток и архив идут вперёд генерации, а сама
+# генерация остаётся только на случай, когда реального нет вовсе.
+# Тридцать секунд — это примерно первые три-пять кадров вступления.
+OPENING_REAL_SECONDS = 30.0
 
 
 def log(*a):
@@ -137,16 +175,32 @@ class ClipCutter:
     несколько секунд, и один и тот же файл, попадаясь второй раз, показывает
     другое место.
 
-    Курсор идёт по файлу вперёд и заворачивается в начало, когда упирается
-    в конец. Между кусками пропуск в полсекунды: соседние отрезки одного
-    файла не должны выглядеть как склейка внутри одного движения камеры.
+    ОДИН И ТОТ ЖЕ КУСОК НЕ ВЫДАЁТСЯ ДВАЖДЫ, и это главное здесь.
+
+    Раньше курсор, упершись в конец файла, возвращался ровно в 0.0 — то
+    есть второй показ клипа начинался с той же секунды, что и первый.
+    На длинном стоке это незаметно, а на коротком (6-10 секунд — таких
+    большинство) означает буквально один и тот же кадр по три раза за
+    ролик. На georgia-guidestones-01 это и увидел зритель: отбраковка
+    оставила 13 клипов на 39 слотов, и каждый короткий файл крутился
+    одним и тем же куском.
+
+    Теперь файл разбит на сетку непересекающихся кусков, выданные куски
+    запоминаются, и take_start отдаёт ещё не показанный. Между кусками
+    пропуск в полсекунды: соседние отрезки одного файла не должны
+    выглядеть как склейка внутри одного движения камеры.
+
+    Когда куски честно кончились, берётся точка, максимально удалённая
+    от всех показанных. Но доходить до этого не должно: capacity()
+    говорит монтажу, сколько кусков файл вообще способен дать, и
+    ShotPicker больше столького раз его не выдаёт (см. caps в plan_shots).
     """
 
     GAP = 0.5
 
     def __init__(self):
         self.length = {}
-        self.cursor = {}
+        self.taken = {}
 
     def duration(self, path: Path) -> float:
         key = str(path)
@@ -164,16 +218,50 @@ class ClipCutter:
                 self.length[key] = 0.0
         return self.length[key]
 
-    def take_start(self, path: Path, dur: float) -> float:
-        """Отдаёт секунду начала следующего куска этого файла."""
-        key = str(path)
+    def _grid(self, path: Path, dur: float):
+        """Сетка непересекающихся кусков длиной dur от начала файла."""
         total = self.duration(path)
-        start = self.cursor.get(key, 0.0)
-        # кусок не помещается в остаток файла — заходим на второй круг
-        if total and start + dur > total - 0.15:
-            start = 0.0
-        self.cursor[key] = start + dur + self.GAP
-        return round(start, 3)
+        room = max(total - dur, 0.0)
+        # Файл короче куска (или длина не прочиталась) — куска ровно один,
+        # дальше его дотянет петля или замедление в clip_timing.
+        if not total or room <= 0:
+            return [0.0]
+        step = dur + self.GAP
+        out, s = [], 0.0
+        while s <= room + 1e-6:
+            out.append(round(s, 3))
+            s += step
+        return out or [0.0]
+
+    def capacity(self, path: Path, dur: float) -> int:
+        """
+        Сколько РАЗНЫХ кусков длиной dur способен дать файл.
+
+        По этому числу монтаж решает, сколько раз клип вообще можно
+        показать: просить у восьмисекундного файла три разных куска по
+        пять секунд бессмысленно, он даст один и тот же.
+        """
+        return len(self._grid(path, dur))
+
+    def take_start(self, path: Path, dur: float) -> float:
+        """Отдаёт секунду начала ещё НЕ ПОКАЗАННОГО куска этого файла."""
+        key = str(path)
+        grid = self._grid(path, dur)
+        used = self.taken.setdefault(key, [])
+        step = dur + self.GAP
+        fresh = [g for g in grid
+                 if all(abs(g - u) >= step - 1e-6 for u in used)]
+        if fresh:
+            pick = fresh[0]
+        elif used:
+            # Файл кончился раньше, чем спрос на него. Возвращаться в 0.0
+            # нельзя — это ровно тот повтор, ради которого всё и писалось;
+            # берём место, максимально далёкое от уже показанного.
+            pick = max(grid, key=lambda g: min(abs(g - u) for u in used))
+        else:
+            pick = grid[0]
+        used.append(pick)
+        return round(pick, 3)
 
 
 STOP_WORDS = {
@@ -282,10 +370,16 @@ class ShotPicker:
     # а материала на канале конечное количество.
     PRIOR_WEIGHT = 0.5
 
-    def __init__(self, pool, total: float, prior=None):
+    def __init__(self, pool, total: float, prior=None, caps=None):
         # pool: [(path, tag, keywords), ...]
         self.pool = pool
         self.total = max(total, 0.001)
+        # СВОЙ ПОТОЛОК ПОКАЗОВ У КАЖДОГО ФАЙЛА, по индексу в пуле.
+        # Для стока приходит из ClipCutter.capacity: сколько разных кусков
+        # файл способен дать, столько раз его и можно показать. Без этого
+        # общий MAX_CLIP_REPEATS просил у восьмисекундного клипа три
+        # куска, и все три оказывались одним и тем же кадром.
+        self.caps = dict(caps or {})
         self.used = {}
         self.last = None
         self.hits = 0          # сколько раз попали по смыслу
@@ -335,7 +429,11 @@ class ShotPicker:
             else:
                 overlap = raw * 3 + (2 if raw >= 2 else 0) - used
             same = 1 if path == self.last else 0
-            return (same, -overlap, used, abs(j - k), j)
+            # Файл, у которого кончились НЕПОКАЗАННЫЕ куски, уступает
+            # любому другому — но не запрещён совсем: если весь пул
+            # исчерпан, показать повтор лучше, чем упасть.
+            over = 1 if self.used.get(j, 0) >= self.caps.get(j, 10 ** 6) else 0
+            return (same, over, -overlap, used, abs(j - k), j)
 
         best = min(range(n), key=score)
         matched = bool(want & self.pool[best][2])
@@ -369,11 +467,17 @@ class ShotPicker:
         Не «средний повтор», а именно минимум по пулу: пока есть хоть один
         файл младше потолка, score() в take() и так предпочтёт его — ждать
         нужно, пока честно закончатся вообще все варианты.
+
+        У файла может быть СВОЙ потолок ниже общего (caps): короткий клип
+        не даёт трёх разных кусков, и требовать с него три показа значит
+        требовать повтора. Такой файл считается исчерпанным на своём
+        числе, а не на общем.
         """
         n = len(self.pool)
         if not n:
             return True
-        return min(self.used.get(j, 0) for j in range(n)) >= cap
+        return all(self.used.get(j, 0) >= min(cap, self.caps.get(j, cap))
+                   for j in range(n))
 
 
 class MaterialMix:
@@ -730,9 +834,34 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     if prior:
         log(f"  память канала: {len(prior)} файлов уже шли в эфир")
 
+    # Нарезчик заводится ЗДЕСЬ, а не перед вступлением: по нему считаются
+    # потолки показов для стока, а они нужны уже при сборке пула.
+    cutter = ClipCutter()
+
+    # СКОЛЬКО РАЗ МОЖНО ПОКАЗАТЬ КАЖДЫЙ КЛИП.
+    #
+    # Считается по самому файлу: сколько разных кусков он способен дать
+    # при типичной длине клипового кадра. У пятнадцатисекундного стока
+    # это два-три куска, у шестисекундного — один, и просить у второго
+    # три показа значит просить три одинаковых кадра.
+    #
+    # Типичная длина берётся по верхней границе вступления: там кадры
+    # короче всего, то есть оценка получается оптимистичной, а не
+    # заниженной — занижать нельзя, иначе пул схлопнется на ровном месте.
+    typical = max(st.intro_clip_duration_range)
+    clip_caps = {j: min(MAX_CLIP_REPEATS, cutter.capacity(p, typical))
+                 for j, p in enumerate(clips)}
+
     gen_pick = ShotPicker([(p, "gen", kw_of(p)) for p in images], total, prior)
     arch_pick = ShotPicker([(p, "arch", kw_of(p)) for p in archive], total, prior)
-    clip_pick = ShotPicker([(p, "clip", kw_of(p)) for p in clips], total, prior)
+    clip_pick = ShotPicker([(p, "clip", kw_of(p)) for p in clips], total, prior,
+                           caps=clip_caps)
+    if clips:
+        once = sum(1 for v in clip_caps.values() if v <= 1)
+        log(f"  сток: {len(clips)} клипов, "
+            f"суммарно {sum(clip_caps.values())} неповторяющихся кусков"
+            + (f", из них {once} файлов короткие (по одному куску)"
+               if once else ""))
 
     # ── РАЗБОР СЦЕНАРИЯ НА ДОЛИ ──────────────────────────────────────
     # Считается по тайм-кодам и по тексту, без единого запроса к модели:
@@ -784,14 +913,44 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
             return True
         if not clip_cap_hit[0]:
             clip_cap_hit[0] = True
-            log(f"  сток: весь пул ({len(clips)}) показан по {MAX_CLIP_REPEATS} "
-                f"раз — дальше слоты видео уходят фото и генерации")
+            # Потолок у каждого файла СВОЙ (см. clip_caps), поэтому здесь
+            # честнее назвать сумму кусков, а не общий множитель: «показан
+            # по 3 раза» на пуле из коротких клипов было бы неправдой.
+            log(f"  сток: весь пул ({len(clips)} клипов, "
+                f"{sum(clip_caps.values())} кусков) показан целиком — "
+                f"дальше слоты видео уходят фото и генерации")
         return False
 
     mix = MaterialMix(st.generated_share, bool(images), bool(archive),
                       bool(clips),
                       clip_intro=st.intro_clip_share,
                       clip_body=st.body_clip_share)
+    def picky(phase: str) -> bool:
+        """
+        Можно ли сейчас отказаться от клипа, который не бьётся со словами.
+
+        ДВА ПРАВИЛА КАНАЛА СПОРЯТ, и спор надо решать, а не выбирать одно.
+        Первое: под фразу про Пентагон не ставить чужой Египет — за это
+        отвечает require_match в ClipPicker.take. Второе: во вступлении
+        70-80% экранного времени занимает видео, в теле 20-30% — это
+        требование к формату, а не пожелание.
+
+        Безусловный отказ побеждал второе правило молча. Замер на
+        dead-internet-01: 5.9% видео в теле при заказанных 18% и 10.8% во
+        вступлении при заказанных 78% — то есть ролик из одних картинок,
+        собранный без единой ошибки в логе. Причина простая: запросы к
+        стоку пишутся ЗРИТЕЛЬНЫМИ образами («server room data center
+        night»), а начитка идёт про ботов и трафик, и пересечения по
+        словам у них нет почти нигде.
+
+        Поэтому привередничаем, только пока доля видео НЕ ОТСТАЁТ. Отстала
+        — берём лучшее, что есть: пул к этому моменту уже прошёл
+        отбраковку по теме выпуска (vet_context), то есть заведомо не
+        «чужой Египет», а просто менее удачный кадр. Совпадение по словам
+        — предпочтение, доля по времени — требование.
+        """
+        return not mix.clip_behind(phase)
+
     if not archive:
         log("  ! подлинных фото нет — под места и предметы пойдёт генерация; "
             "добери архив этапом material")
@@ -802,21 +961,26 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         """
         Откуда брать кусок клипа и надо ли его замедлять.
 
-        Возвращает (секунда начала, множитель замедления). Множитель ноль
-        означает обычный путь: кусок из середины файла плюс петля, если
-        кадр длиннее остатка.
+        Возвращает (секунда начала, множитель замедления, длина исходника).
+        Множитель ноль означает обычный путь: кусок из середины файла плюс
+        петля, если кадр длиннее остатка.
 
         Замедление включается только для ЗАВЕДОМО КОРОТКИХ исходников —
         сгенерированных вставок на 2-3 секунды. Для стока на пятнадцать
         секунд петля лучше: он снят с нормальной скоростью движения, и
         замедлять его незачем.
+
+        Длина исходника возвращается наружу не для красоты: множитель
+        здесь считается от ЭКРАННОЙ длительности кадра, а рендерится кадр
+        длиннее — на перекрытие перехода, — и пересчитать множитель под
+        настоящую длину можно только зная исходник. См. set_render_durations.
         """
         total = cutter.duration(src)
         if 0 < total <= CLIP_STRETCH_SOURCE_MAX and dur > total * 1.05:
             k = min(CLIP_STRETCH_MAX, dur / max(total - 0.15, 0.5))
             if k > 1.05:
-                return 0.0, round(k, 3)
-        return cutter.take_start(src, dur), 0.0
+                return 0.0, round(k, 3), total
+        return cutter.take_start(src, dur), 0.0, total
 
     def put_image(kind, t_pos, said="", **extra):
         """Ставит кадр-картинку нужной семьи и записывает его в счёт."""
@@ -827,8 +991,21 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         if kind == "arch":
             src, tag = picker.take(t_pos, said, require_match=True)
             if src is None:
-                src, tag = gen_pick.take(t_pos, said)
-                kind = "gen"
+                # ТРЕТИЙ ПУТЬ В ГЕНЕРАЦИЮ, и в первые секунды он закрыт.
+                #
+                # Обычно так и надо: архив без совпадения по смыслу — это
+                # чужой музей под чужой абзац, генерация честнее. Но в
+                # открывающем окне выбор другой: не «точное фото против
+                # неточного», а «неточное настоящее против нарисованного».
+                # Зритель на десятой секунде не проверяет, тот ли это
+                # архив, — он проверяет, настоящее ли это вообще.
+                if t_pos - intro_start < OPENING_REAL_SECONDS:
+                    src, tag = picker.take(t_pos, said)
+                    if src is not None:
+                        real_saved[0] += 1
+                if src is None:
+                    src, tag = gen_pick.take(t_pos, said)
+                    kind = "gen"
         else:
             src, tag = picker.take(t_pos, said)
         fr_name, fr = st.framing(src.name)
@@ -861,7 +1038,9 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
 
     since_clip = 0       # сколько кадров-картинок подряд уже прошло
     next_gap = st.body_clip_every_n_shots
-    cutter = ClipCutter()
+    # Сколько кадров в первые секунды удалось увести из генерации в
+    # настоящий материал — печатается в конце плана, см. OPENING_REAL_SECONDS.
+    real_saved = [0]
 
     # --- вступление ---
     t = marks[0]["start"] if marks else 0.0
@@ -922,6 +1101,14 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
                 and "clip" in (["clip"] if clip_available() else [])):
             allowed = ["clip"]
         got = mix.pick(allowed, phase="intro")
+        # Тот же запрет на генерацию в первые секунды, но на ДРУГОМ пути:
+        # выше жребий мог выбрать "gen" сам, без всякой неудачи стока.
+        # Оба пути надо закрывать — закрытый один выглядит как работающее
+        # правило ровно до первого ролика, где сработал второй.
+        if (got == "gen" and archive
+                and t - intro_start < OPENING_REAL_SECONDS):
+            got = "arch"
+            real_saved[0] += 1
         kind = "clip" if got == "clip" else "image"
         run_len = run_len + 1 if kind == run_kind else 1
         run_kind = kind
@@ -950,19 +1137,34 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
 
         said = intro_said(t, dur)
         if got == "clip":
-            src, _ = clip_pick.take(t, said, require_match=True)
+            src, _ = clip_pick.take(t, said, require_match=picky("intro"))
             if src is None:
-                # нет футажа под эту фразу — не ставим чужой клип, рисуем
+                # Нет футажа под эту фразу — рисуем. Но НЕ В ПЕРВЫЕ
+                # СЕКУНДЫ: там сначала пробуем настоящее архивное фото.
+                #
+                # За эти секунды зритель решает, что он открыл —
+                # документальное расследование или нарезку из нейросети,
+                # и решает по КАРТИНКЕ, а не по тексту. Сгенерированный
+                # кадр на десятой секунде читается мгновенно и стоит
+                # ролику отвала ещё до первой главы, тогда как на
+                # двадцатой минуте тот же кадр никто не разбирает.
+                #
+                # Правило уступает молча, если архива нет вовсе: ролик без
+                # вступления хуже ролика с рисованным вступлением.
                 got = "gen"
+                if t - intro_start < OPENING_REAL_SECONDS and archive:
+                    got = "arch"
+                    real_saved[0] += 1
                 kind = "image"
                 run_kind = "image"
                 run_len = 1
                 rng_pair = st.intro_photo_duration_range
                 dur = round(st.rng.uniform(*rng_pair), 3)
             else:
-                src_start, stretch = clip_timing(src, dur)
+                src_start, stretch, src_total = clip_timing(src, dur)
                 shots.append(dict(kind="clip", file=src, tag="clip",
                                   src_start=src_start, stretch=stretch,
+                                  src_total=src_total,
                                   move=repeat_move(clip_pick.last_repeat),
                                   start=round(t, 3), duration=dur,
                                   transition=tr, transition_dur=trd,
@@ -974,6 +1176,12 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
                 idx += 1
                 continue
         if got != "clip":
+            # Во вступлении по фотографии всегда идёт скольжение или наезд,
+            # статики тут быть не должно. Набор ограничивается ПАРАМЕТРОМ,
+            # а не подменой результата: раньше движение бралось из движка и
+            # перевыбиралось здесь своим жребием, если не подошло, — мимо
+            # счётчика семей. Проверка плана нашла на этом девять наездов
+            # подряд в первых трёх минутах.
             only = (op["first_move_only"]
                     if idx == 0 and op["first_move_only"] else INTRO_MOVES)
             mv, sp, ez = st.pick_move(1.05, allow_hold=False, only=only,
@@ -1147,7 +1355,7 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         meta = dict(why=cfg.get("why", ""), beat_kind=cfg.get("beat_kind"))
 
         if got == "clip":
-            src, _ = clip_pick.take(start, said, require_match=True)
+            src, _ = clip_pick.take(start, said, require_match=picky("body"))
             if src is None:
                 got = "gen"
                 since_clip += 1
@@ -1157,9 +1365,10 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
                        ("move", "speed", "ease", "transition", "transition_dur",
                         "effect")}))
             else:
-                src_start, stretch = clip_timing(src, dur)
+                src_start, stretch, src_total = clip_timing(src, dur)
                 shots.append(dict(kind="clip", file=src, tag="clip",
                                   src_start=src_start, stretch=stretch,
+                                  src_total=src_total,
                                   move=repeat_move(clip_pick.last_repeat),
                                   start=start, duration=dur, **meta,
                                   **{k: cfg[k] for k in
@@ -1281,6 +1490,19 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     log(f"  подбор: генерация — {gen_pick.report()}")
     log(f"  подбор: архив     — {arch_pick.report()}")
     log(f"  подбор: сток      — {clip_pick.report()}")
+    # Первые секунды: сколько кадров ушло в настоящий материал вместо
+    # генерации. Ноль здесь — это НЕ поломка: значит, стока хватило и
+    # подменять было нечего. Строка нужна, чтобы правило было видно в
+    # логе прогона, а не только в коде.
+    opening_shots = [s for s in shots
+                     if s["start"] - (marks[0]["start"] if marks else 0.0)
+                     < OPENING_REAL_SECONDS]
+    if opening_shots:
+        gen_n = sum(1 for s in opening_shots if s.get("tag") == "gen")
+        log(f"  первые {OPENING_REAL_SECONDS:.0f} с: {len(opening_shots)} "
+            f"кадров, генерации {gen_n}"
+            + (f", уведено в реальный материал {real_saved[0]}"
+               if real_saved[0] else ""))
     # Числа отдельно от строк: смоук проверяет их порогом, а не парсит лог
     st.match_report = {"gen": (gen_pick.hits, gen_pick.calls),
                        "arch": (arch_pick.hits, arch_pick.calls),
@@ -1549,6 +1771,35 @@ def set_render_durations(shots):
             extra = 0.0 if k == len(group) - 1 else xfade_dur(sh) + PAD
             sh["render_dur"] = round(sh["duration"] + extra, 3)
 
+    # ЗАМЕДЛЕНИЕ СЧИТАЕТСЯ ОТ render_dur, А НЕ ОТ duration.
+    #
+    # Множитель подбирался в clip_timing под экранную длительность кадра,
+    # но рендерится кадр длиннее — на перекрытие перехода плюс запас. У
+    # замедленного клипа петля отключена (см. render_footage_clip), и
+    # растянутого исходника на эту добавку не хватает: файл выходит
+    # короче -t, а дальше начинается пункт 3 задания — xfade просит кадры
+    # за концом клипа и МОЛЧА обрывает всю группу из двенадцати.
+    #
+    # Пример с прогона: исходник 5 с на кадре 8 с давал k=1.649, то есть
+    # 8.25 секунды при нужных 9.57.
+    #
+    # Если растянуть до render_dur можно только сильнее потолка —
+    # замедление снимается совсем, и клип идёт обычной петлёй. Петля на
+    # длинном кадре читается как заедание, но это косметика; оборванная
+    # группа склейки — это минус сотня секунд ролика.
+    for sh in shots:
+        if not sh.get("stretch"):
+            continue
+        total = sh.get("src_total") or 0.0
+        if total <= 0:
+            sh["stretch"] = 0.0
+            continue
+        need = sh["render_dur"] / max(total - 0.15, 0.5)
+        if need > CLIP_STRETCH_MAX:
+            sh["stretch"] = 0.0
+        else:
+            sh["stretch"] = round(max(need, sh["stretch"]), 3)
+
 
 # ───────────────────────── РЕНДЕР ─────────────────────────
 
@@ -1629,7 +1880,7 @@ def film_look():
     )
 
 
-def text_for_group(group, moments):
+def text_for_group(group, moments, seg=None):
     """
     Плашки, попадающие в эту группу склейки, с пересчётом в локальное время.
 
@@ -1644,6 +1895,16 @@ def text_for_group(group, moments):
     g1 = group[-1]["start"] + group[-1]["duration"]
     out = []
     for m in moments:
+        # Титр с anchor="tail" (THE END) живёт на ЧЁРНЫХ кадрах, которых
+        # на таймлайне ролика ещё нет: их дорисует tpad уже после склейки.
+        # Поэтому его место считается не из абсолютной секунды, а от конца
+        # своей группы — и только в последней группе, где хвост и есть.
+        if m.get("anchor") == "tail":
+            if seg is not None:
+                it = dict(m)
+                it["t_local"] = round(seg + float(m.get("offset", 1.0)), 3)
+                out.append(it)
+            continue
         if g0 <= m["t"] < g1:
             it = dict(m)
             it["t_local"] = max(0.0, m["t"] - g0)
@@ -1725,10 +1986,24 @@ def join(group, out: Path, st, overlay, first=False, moments=None, last=False):
         seg = sum(sh["duration"] for sh in group)
         st_fade = max(0.0, seg - TAIL_FADE_SECONDS)
         post.append(f"fade=t=out:st={st_fade:.2f}:d={TAIL_FADE_SECONDS:.1f}")
+        # ...и держим чёрный кадр ещё несколько секунд после того, как
+        # начитка кончилась. Кадры дорисовывает tpad — тем же вызовом
+        # ffmpeg и тем же кодировщиком, поэтому финальная сшивка остаётся
+        # склейкой без перекодирования (concat -c copy требует совпадения
+        # параметров потока до последнего бита).
+        hold = float(getattr(st, "tail_hold", TAIL_HOLD_SECONDS))
+        if hold > 0:
+            post.append(f"tpad=stop_mode=add:stop_duration={hold:.2f}:"
+                        f"color=black")
     # Плашки ставятся ПОСЛЕ виньетки. Иначе виньетка гасит нижние углы, а
     # плашка стоит именно там — текст уходил бы в тень ровно у той половины
     # раскладок, где он внизу.
-    chain = textcard.filter_chain(text_for_group(group, moments or []))
+    # Длина группы нужна титру на чёрном хвосте: он отсчитывается от её
+    # конца, а не от абсолютной секунды ролика (см. text_for_group).
+    # Считается тем же способом, что и точка затухания выше.
+    tail_seg = sum(sh["duration"] for sh in group) if last else None
+    chain = textcard.filter_chain(
+        text_for_group(group, moments or [], seg=tail_seg))
     if chain:
         post.append(chain)
     post.append("setsar=1")
@@ -1896,6 +2171,11 @@ def main(job_path):
     # Отсутствующий .cube ffmpeg сообщает где-то на середине группы склейки,
     # а с заглушенным stderr — вообще никак.
     check_luts(st)
+    # Тихий чёрный хвост. Задаётся здесь, а не в движке стиля: это не ось
+    # разведения роликов, а общее правило канала — так кончается КАЖДЫЙ
+    # ролик, и жребий тут не при чём.
+    st.tail_hold = max(0.0, min(TAIL_HOLD_MAX,
+                                float(job.get("tail_hold", TAIL_HOLD_SECONDS))))
     log("стиль:", json.dumps(st.summary(), ensure_ascii=False))
     d = st.divergence
     log(f"  разведение: {d.get('note')}"
@@ -2007,7 +2287,28 @@ def main(job_path):
                                          getattr(st, "chapter_edges", []),
                                          st.rng)
         if titles:
-            log(f"── титулы глав: {len(titles)} шт.")
+            log(f"── титулы глав: {len(titles)} шт. (в паузе диктора)")
+
+    # НАЗВАНИЕ РОЛИКА в первые секунды и THE END на чёрном хвосте.
+    # Оба — то же семейство титров, что и титулы глав, и живут тем же
+    # списком: join() различает слои по стилю.
+    # marks нужны заставке, чтобы выйти В ПАУЗУ после первой фразы, а не
+    # посреди неё: см. textcard.opening_at.
+    opening = textcard.opening_title(job, marks)
+    if opening:
+        first_end = marks[0]["end"] if marks else 0.0
+        log(f"── заставка: «{opening[0]['text']}» "
+            f"с {opening[0]['t']:.1f} с (первая фраза кончается "
+            f"на {first_end:.1f} с), кегль {opening[0]['size']}")
+    else:
+        log("── заставка: нет шрифта титров либо пустой заголовок")
+    # THE END отсчитывается от КОНЦА НАЧИТКИ: чёрный хвост начинается
+    # ровно там, где кончилось последнее слово (tpad в join).
+    ending = textcard.the_end(total)
+    if ending:
+        log(f"── финальный титр: «{ending[0]['text']}» "
+            f"с {ending[0]['t']:.1f} с, хвост {st.tail_hold:.1f} с")
+    titles = opening + titles + ending
     # дальше все три слоя живут одним списком: join() различает их по стилю
     moments = sorted(cards + moments + titles, key=lambda m: m["t"])
 
@@ -2071,7 +2372,7 @@ def main(job_path):
                        bed_gain_db=job.get("bed_gain_db", st.bed_gain_db),
                        duck_depth=st.duck_depth, duck_style=st.duck_style,
                        event_dips=dips, switch_at=st.bed_switch_at,
-                       switch_points=switches)
+                       switch_points=switches, tail=st.tail_hold)
 
     log("── финал")
     final = out / "final.mp4"
@@ -2087,9 +2388,18 @@ def main(job_path):
     media_end = min(x for x in (vd, ad) if x > 0) if (vd > 0 or ad > 0) else total
     n_srt = render.write_srt(marks, out / "subs.srt", max_end=media_end)
     size_gb = final.stat().st_size / 2**30
-    log(f"  видео {vd:.3f} с, звук {ad:.3f} с, тайм-коды {total:.3f} с")
+    log(f"  видео {vd:.3f} с, звук {ad:.3f} с, тайм-коды {total:.3f} с "
+        f"+ {st.tail_hold:.1f} с тихого хвоста")
     log(f"  субтитры {n_srt} реплик до {media_end:.3f} с "
         f"(из {len(marks)} по тайм-кодам)")
+    # Хвост проверяется ЗАМЕРОМ. Он весь состоит из того, чего в логе не
+    # видно: tpad мог не дорисовать кадры, apad — не дотянуть дорожку, а
+    # mux с -shortest молча обрежет ролик по любому из них, и обнаружится
+    # это только на просмотре.
+    if st.tail_hold > 0 and vd < total + st.tail_hold - 0.5:
+        log(f"  ! тихий хвост не доехал: ролик {vd:.2f} с при ожидаемых "
+            f"{total + st.tail_hold:.2f} с — смотри tpad в join() и apad "
+            f"в render.build_audio")
     log(f"  файл  {size_gb:.2f} ГБ  ({final.stat().st_size * 8 / vd / 1e6:.1f} Мбит/с)")
     if abs(vd - ad) > 0.5:
         log(f"  ! видео и звук разошлись на {abs(vd - ad):.2f} с — "

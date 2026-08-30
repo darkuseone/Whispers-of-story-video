@@ -10,9 +10,20 @@ Follow **`ИНСТРУКЦИЯ-ЧАТ.md` in the project root** end to end.
 Your deliverables are always:
 
 1. `jobs/<id>.json` — full pipeline job (schema: `jobs/ancient-example.json`).
-   Must include `_длительность` targeting **40–50 minutes** of narration
-   (~6000–8000 English words across `script_blocks`) for history /
-   mysteries / ancient-world topics.
+   Must include `_длительность` targeting **30–40 minutes** of narration
+   (~5000–6500 English words across `script_blocks`).
+
+   Since August 2026 the channel is **mixed-topic**: antiquity and
+   archaeology, science and space, mythology, historical investigations,
+   and the "new world" (modern technological and digital phenomena —
+   dead internet theory, AI, and so on).
+
+   **An episode outside antiquity MUST set `vet_context`.** Material
+   vetting asks a vision model whether a frame belongs to this episode's
+   period, and without that field it falls back to "this is an
+   ancient-world channel" — i.e. it rejects the episode's own correct
+   footage as anachronistic. This is not hypothetical: it happened on
+   `dead-internet-01`, which is the worked example to copy.
 2. `jobs/<id>.youtube.txt` — posting pack (title, description + sources,
    tags, cover prompt with yellow text, community post + image prompts,
    two Shorts titles/questions, **pinned first comment**)

@@ -113,10 +113,23 @@ def first_sentence(text: str) -> str:
     а на «Chariots of the Gods? was published…» ключ включал «was…», хотя
     субтитры режутся по «? » и реплика заканчивается на Gods?. Отсюда
     «не нашёл её начало в субтитрах» уже ПОСЛЕ двух часов монтажа.
+
+    Проверка «точка перед пробелом» одна такую границу не держит: у
+    инициального сокращения из БУКВЫ-ТОЧКИ-БУКВЫ-ТОЧКИ (R.C., U.S.) первая
+    точка не перед пробелом и не ловится, а ПОСЛЕДНЯЯ — перед пробелом, и
+    выглядит точь-в-точь как конец предложения. На georgia-guidestones-01
+    `For thirty-five years, "R.C. Christian" was a locked box…` обрывалось
+    на `R.C.`, а не на настоящем конце фразы: короткое «for thirtyfive
+    years rc» не находилось ни в одной реплике, и вся глава 9 срывала
+    сборку youtube.py на последнем шаге. Точки внутри такого сокращения —
+    ВСЕ, включая последнюю, — из кандидатов на границу исключаются.
     """
     text = text.strip()
+    abbrev_end = {m.end() - 1
+                  for m in re.finditer(r"\b(?:[A-Z]\.){2,}", text)}
     for i, ch in enumerate(text):
-        if ch in ".!?" and (i + 1 >= len(text) or text[i + 1] in " \n"):
+        if ch in ".!?" and (i + 1 >= len(text) or text[i + 1] in " \n") \
+                and i not in abbrev_end:
             return text[: i + 1].strip()
     return text
 

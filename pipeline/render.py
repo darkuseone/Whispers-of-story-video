@@ -370,7 +370,8 @@ def build_bed(beds, out: Path, total: float, switch_at: float = 0.55,
 def build_audio(voice: Path, bed, out: Path, total: float,
                 bed_gain_db: float = -27.0, duck_depth: float = 0.0,
                 duck_style: str = "breath", event_dips=None,
-                switch_at: float = 0.55, switch_points=None):
+                switch_at: float = 0.55, switch_points=None,
+                tail: float = 0.0):
     """
     Голос + фоновая подложка. bed=None — только голос.
 
@@ -403,7 +404,26 @@ def build_audio(voice: Path, bed, out: Path, total: float,
 
     Нормализация нужна и без подложки, поэтому голос в одиночку идёт по той
     же цепочке, а не копируется как есть.
+
+    tail — сколько секунд дорожка живёт ПОСЛЕ последнего слова, под чёрным
+    кадром в конце ролика (build.TAIL_HOLD_SECONDS). Начитка добивается
+    тишиной, а подложка тянется чуть дальше неё и успевает уйти в ноль
+    своим же затуханием: молчание в конце должно наступить постепенно, а
+    не выключиться вместе с голосом.
+
+    Без этого хвоста mux с -shortest обрезал бы картинку обратно по звуку,
+    и чёрные секунды из видео просто исчезли бы — молча, с нулевым кодом
+    возврата.
     """
+    total_out = total + max(0.0, tail)
+    # Подложка доигрывает примерно половину хвоста. Остаток — настоящая
+    # тишина: именно она и есть пауза на подумать, ради которой всё это.
+    bed_total = total + min(max(0.0, tail) * 0.55, 3.0)
+    # Тишина в конце дописывается ПОСЛЕ нормализации: loudnorm считает
+    # уровень по всей дорожке, и дописанное молчание сдвигало бы ему
+    # статистику — на длинном ролике незаметно, на коротком слышно.
+    pad = f",apad=whole_dur={total_out:.2f}" if total_out > total else ""
+
     norm = "loudnorm=I=-16:TP=-1.5:LRA=9,alimiter=limit=0.92"
     # Дорожка пишется СТЕРЕО и в 48 кГц. Замер готового ролика показал моно
     # на 96 кГц: начитка приходит от ElevenLabs моно, amix берёт раскладку по
@@ -414,14 +434,15 @@ def build_audio(voice: Path, bed, out: Path, total: float,
     fmt = "-ar 48000 -ac 2 -c:a aac -b:a 192k"
 
     if bed is None:
-        run(f"ffmpeg -y -i {shlex.quote(str(voice))} -af {shlex.quote(norm)} "
+        run(f"ffmpeg -y -i {shlex.quote(str(voice))} "
+            f"-af {shlex.quote(norm + pad)} -t {total_out:.2f} "
             f"{fmt} {shlex.quote(str(out))}")
         return
 
     # Заход и уход подложки, а при нескольких треках ещё и смены — всё
     # это внутри build_bed. Там же зажат st у afade: отрицательным он
     # быть не может, иначе фильтр молча не срабатывает вовсе.
-    tmp = build_bed(bed, out.parent / "bed_loop.m4a", total, switch_at,
+    tmp = build_bed(bed, out.parent / "bed_loop.m4a", bed_total, switch_at,
                     switch_points=switch_points)
 
     # ratio: duck_depth 0.30 -> 4.4, 0.72 -> 7.8 — от мягкого радио-дакинга
@@ -441,15 +462,32 @@ def build_audio(voice: Path, bed, out: Path, total: float,
 
     # Оба входа приводятся к стерео ДО amix: иначе он берёт раскладку по
     # первому входу, а первый — моно-начитка, и подложка теряет ширину.
+    # ХВОСТ ДОБИВАЕТСЯ ТИШИНОЙ ОБЕИМ ВЕТВЯМ, И КЛЮЧУ САЙДЧЕЙНА ТОЖЕ.
+    #
+    # Замер: без добивки ключа sidechaincompress заканчивается вместе с
+    # начиткой, и подложка обрывалась ровно на последнем слове — то есть
+    # щелчок, ради устранения которого хвост и заводился, никуда не
+    # девался, а просто переезжал на четыре секунды раньше. Дорожка при
+    # этом честно длилась нужные секунды, и по логу это не видно вовсе:
+    # -91 дБ начинались там, где должна была играть уходящая музыка.
+    #
+    # Тишина в ключе означает «диктор молчит», компрессор отпускает
+    # подложку — и она пошла бы вверх под чёрным кадром. Поэтому поверх
+    # ставится СВОЁ затухание, от последнего слова до конца подложки: оно
+    # сильнее любого поведения компрессора и задаёт форму конца ролика
+    # явно, а не как побочный эффект.
+    pad_f = f"apad=whole_dur={total_out:.2f}," if total_out > total else ""
+    out_fade = (f",afade=t=out:st={total:.2f}:d={bed_total - total:.2f}"
+                if bed_total > total else "")
     filt = (f"[1:a]volume={bed_gain_db}dB,"
             f"aformat=channel_layouts=stereo:sample_rates=48000[bedv];"
             f"[0:a]aformat=channel_layouts=stereo:sample_rates=48000,"
-            f"asplit=2[voc][sc];"
-            f"[bedv][sc]{side}{dips_f}[bed];"
+            f"{pad_f}asplit=2[voc][sc];"
+            f"[bedv][sc]{side}{dips_f}{out_fade}[bed];"
             f"[voc][bed]amix=inputs=2:duration=first:dropout_transition=0,"
             f"{norm}[a]")
     run(f"ffmpeg -y -i {shlex.quote(str(voice))} -i {shlex.quote(str(tmp))} "
-        f"-filter_complex {shlex.quote(filt)} -map [a] "
+        f"-filter_complex {shlex.quote(filt)} -map [a] -t {total_out:.2f} "
         f"{fmt} {shlex.quote(str(out))}")
 
 

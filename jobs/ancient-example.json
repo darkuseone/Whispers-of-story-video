@@ -20,6 +20,9 @@
   "_music_пример": ["assets/music/bed2.mp3", "assets/music/bed5.mp3"],
   "bed_gain_db": -27.0,
 
+  "_хвост": "После последнего слова ролик держит чёрный кадр без начитки: голос договорил, подложка уходит в ноль, дальше тишина. Так кончается КАЖДЫЙ ролик канала, поле нужно только чтобы отступить от умолчания в 4 секунды. Разумный диапазон 3-6.",
+  "tail_hold": 4.0,
+
   "_цветокор": "Без этих полей выпадает жребием из холодной семьи, разведённый с тремя последними роликами. Семья: moonlit_marble, nile_indigo, aegean_teal, temple_ash, starlit_lapis, bronze_frost. Архивная: archive_platinum, archive_cyanotype, archive_stone.",
   "lut": "nile_indigo",
   "archive_lut": "archive_cyanotype",
@@ -37,7 +40,7 @@
 
   "photo_sources": ["wikimedia", "met", "artic", "cleveland", "openverse", "loc"],
   "video_sources": ["pexels", "pixabay", "archive_org", "wikimedia_video"],
-  "_источники": "Ещё доступны по имени: nasa и nasa_video (ночное небо под сюжеты об астрономии древних), magnific_image и magnific_video — но последние два вручную ставить не надо, они и так вызываются добором по запросам, где ничего не нашлось.",
+  "_источники": "Ещё доступны по имени: nasa и nasa_video (ночное небо под сюжеты об астрономии древних), Библиотеки Magnific по имени тут НЕТ и быть не может: она вызывается только добором по запросам, где ничего не нашлось, — иначе суточный лимит не списывался бы.",
 
   "topic": {
     "slug": "example-topic-slug",

@@ -41,12 +41,56 @@ import vet
 UA = {"User-Agent": "sleep-docs-pipeline/1.0 (educational video project)"}
 TIMEOUT = 60
 
+
+def tts_timeout(text: str) -> int:
+    """
+    Таймаут озвучки блока — по длине текста, не постоянной цифрой.
+
+    ЖИВОЙ ЗАМЕР на cahokia-01 (запуск 32267936256): синтез идёт с
+    постоянной скоростью около 40 символов в секунду (шесть блоков
+    подряд, от 1657 до 2471 символов — разброс скорости меньше 4%).
+    Блок в 2471 символ занял 60.0 секунды — ровно на границе TIMEOUT=60,
+    а следующий, 3027 символов, стабильно требовал уже 74-75 секунд и
+    гарантированно не укладывался НИ В ОДНУ из трёх попыток ретрая:
+    повтор одного и того же переразмеренного запроса против одного и
+    того же тесного лимита не может кончиться иначе, это не сетевая
+    случайность, а арифметика. При этом BLOCK_CHARS_WARN_V3 (ниже)
+    разрешает блоки до 4500 символов — то есть до этой правки таймаут
+    был заведомо мал для того же собственного предела пайплайна.
+
+    15 символов в секунду — это ВТРОЕ меньше измеренной скорости, запас
+    на медленный день у ElevenLabs, а не на среднюю погоду. Плюс 30
+    секунд постоянного времени на соединение и разгон модели.
+    """
+    return max(TIMEOUT, 30 + len(text) // 15)
+
 # Потолки на скачивание материала. Ролику нужны отрывки на 5-15 секунд,
 # и ничего тяжелее сюда не требуется. Без потолков этап 1 однажды провисел
 # 37 минут на одном файле с archive.org.
 MAX_FILE_BYTES = 120 * 1024 * 1024      # 120 МБ на файл
 FETCH_SECONDS = 90                      # столько ждём один файл
 GATHER_BUDGET = 420                     # столько всего на один сбор
+
+# Бюджет сбора РАСТЁТ ВМЕСТЕ С ЧИСЛОМ ЗАПРОСОВ, и это не роскошь.
+#
+# Постоянные 420 секунд писались под ролик с дюжиной запросов. Как только
+# запросов становится втрое больше — а именно так лечится нехватка
+# материала, — таймер срабатывает на середине списка, и последняя треть
+# запросов не выполняется ВООБЩЕ. Снаружи это выглядит как «добавили
+# запросов, а материала не прибавилось»: молчаливый обрыв, ровно тот
+# класс ошибки, от которого заведён smoke.py.
+#
+# Потолок всё равно нужен: сбор идёт до рендера, а у джоба в Actions свои
+# 330 минут. Двадцать минут на один сбор — это заведомо больше, чем нужно
+# любому разумному набору запросов, и заведомо меньше, чем опасно.
+GATHER_PER_QUERY_S = 25
+GATHER_BUDGET_MAX = 1200
+
+
+def gather_budget(queries) -> int:
+    """Сколько секунд отвести сбору под это число запросов."""
+    return int(min(GATHER_BUDGET_MAX,
+                   max(GATHER_BUDGET, 120 + GATHER_PER_QUERY_S * len(queries))))
 
 # ПОТОЛОК НА ДЛИНУ И РАЗРЕШЕНИЕ ФУТАЖА.
 #
@@ -59,6 +103,16 @@ GATHER_BUDGET = 420                     # столько всего на оди�
 # подрезаем на диске сразу после скачивания. Обрезка идёт БЕЗ
 # перекодирования, потоковым копированием — это секунды на файл и никакой
 # потери качества.
+#
+# ГРАНИЦЫ ЭТИ ПРИМЕНЯЮТСЯ НЕ ВСЕМИ ИСТОЧНИКАМИ ОДИНАКОВО. У pexels и
+# pixabay разрешение известно ДО скачивания — тариф качества выбирается по
+# CLIP_MIN_WIDTH/CLIP_MAX_WIDTH заранее. У archive_org, wikimedia_video и
+# библиотеки Magnific разрешение неизвестно до скачивания (archive.org
+# берёт файл по весу в байтах, не по пикселям; у Commons и Magnific
+# ширина может не прийти в ответе вовсе), поэтому на них стоит второй,
+# универсальный рубеж ПОСЛЕ скачивания — cap_clip_resolution в gather():
+# он даунскейлит, а не отбраковывает, потому что по узким историческим
+# темам находка может быть единственной.
 MAX_CLIP_SECONDS = 25
 CLIP_MIN_WIDTH = 1280                   # ниже 720p не берём — заметно на экране
 CLIP_MAX_WIDTH = 1920                   # выше 1080p не нужно, только вес
@@ -81,13 +135,118 @@ def trim_long_clip(path: Path, limit: float = MAX_CLIP_SECONDS) -> None:
     res = subprocess.run(
         ["ffmpeg", "-v", "error", "-y", "-i", str(path), "-t", f"{limit:.2f}",
          "-c", "copy", "-an", str(tmp)], capture_output=True)
-    if res.returncode == 0 and tmp.exists() and tmp.stat().st_size > 20000:
+    # КОД ВОЗВРАТА НУЛЬ ЕЩЁ НЕ ЗНАЧИТ ЦЕЛЫЙ ФАЙЛ. Потоковое копирование в
+    # mp4 молча собирает нерабочий контейнер, когда исходник пришёл в чужом
+    # кодеке (архивная хроника — MPEG-2, DivX, что угодно), и ffmpeg при
+    # этом честно выходит с нулём. Такой файл заменял целый оригинал и
+    # обнаруживался только отбраковкой, как «файл не открылся». Не
+    # открылся — оставляем длинный оригинал: лишние секунды на диске
+    # дешевле выброшенной находки.
+    if res.returncode == 0 and tmp.exists() and tmp.stat().st_size > 20000 \
+            and playable(tmp)[0]:
         was = path.stat().st_size // 1048576
         tmp.replace(path)
         log(f"    подрезан с {dur:.0f} до {limit:.0f} с "
             f"({was} -> {path.stat().st_size // 1048576} МБ)")
     else:
         tmp.unlink(missing_ok=True)
+
+
+def cap_clip_resolution(path: Path, max_width: int = CLIP_MAX_WIDTH) -> None:
+    """
+    Даунскейл СВЕРХУ, если клип пришёл тяжелее 1080p.
+
+    CLIP_MAX_WIDTH уже стоит фильтром на входе у pexels и pixabay — там он
+    выбирается из тарифов качества ДО скачивания. Но у archive_org,
+    wikimedia_video и библиотеки Magnific разрешение неизвестно, пока файл
+    не лёг на диск: archive.org отдаёт самый лёгкий файл по БАЙТАМ, не по
+    пикселям, а у Commons и Magnific пиксели в ответе может не быть вовсе.
+    Без этой страховки 4K-хроника проходит любой фильтр только потому, что
+    сильно сжата, и потом декодируется в память кадр за кадром на every
+    прогоне монтажа — раздутый кэш и лишняя память ffmpeg ради разрешения,
+    которого не видно на 1080p-выходе.
+
+    Даунскейл, а не отбраковка: по узким историческим темам материала и
+    так мало, выбрасывать находку из-за одних лишних пикселей — терять то,
+    что не найти второй раз. -c copy здесь не годится, разрешение меняет
+    только перекодирование.
+    """
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
+                        "-show_entries", "stream=width", "-of", "csv=p=0",
+                        str(path)], capture_output=True, text=True)
+    try:
+        width = int(r.stdout.strip())
+    except ValueError:
+        return
+    if width <= max_width:
+        return
+    tmp = path.with_suffix(".scale.mp4")
+    res = subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-i", str(path),
+         "-vf", f"scale={max_width}:-2", "-c:v", "libx264", "-crf", "20",
+         "-preset", "veryfast", "-an", str(tmp)], capture_output=True)
+    if res.returncode == 0 and tmp.exists() and tmp.stat().st_size > 20000 \
+            and playable(tmp)[0]:
+        was = path.stat().st_size // 1048576
+        tmp.replace(path)
+        log(f"    даунскейл {width}p -> {max_width}p "
+            f"({was} -> {path.stat().st_size // 1048576} МБ)")
+    else:
+        tmp.unlink(missing_ok=True)
+
+
+def playable(path: Path):
+    """
+    Открывается ли скачанный файл вообще. Возвращает (годен, чем плох).
+
+    ПОЧЕМУ ЭТО СТОИТ ОТДЕЛЬНОГО ШАГА. На cahokia-01 отбраковка выбросила
+    63 клипа из 70, и почти все — с одним и тем же «файл не открылся».
+    Ролик собрался практически без видео в теле (0.0% при заказанных 21%),
+    а стоило это полного прогона: битый файл занимает номер в пуле, съедает
+    бюджет скачивания и обнаруживается только на отбраковке — то есть
+    после того, как добирать материал уже поздно.
+
+    Причин у битого файла хватает: оборванная докачка, отдача HTML вместо
+    видео, контейнер, который ffmpeg не разбирает, неудачная порезка
+    потоковым копированием. Разбирать их по отдельности незачем — важен
+    один вопрос, и задать его надо СРАЗУ, пока файл ещё можно молча
+    выбросить и взять следующее предложение источника.
+
+    Проверка не верит ffprobe на слово: контейнер бывает цел, а поток
+    внутри не декодируется. Поэтому у видео ещё и вынимается настоящий
+    кадр — ровно то, что потом делает монтаж.
+    """
+    if not path.exists():
+        return False, "файла нет"
+    # Порог по весу РАЗНЫЙ у видео и картинки, и путать их нельзя. Двадцать
+    # килобайт видео — это заведомо заглушка, а картинка такого веса
+    # совершенно нормальна: кадр 640x360 в jpeg занимает пятнадцать. Общий
+    # порог на оба вида честно браковал годные архивные фото.
+    floor = 20000 if path.suffix.lower() in (".mp4", ".m4v") else 1000
+    if path.stat().st_size < floor:
+        return False, f"пустой файл ({path.stat().st_size} Б)"
+    if path.suffix.lower() in (".mp4", ".m4v"):
+        r = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=codec_name,width,height",
+             "-of", "csv=p=0", str(path)], capture_output=True, text=True)
+        if r.returncode != 0 or not r.stdout.strip():
+            return False, "ffprobe не видит видеопотока"
+        probe = subprocess.run(
+            ["ffmpeg", "-v", "error", "-i", str(path), "-frames:v", "1",
+             "-f", "null", "-"], capture_output=True)
+        if probe.returncode != 0:
+            return False, f"поток не декодируется ({r.stdout.strip()})"
+        return True, r.stdout.strip()
+    from PIL import Image
+    try:
+        with Image.open(path) as im:
+            im.verify()
+        with Image.open(path) as im:      # verify() закрывает файл для чтения
+            im.convert("RGB").load()
+    except Exception as e:
+        return False, f"картинка не открылась: {e}"
+    return True, ""
 
 
 def log(*a):
@@ -135,13 +294,37 @@ def tts_block(text, out_mp3: Path, voice_id, api_key, stability=0.50,
         vs2.pop("speed", None)
         attempts.append(vs2)
     last_err = None
+    req_timeout = tts_timeout(text)
     for body_vs in attempts:
-        r = requests.post(url, timeout=TIMEOUT,
-                          headers={"xi-api-key": api_key,
-                                   "Content-Type": "application/json"},
-                          json={"text": text,
-                                "model_id": model_id,
-                                "voice_settings": body_vs})
+        # СЕТЕВОЙ ОБРЫВ — НЕ ПОВОД ТЕРЯТЬ УЖЕ ОПЛАЧЕННЫЕ БЛОКИ. Кэш
+        # сохраняется только после успеха ВСЕГО этапа 1 (см. CLAUDE.md),
+        # а build_voice идёт по блокам подряд: одна пропавшая посреди
+        # ответа TCP-сессия роняла прогон целиком, и уже оплаченные
+        # блоки синтеза улетали в никуда — retry заново заплатил бы за
+        # них второй раз. ReadTimeout и ConnectionError — это не «модель
+        # отклонила запрос», у них нет смысла менять voice_settings,
+        # здесь просто нужно попробовать ту же самую посылку ещё раз.
+        # Таймаут — по длине текста (tts_timeout), не постоянной цифрой:
+        # иначе на длинных блоках все три попытки бьются в один и тот же
+        # слишком тесный потолок и гарантированно проигрывают.
+        r = None
+        for net_attempt in range(3):
+            try:
+                r = requests.post(url, timeout=req_timeout,
+                                  headers={"xi-api-key": api_key,
+                                           "Content-Type": "application/json"},
+                                  json={"text": text,
+                                        "model_id": model_id,
+                                        "voice_settings": body_vs})
+                break
+            except requests.exceptions.RequestException as e:
+                if net_attempt + 1 >= 3:
+                    raise RuntimeError(
+                        f"ElevenLabs не ответил после 3 попыток: {e}") from e
+                wait = 5 * (net_attempt + 1)
+                log(f"  ! сеть ElevenLabs: {e} — повтор через {wait} с "
+                    f"({net_attempt + 1}/3)")
+                time.sleep(wait)
         if r.status_code == 200:
             data = r.json()
             import base64
@@ -199,16 +382,30 @@ def sentence_marks(text, align, offset):
     """
     Превращает посимвольные тайм-коды в границы предложений.
     Это и есть точки, где робот будет менять кадр.
+
+    Точка перед пробелом сама по себе границу не держит: у инициального
+    сокращения из БУКВЫ-ТОЧКИ-БУКВЫ-ТОЧКИ (R.C., U.S.) последняя точка
+    тоже стоит перед пробелом и неотличима от конца предложения. На
+    georgia-guidestones-01 «R.C. Christian» встречается тринадцать раз, и
+    без этой проверки почти каждое упоминание рвало реплику пополам —
+    "R." отдельной репликой, "C. Christian was…" следующей — а дальше по
+    этому же месту не находил себя youtube.chapters (та же граница у
+    youtube.first_sentence). Все точки внутри такого сокращения, включая
+    последнюю, из кандидатов на разрыв исключены.
     """
     chars, starts, ends = align["chars"], align["starts"], align["ends"]
     if not chars:
         return []
+    joined = "".join(chars)
+    abbrev_end = {m.end() - 1
+                  for m in re.finditer(r"\b(?:[A-Z]\.){2,}", joined)}
     marks, buf, buf_start = [], [], None
     for i, ch in enumerate(chars):
         if buf_start is None:
             buf_start = starts[i]
         buf.append(ch)
-        if ch in ".!?" and i + 1 < len(chars) and chars[i + 1] in " \n":
+        if ch in ".!?" and i + 1 < len(chars) and chars[i + 1] in " \n" \
+                and i not in abbrev_end:
             marks.append({"text": "".join(buf).strip(),
                           "start": round(buf_start + offset, 3),
                           "end": round(ends[i] + offset, 3)})
@@ -622,11 +819,22 @@ def build_images(job, prompts, out: Path, xai_model, xai_key):
     share = float(job.get("magnific_share", MAGNIFIC_SHARE))
     mag_key = magnific.available()
     if not mag_key:
-        log("  ! MAGNIFIC_API_KEY не задан — всё рисует xAI")
+        # Отключён выключателем или ключа нет — причины разные, и в логе
+        # они должны различаться: «не задан ключ» на отключённом канале
+        # отправляет чинить то, что не сломано.
+        why = ("отключён (magnific.MAGNIFIC_ENABLED)"
+               if magnific.key() else "MAGNIFIC_API_KEY не задан")
+        log(f"  Magnific {why} — всё рисует xAI")
         share = 0.0
     if not xai_key:
-        log("  ! XAI_API_KEY не задан — всё рисует Magnific")
-        share = 1.0
+        if mag_key:
+            log("  ! XAI_API_KEY не задан — всё рисует Magnific")
+            share = 1.0
+        else:
+            # Оба поставщика недоступны. Сваливать всё на выключенный
+            # Magnific бессмысленно и врёт в логе: пусть причина будет
+            # названа здесь, а не в невнятном «генерация вернула ноль».
+            log("  ! ни XAI_API_KEY, ни Magnific — рисовать нечем")
 
     mag, xai = split_providers(prompts, share, seed=style_seed(job["id"]))
     log(f"  делёж: Magnific {len(mag)}, xAI {len(xai)} "
@@ -732,8 +940,8 @@ def src_pexels(q, n):
         out.append({"url": best["link"], "src": "pexels",
                     "dur": v.get("duration", 0), "kind": "video",
                     "tags": slug, "title": slug})
-        if len(out) >= n:
-            break
+    # n ЛУЧШИХ, а не первых n прошедших порог — см. relevance_score.
+    out = _best_by_relevance(out, q, n)
     if longish:
         log(f"    pexels «{q}»: отсеяно {longish} длиннее "
             f"{MAX_CLIP_SECONDS * 2} с")
@@ -744,29 +952,101 @@ def src_pexels(q, n):
 
 def relevant(query: str, tags: str) -> bool:
     """
-    Находка должна пересекаться с запросом по смыслу.
+    Похоже ли найденное на то, что искали.
 
-    Стоки ищут по ИЛИ и добирают выдачу чем попало. Мягкая проверка
-    (1 совпадение) пропускала бананы на запрос про свечи. Теперь:
-      • 1–2 значимых слова в запросе → достаточно одного совпадения
-      • 3+ слова → нужно хотя бы 2, либо ≥40% слов запроса
+    Стоки ищут по ИЛИ и добирают выдачу чем попало, лишь бы отдать
+    запрошенное число. Замер на первом прогоне pawn-01: запрос
+    «candle lamp light on aged wood» принёс бананы, петуха с курами,
+    помаду, пиво, фейерверк и статую Свободы.
+
+    ОДНОГО СОВПАДЕНИЯ МАЛО, и это замерено на dead-internet-01. Там
+    проверка пропускала файл по любому единственному общему слову, и по
+    запросу про клавиатуру в ролик уезжали жареные кофейные зёрна —
+    у ролика в тегах стояло «laptop», потому что кофе на стоках снимают
+    рядом с ноутбуком. Дальше за каждый такой файл платилось дважды:
+    скачиванием и запросом к зрению, которое его и отбраковывало. Из 142
+    клипов зрение забраковало 105.
+
+    Поэтому два правила вместо одного:
+
+    1. СЛУЖЕБНЫЕ СЛОВА НЕ СЧИТАЮТСЯ УЛИКОЙ. «night», «dark», «room»,
+       «light», «background» стоят в тегах у половины стока и совпадают
+       с чем угодно. Совпадение по ним не значит ничего.
+    2. ЧЕМ БОГАЧЕ ОПИСАНИЕ, ТЕМ СТРОЖЕ СПРОС. У pixabay теги списком в
+       десяток слов — там требуем два совпадения. У pexels «описание»
+       это адрес страницы вида /video/server-room-4990243, три слова
+       всего, и требовать двух значило бы выбрасывать годное: там хватает
+       одного.
+
+    Проверка по-прежнему НЕ отбирает лучшее — это работа зрения. Она
+    отсеивает заведомо чужое, но теперь делает это до того, как за файл
+    заплачено.
     """
-    stop = {"the", "a", "an", "of", "and", "or", "in", "on", "at", "to",
-            "with", "closeup", "close", "up", "detail", "shot", "old",
-            "cinematic", "slow", "pan", "wide", "aerial", "footage",
-            "video", "clip", "overcast", "dawn", "sunset", "night"}
-    want = {w for w in re.findall(r"[a-z]+", query.lower())
-            if len(w) > 2 and w not in stop}
+    want, have, hits = _match_words(query, tags)
     if not want:
         return True
-    have = set(re.findall(r"[a-z]+", (tags or "").lower()))
-    if not have:
-        return False
-    hit = len(want & have)
-    if len(want) <= 2:
-        return hit >= 1
-    need = max(2, int(len(want) * 0.4 + 0.999))
-    return hit >= need
+    need = 2 if (len(want) >= 3 and len(have) >= 5) else 1
+    return len(hits) >= need
+
+
+# Служебные слова запроса: в улику не годятся.
+_REL_STOP = {"the", "a", "an", "of", "and", "or", "in", "on", "at", "to",
+             "with", "closeup", "close", "up", "detail", "shot", "old",
+             "cinematic", "pan", "wide", "aerial", "clip",
+             "overcast", "dawn", "sunset"}
+# Слова, которые есть у всего подряд: улика нулевой ценности. Сюда же
+# «video» — оно стоит в КАЖДОМ адресе страницы pexels.
+_REL_WEAK = {"dark", "night", "light", "lights", "room", "background",
+             "view", "scene", "macro", "slow", "motion", "footage", "video",
+             "stock", "abstract", "beautiful", "nature", "time", "lapse",
+             "timelapse", "white", "black", "colour", "color", "screen"}
+
+
+def _match_words(query: str, tags: str):
+    """Значимые слова запроса, слова находки и их пересечение."""
+    want = {w for w in re.findall(r"[a-z]+", (query or "").lower())
+            if len(w) > 2 and w not in _REL_STOP and w not in _REL_WEAK}
+    have = {w for w in re.findall(r"[a-z]+", (tags or "").lower())
+            if w not in _REL_WEAK}
+    return want, have, want & have
+
+
+def relevance_score(query: str, tags: str) -> float:
+    """
+    НАСКОЛЬКО находка близка к запросу, а не просто «близка ли».
+
+    relevant() отвечает да/нет по порогу, и источник берёт ПЕРВЫЕ n
+    прошедших. Но выдача стока отсортирована по популярности, а не по
+    теме: первыми идут самые скачиваемые ролики, едва зацепившие запрос
+    одним словом. Замер на georgia-guidestones-01: по запросу «rural
+    Georgia main street» в пул уехало 11 файлов, зрение оставило ноль —
+    все были просто «улица», и за каждый заплачено дважды, скачиванием
+    и запросом к зрению.
+
+    Здесь тот же разбор возвращает ЧИСЛО, а источник берёт n ЛУЧШИХ.
+    Длинное слово весит больше короткого: «guidestones» и «elberton»
+    отличают тему, «field» и «road» есть у половины стока.
+    """
+    want, have, hits = _match_words(query, tags)
+    if not want:
+        return 0.0
+    score = 0.0
+    for w in hits:
+        score += 3.0 if len(w) >= 7 else 2.0
+    # Доля запроса, которую находка закрыла: два слова из трёх лучше двух
+    # из десяти. Иначе длинный запрос всегда выигрывал бы у точного.
+    return round(score + 2.0 * len(hits) / len(want), 3)
+
+
+def _best_by_relevance(cands, q, n):
+    """
+    n лучших по совпадению с запросом, порядок источника — как тай-брейк.
+
+    Сортировка УСТОЙЧИВАЯ: при равном совпадении остаётся выдача
+    источника, то есть его собственное представление о качестве.
+    """
+    ranked = sorted(cands, key=lambda c: -relevance_score(q, c.get("tags", "")))
+    return ranked[:n]
 
 
 def script_grounded_queries(job, limit: int = 14) -> list:
@@ -870,8 +1150,9 @@ def src_pixabay(q, n):
         out.append({"url": link, "src": "pixabay",
                     "dur": v.get("duration", 0), "kind": "video",
                     "tags": tags, "title": tags})
-        if len(out) >= n:
-            break
+    # n ЛУЧШИХ, а не первых n прошедших порог — см. relevance_score.
+    # Именно здесь ролик набирал по десятку «просто улиц» на запрос.
+    out = _best_by_relevance(out, q, n)
     if longish:
         log(f"    pixabay «{q}»: отсеяно {longish} длиннее "
             f"{MAX_CLIP_SECONDS * 2} с")
@@ -1188,11 +1469,23 @@ def src_loc(q, n):
 
 
 def src_wikimedia(q, n):
-    """Commons. Ключ не нужен, но User-Agent обязателен."""
+    """
+    Commons. Ключ не нужен, но User-Agent обязателен.
+
+    gsrnamespace=6 ОБЯЗАТЕЛЕН, и его отсутствие — не мелочь. Без него
+    поиск идёт по основному пространству имён (статьи), а файлы Commons
+    живут в пространстве File:, то есть в шестом. Результат — стабильный,
+    молчаливый ноль: HTTP 200, пустой список, жаловаться не на что.
+    Замерено на трёх запросах подряд: без namespace — 0 страниц, с ним —
+    12, из которых 3-4 проходят по лицензии. Ровно так этот источник и
+    отдавал ноль на всех запросах ролика dead-internet-01, ни разу не
+    подав признака неисправности.
+    """
     r = requests.get("https://commons.wikimedia.org/w/api.php", timeout=TIMEOUT,
                      headers=UA,
                      params={"action": "query", "generator": "search",
                              "gsrsearch": f"{q} filetype:bitmap",
+                             "gsrnamespace": 6,
                              "gsrlimit": n * 2, "prop": "imageinfo",
                              "iiprop": "url|extmetadata", "iiurlwidth": 1920,
                              "format": "json"})
@@ -1226,6 +1519,7 @@ def src_wikimedia_video(q, n):
                      headers=UA,
                      params={"action": "query", "generator": "search",
                              "gsrsearch": f"{short_query(q)} filetype:video",
+                             "gsrnamespace": 6,   # см. src_wikimedia
                              "gsrlimit": n * 2, "prop": "imageinfo",
                              "iiprop": "url|extmetadata|size",
                              "format": "json"})
@@ -1286,9 +1580,14 @@ ALL_SOURCES = {
     "openverse": src_openverse,
     "loc": src_loc,
     "nasa": src_nasa,
-    # последняя очередь, в умолчаниях отсутствуют намеренно
-    "magnific_image": src_magnific_image,
-    "magnific_video": src_magnific_video,
+    # Библиотеки Magnific здесь НЕТ намеренно, и это не забывчивость.
+    #
+    # Списание суточного лимита живёт в magnific_fallback: он считает
+    # фактически скачанное и зовёт note_library. Источник, выбранный по
+    # имени из спецификации, идёт в gather напрямую, мимо этого счёта, —
+    # то есть качает из библиотеки, не списывая лимит вообще. Правило
+    # «обращаться к библиотеке только доборным проходом» так перестаёт
+    # быть правилом, которое можно нарушить опечаткой в спецификации.
 }
 
 VIDEO_SOURCES = [src_pexels, src_pixabay, src_archive_org, src_wikimedia_video]
@@ -1369,7 +1668,8 @@ def fetch(url, dst: Path, limit=MAX_FILE_BYTES, seconds=FETCH_SECONDS):
         return False
 
 
-def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET):
+def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET,
+          max_total=None):
     """
     Обходит источники и качает материал, укладываясь в отведённое время.
 
@@ -1387,6 +1687,14 @@ def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET):
     clip_000 другим содержимым — и номера, которые человек отметил на листе
     отбора, стали бы указывать на другие файлы. Уже скачанные ссылки
     пропускаются: платить временем за то же самое незачем.
+
+    max_total — жёсткий потолок на число СКАЧАННЫХ файлов за этот вызов.
+    Нужен источникам с суточным лимитом (библиотека Magnific): без него
+    per_query ограничивает только штук на один запрос, а сам вызов, идя по
+    списку голодных запросов, легко уходит далеко за оставшийся дневной
+    остаток — ровно это и случилось на georgia-guidestones-01 (31 файл
+    при потолке 12), когда отбраковка оставила без материала сразу много
+    запросов за один прогон.
     """
     out.mkdir(parents=True, exist_ok=True)
     deadline = time.time() + budget
@@ -1409,6 +1717,7 @@ def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET):
 
     got = []
     by_src = {}
+    bad_files = 0
     for q in queries:
         for fn in sources:
             if time.time() > deadline:
@@ -1430,19 +1739,36 @@ def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET):
                 ext = ".mp4" if it["kind"] == "video" else ".jpg"
                 dst = out / f"{kind}_{n:03d}_{it['src']}{ext}"
                 if fetch(it["url"], dst):
-                    # Видео подрезаем СРАЗУ. Дальше файл живёт в кэше между
-                    # прогонами, и лишние секунды в нём — это лишние
-                    # мегабайты на каждой пересборке.
+                    # Видео подрезаем и даунскейлим СРАЗУ. Дальше файл живёт
+                    # в кэше между прогонами, и лишние секунды и пиксели в
+                    # нём — это лишние мегабайты на каждой пересборке.
                     if it["kind"] == "video":
                         trim_long_clip(dst)
+                        cap_clip_resolution(dst)
+                    # ПРОВЕРКА ЗДЕСЬ, А НЕ НА ОТБРАКОВКЕ. Битый файл, дошедший
+                    # до пула, занимает номер и съедает бюджет скачивания, а
+                    # узнаётся о нём через полчаса — когда добирать поздно.
+                    # Здесь он просто выбрасывается, и цикл берёт следующее
+                    # предложение источника, ничего на него не потратив.
+                    ok_file, why_bad = playable(dst)
+                    if not ok_file:
+                        log(f"  ! {dst.name}: {why_bad} — выбрасываю")
+                        dst.unlink(missing_ok=True)
+                        bad_files += 1
+                        continue
                     # запрос сохраняется рядом с файлом: по нему build.py потом
                     # подбирает кадр под то, что звучит в эту секунду
                     got.append({"file": str(dst), "q": q, **it})
                     log(f"  {kind} {n:03d}: {it['src']}  «{q}»")
                     n += 1
-            if time.time() > deadline:
+                    if max_total is not None and len(got) >= max_total:
+                        log(f"  … суточный лимит выбран, беру что успел")
+                        break
+            if time.time() > deadline or (max_total is not None
+                                          and len(got) >= max_total):
                 break
-        if time.time() > deadline:
+        if time.time() > deadline or (max_total is not None
+                                      and len(got) >= max_total):
             break
     man.write_text(json.dumps(old + got, indent=1))
     # Сколько предложил КАЖДЫЙ источник. Источник, стабильно отдающий ноль,
@@ -1452,6 +1778,12 @@ def gather(queries, per_query, sources, out: Path, kind, budget=GATHER_BUDGET):
     if by_src:
         log("  по источникам: " + ", ".join(
             f"{s} {c}" for s, c in sorted(by_src.items(), key=lambda x: -x[1])))
+    # Битые названы вслух. Источник, у которого не открывается половина
+    # отданного, — это не «немного брака», а сломанный источник, и молчание
+    # о нём однажды уже стоило ролика без видео.
+    if bad_files:
+        log(f"  ! битых при скачивании: {bad_files} — выброшены сразу, "
+            f"в пул не попали")
     log(f"  {kind}: добавлено {len(got)}, всего {len(old) + len(got)}")
     return got
 
@@ -1591,7 +1923,23 @@ def magnific_fallback(job, work: Path, queries, got, folder, kind, media):
     """
     if not magnific.available():
         return []
+    # СЫТ ЛИ ЗАПРОС — СПРАШИВАЕМ У ДИСКА, А НЕ У ЭТОГО ПРОГОНА.
+    #
+    # gather возвращает только что скачанное, и на пересборке из кэша это
+    # пустой список: всё уже лежит на диске, качать нечего. Считать по
+    # нему значит объявить голодными ВСЕ запросы и вычерпать суточный
+    # лимит библиотеки на материал, который уже есть, — причём на каждой
+    # пересборке заново, а пересборок у ролика пять-десять.
+    #
+    # Поэтому смотрим в манифест: там лежит всё, что когда-либо скачано
+    # по этой папке, вместе с запросом, по которому оно пришло.
     fed = {row.get("q") for row in got}
+    man = work / folder / "_manifest.json"
+    if man.exists():
+        try:
+            fed |= {row.get("q") for row in json.loads(man.read_text())}
+        except (json.JSONDecodeError, OSError):
+            pass
     starving = [q for q in queries if q not in fed]
     if not starving:
         return []
@@ -1604,14 +1952,62 @@ def magnific_fallback(job, work: Path, queries, got, folder, kind, media):
         f"материала, лимита на сутки осталось {left}")
     src = [src_magnific_video if media == "video" else src_magnific_image]
     # По одному-два файла на запрос: лимит маленький, и размазать его по
-    # разным темам полезнее, чем закрыть одну.
+    # разным темам полезнее, чем закрыть одну. max_total=left — жёсткий
+    # потолок на СУММУ по всем голодным запросам этого вызова, а не
+    # только «есть ли вообще остаток»: без него список голодных запросов
+    # длиннее left/2 пробивал суточный лимит библиотеки насквозь.
     extra = gather(starving, 2, src, work / folder, kind,
-                   budget=min(GATHER_BUDGET, 180))
+                   budget=min(GATHER_BUDGET, 180), max_total=left)
     n = sum(1 for row in extra if row.get("src") == "magnific")
     if n:
         magnific.note_library(n)
     log(f"  {magnific.report()}")
     return extra
+
+
+def purge_broken(work: Path):
+    """
+    Выметает из УЖЕ ЛЕЖАЩЕГО пула файлы, которые не открываются.
+
+    Проверка при скачивании (playable в gather) закрывает дорогу новым
+    битым файлам, но ничего не делает с теми, что накопились раньше и
+    уехали в кэш Actions. А там их может быть большинство: на cahokia-01
+    в пуле осело 63 неоткрывающихся клипа из 70, и они переживали бы
+    любую пересборку — кэш восстанавливается целиком, номера заняты,
+    место занято, а отбраковка честно браковала их снова и снова.
+
+    Метётся один раз перед сбором. Файл удаляется вместе со своей записью
+    в манифесте: запись без файла превращает материал в «неизвестного
+    происхождения», а такой не сводится с близнецами и не подбирается по
+    смыслу. Дыры в нумерации безвредны — следующий номер берётся от
+    наибольшего, а не по счёту файлов.
+    """
+    total = 0
+    for folder, kind in (("footage", "clip"), ("archive", "arch")):
+        out = work / folder
+        if not out.exists():
+            continue
+        gone = set()
+        for f in sorted(out.glob(f"{kind}_*")):
+            ok, why = playable(f)
+            if not ok:
+                log(f"  ! {f.name}: {why} — выметаю из пула")
+                gone.add(f.name)
+                f.unlink(missing_ok=True)
+        if not gone:
+            continue
+        total += len(gone)
+        man = out / "_manifest.json"
+        if man.exists():
+            try:
+                rows = json.loads(man.read_text())
+            except json.JSONDecodeError:
+                rows = []
+            man.write_text(json.dumps(
+                [r for r in rows
+                 if Path(r.get("file", "")).name not in gone], indent=1))
+    if total:
+        log(f"── вымел {total} битых файлов из пула прошлых прогонов")
 
 
 def fetch_material(job, work: Path):
@@ -1622,6 +2018,7 @@ def fetch_material(job, work: Path):
     правятся после того, как посмотришь, что по ним нашлось, и гонять ради
     этого заново озвучку за деньги незачем.
     """
+    purge_broken(work)
     vids = sources_from(job, "video_sources", VIDEO_SOURCES)
     phot = sources_from(job, "photo_sources", PHOTO_SOURCES)
     # ЗАПАС 40%. Робот отбраковывает материал сам (vet.py), и часть подборки
@@ -1635,7 +2032,18 @@ def fetch_material(job, work: Path):
     # получасовой ролик, и их пришлось крутить по кругу десятки раз. У фото
     # выход куда лучше (на том же прогоне годных было две трети), поэтому
     # множитель для архива не трогаем.
-    over = float(job.get("material_overshoot", 1.4))
+    # ЗАПАС ПОДНЯТ С 1.4 ДО 1.8 ПО ЗАМЕРУ, а не на глаз. На cahokia-01
+    # отбраковка оставила 7 клипов из 70 — брак 90%, и вторая волна
+    # докачки уже ничего не спасала, потому что запросов к тому моменту
+    # было опрошено всё. Прежние 1.4 рассчитывались на брак около трети;
+    # реальный разброс по темам оказался куда шире, а перебор не стоит
+    # ничего: лишнее просто не попадает в монтаж.
+    #
+    # Главная часть той же беды чинится не здесь, а в gather(): битые
+    # файлы теперь выбрасываются сразу после скачивания (playable) и не
+    # занимают места в пуле. Запас и проверка работают в паре — без
+    # проверки любой запас уходил в файлы, которые не открываются.
+    over = float(job.get("material_overshoot", 1.8))
     footage_q = focused_search_list(job, job.get("footage_queries") or [])
     archive_q = focused_search_list(job, job.get("archive_queries") or [])
     if len(footage_q) > len(job.get("footage_queries") or []):
@@ -1644,11 +2052,17 @@ def fetch_material(job, work: Path):
     log("── футажи (" + ", ".join(f.__name__[4:] for f in vids) +
         f", запас x{over:g})")
     got_v = gather(footage_q, max(1, round(5 * over)), vids,
-                   work / "footage", "clip")
+                   work / "footage", "clip",
+                   budget=gather_budget(footage_q))
+    # ФОТО КАЧАЕМ БОЛЬШЕ, ЧЕМ ВИДЕО, и это переворот против канала о
+    # находках: там на кадр шёл сток, а фото закрывало паузы. Здесь тело
+    # ролика на 70-80% состоит из изображений, а видео занимает 20-30%
+    # только первых минут. Множители поменялись местами ровно поэтому.
     log("── реальные фото из архивов (" +
         ", ".join(f.__name__[4:] for f in phot) + ")")
     got_a = gather(archive_q, max(1, round(6 * over)), phot,
-                   work / "archive", "arch")
+                   work / "archive", "arch",
+                   budget=gather_budget(archive_q))
 
     # И только теперь — библиотека Magnific, по тем запросам, где пусто.
     magnific_fallback(job, work, footage_q, got_v,
@@ -1683,19 +2097,31 @@ def refill_after_vet(job, work: Path):
     уедет тот же брак вторым заходом.
     """
     rej = vet.rejected_from(work)
+    # НЕПРОСМОТРЕННОЕ — НЕ БРАК. Отбраковка останавливается, когда годного
+    # набралось с запасом (vet.pool_budget), и остаток помечает отказом:
+    # монтажу этого достаточно. Но доля брака считается здесь, и если
+    # считать её вместе с непросмотренным, выходит «отбраковка съела
+    # половину пула» на ровном месте — и запускается вторая волна
+    # скачивания, которой ничего не нужно. Она не бесплатна: время прогона
+    # и суточный лимит библиотеки Magnific.
+    skip = vet.skipped_from(work)
 
     def counts(folder, pat, kind):
         files = list((work / folder).glob(pat))
         bad = set(rej.get(kind, []))
-        good = 0
+        untouched = set(skip.get(kind, []))
+        good = judged = 0
         for p in files:
             try:
                 n = int(p.name.split("_")[1])
             except (IndexError, ValueError):
                 continue
+            if n in untouched:
+                continue
+            judged += 1
             if n not in bad:
                 good += 1
-        return good, len(files)
+        return good, judged
 
     good_c, total_c = counts("footage", "clip_*", "clip")
     good_a, total_a = counts("archive", "arch_*", "arch")
@@ -1706,7 +2132,8 @@ def refill_after_vet(job, work: Path):
     need_arch = good_a < REFILL_MIN_ARCH or rate_a >= REFILL_REJECT_RATE
     if not (need_clips or need_arch):
         log(f"  добор после отбраковки не нужен: "
-            f"клипов годных {good_c}/{total_c}, архива {good_a}/{total_a}")
+            f"клипов годных {good_c} из {total_c} просмотренных, "
+            f"архива {good_a} из {total_a}")
         return False
 
     log(f"── вторая волна материала "

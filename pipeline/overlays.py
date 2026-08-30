@@ -148,14 +148,36 @@ def make_motes(out: Path, seconds=20, count=110, seed=1,
     frames = int(round(seconds * FPS))
     margin = 40
     min_period = H + 2 * margin
+
+    # МЕДЛЕННАЯ ПЫЛЬ ТРЕБУЕТ ДЛИННОЙ ПЕТЛИ, и это не настройка, а
+    # арифметика. Чтобы частица прошла кадр целиком и петля при этом
+    # сомкнулась, за петлю она обязана пройти ЦЕЛОЕ число полос высотой
+    # min_period. При петле в двадцать секунд это минимум 58 px/s, а
+    # заказаны были 16-34: `int(v * seconds / min_period)` давал ноль,
+    # k зажимался в единицу, period выходил 320-680 пикселей вместо 1160,
+    # и вся пыль жила в верхней трети кадра, перескакивая на середине.
+    # Нижние две трети оставались пустыми.
+    #
+    # Формула та же, что у искр, — но искры летят 80-120 px/s и проходят
+    # 1600-2400 пикселей за петлю, поэтому у них это никогда не всплывало.
+    v_min = min_period / seconds
+    lo, hi = px_sec
+    if hi < v_min:
+        raise ValueError(
+            f"пыль {lo}-{hi} px/s не укладывается в петлю {seconds} с: "
+            f"чтобы пройти кадр целиком, нужно от {v_min:.0f} px/s. "
+            f"Либо ускорить пыль, либо удлинить петлю (см. LOOP_SECONDS).")
+    lo = max(lo, v_min)
+
     tmp = out.parent / f"_mo_{seed}"
     tmp.mkdir(parents=True, exist_ok=True)
 
     parts = []
     for i in range(count):
-        v = rng.uniform(*px_sec)
-        k = max(1, int(v * seconds / min_period))
+        v = rng.uniform(lo, hi)
+        k = int(v * seconds / min_period)        # >= 1 по построению
         period = v * seconds / k
+        assert period >= min_period - 1e-6, (period, min_period)
         cycles = max(1, round(rng.uniform(*flicker) * seconds / math.tau))
         near = i % 3 == 0                      # ближний план, вне фокуса
         parts.append(dict(
@@ -332,8 +354,21 @@ MAKERS = {
 }
 
 
-def make(kind: str, variant: int, out: Path, seconds=20):
+# Длина петли своя у каждой семьи, и у пыли она втрое длиннее прочих.
+# Причина арифметическая, не вкусовая: пыль оседает медленно, а петля
+# смыкается только если частица проходит за неё целое число высот кадра.
+# Двадцать секунд требуют от пыли 58 px/s — это уже не оседание, а
+# падение. Шестьдесят секунд опускают порог до 20 px/s, то есть до
+# заказанной скорости. Подробности — в make_motes.
+#
+# Побочная выгода: на сорокапятиминутном ролике двадцатисекундная петля
+# повторяется полторы сотни раз, шестидесятисекундная — сорок пять.
+LOOP_SECONDS = {"motes": 60, "stars": 20, "sparks": 20, "mist": 20}
+
+
+def make(kind: str, variant: int, out: Path, seconds=None):
     """Один слой по имени семьи и номеру варианта."""
+    seconds = seconds or LOOP_SECONDS.get(kind, 20)
     if kind == "mist":
         return make_mist(out, seconds=seconds, seed=variant,
                          opacity=(0.38, 0.50, 0.62)[max(0, min(2, variant - 1))])
