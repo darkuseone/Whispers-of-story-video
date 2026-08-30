@@ -1,0 +1,95 @@
+══════════════════════════════════════
+ANCIENT WHISPERS — YOUTUBE PACK
+id: gateway-process-01
+date: 2026-08-30
+══════════════════════════════════════
+
+## TITLE
+The CIA's Classified Holographic Universe: The Gateway Process
+
+## TITLE ALTERNATIVES
+1. Inside the Declassified 1983 CIA Consciousness Report: The Gateway Files
+2. Why Military Intelligence Investigated the Holographic Universe: The Secret McDonnell Report
+3. Beyond Spacetime: The Declassified 1983 Army Intelligence Assessment
+
+## DESCRIPTION
+In 1983, a senior U.S. Army Intelligence officer was ordered to investigate a secretive acoustic training protocol in the mountains of Virginia. His classified 29-page assessment did not describe weapons or satellites, but a rigorous synthesis of quantum mechanics, neurophysiology, and the holographic nature of reality.
+
+What began as Cold War anxiety over Soviet psychotronic research resulted in one of the most astonishing philosophical and scientific dossiers in military history. From the acoustic chambers of the Monroe Institute to the holographic universe models of David Bohm and Karl Pribram, this is the calm, investigative history of the CIA's Gateway Process, the enigma of the missing Page 25, and what happens when modern physics confronts the boundaries of human perception.
+
+Chapters
+00:00  The Document in the CIA Reading Room
+...    The Cold War Ghost Race
+...    The Pragmatist in Uniform
+...    The Virginia Sanctuary
+...    The Architecture of Brain Synchronization
+...    Beyond Hypnosis and Zen
+...    The Holographic Brain
+...    David Bohm and the Quantum Sea
+...    The Universal Energy Matrix
+...    The Geometry of the Cosmic Torus
+...    The Edge of Spacetime and Planck Interval
+...    The Enigma of Page Twenty-Five
+...    Project Stargate and the Intelligence Dilemma
+...    The Fragile Boundary of Consciousness
+(точные секунды подставит конвейер после сборки из субтитров; порядок и названия глав здесь
+ обязаны совпасть с youtube.chapters в JSON)
+
+Sources
+- McDonnell, Wayne (Lt. Col., U.S. Army). "Analysis and Assessment of Gateway Process." Department of the Army, INSCOM, Fort Meade, MD (June 9, 1983; CIA FOIA Declassification CIA-RDP96-00788R001700210016-5).
+- Bohm, David. "Wholeness and the Implicate Order." Routledge & Kegan Paul (1980).
+- Pribram, Karl. "Languages of the Brain: Experimental Paradoxes and Principles in Neuropsychology." Prentice-Hall (1971).
+- Monroe, Robert. "Journeys Out of the Body" (1971) & "Far Journeys" (1985). Doubleday.
+- Bentov, Itzhak. "Stalking the Wild Pendulum: On the Mechanics of Consciousness." E. P. Dutton (1977).
+- Talbot, Michael. "The Holographic Universe." HarperCollins (1991).
+- Schnabel, Jim. "Remote Viewers: The Secret History of America's Psychic Spies." Dell Publishing (1997).
+- Marks, John. "The Search for the 'Manchurian Candidate': The CIA and Mind Control." Times Books (1979).
+
+Notes
+Historical and philosophical note: The Gateway Process assessment reflects the theoretical models synthesized by Lt. Col. Wayne McDonnell in 1983, incorporating the holographic brain theory of Karl Pribram and the quantum mechanics of David Bohm. These models remain subjects of ongoing inquiry and debate in theoretical physics and the philosophy of mind.
+
+## TAGS (10–15)
+cia gateway process, gateway experience, monroe institute, robert monroe, holographic universe, david bohm, karl pribram, declassified cia documents, project stargate, hemi sync, page 25 gateway, wayne mcdonnell, quantum consciousness
+
+## HASHTAGS
+#ciaarchives #history #consciousness #quantumphysics #gatewayprocess
+
+## COVER PROMPT (xAI / image model)
+A dark cinematic 16:9 film still of a weathered 1983 military intelligence document resting on an oak desk in a shadowy archive room, glowing cold cyan beam of coherent laser light illuminating the page, dramatic chiaroscuro lighting, dust motes in the air, HUGE bold bright yellow gold ALL-CAPS text "PAGE 25 FOUND" in the upper half, thick letters, phone-readable, no people facing camera, no logos, no extra small text.
+
+## COVER TEXT OPTIONS
+1. PAGE 25 FOUND
+2. THE 1983 CIA DOSSIER
+
+## YOUTUBE COMMUNITY POST
+In June 1983, a senior U.S. Army Intelligence officer finished a 29-page classified assessment that read more like theoretical physics than a military briefing. Tasked with evaluating the Monroe Institute's Gateway Process, Lt. Col. Wayne McDonnell synthesized quantum mechanics, neurobiology, and David Bohm's holographic universe to explain altered states of consciousness. Our new deep documentary explores the real science, the Cold War intelligence archives, and the long-lost Page 25 that was withheld for nearly two decades. The full investigation is now available.
+
+## COMMUNITY IMAGE PROMPTS
+1. Cinematic 1:1 square still of an open declassified CIA folder from 1983 with typewriter text resting on a dark desk, subtle cyan and amber rim lighting, moody atmospheric archive setting, no people.
+2. Cinematic 1:1 square scientific visualization of a subtle holographic interference pattern of light floating in dark space, delicate golden filaments and quantum geometry, no text.
+
+## SHORTS
+### Short 1 — Hook
+Title: Why the CIA Studied the Holographic Universe in 1983
+Question on screen: Why did the CIA investigate the holographic universe?
+Pitch: Reveals the surprising Cold War intelligence origins of the 1983 declassified Gateway Process report and how the Pentagon bridged neuroscience with quantum theory.
+
+### Short 2 — Revelation
+Title: The Mystery of Missing Page 25
+Question on screen: What was really hidden on missing Page 25?
+Pitch: Explains why Page 25 was missing from CIA declassification for 18 years and what Wayne McDonnell actually wrote about the concept of the Absolute.
+
+## PINNED COMMENT (first comment under the video)
+Thank you for spending your evening with us exploring the quiet archives of the Gateway Process.
+When you read the declassified 1983 assessment, which aspect surprises you more: the military's serious engagement with quantum physics, or the philosophical realization of the missing Page 25?
+If you value calm, carefully researched deep-dive documentaries into forgotten archives and the history of knowledge, please consider subscribing and joining our community.
+Full historical sources and document citations are listed in the description below.
+
+## POSTING CHECKLIST
+- [x] JSON лежит в jobs/gateway-process-01.json
+- [ ] Заголовок / описание / теги скопированы
+- [ ] Первый комментарий закреплён (PINNED COMMENT)
+- [ ] Две обложки cover_1 / cover_2 после сборки
+- [ ] Два шортса short_1 / short_2 после сборки
+- [ ] Sources указаны в описании
+- [ ] Не конфликтует с последними темами channel/log.json
