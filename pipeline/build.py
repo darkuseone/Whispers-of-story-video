@@ -2292,10 +2292,14 @@ def main(job_path):
     # НАЗВАНИЕ РОЛИКА в первые секунды и THE END на чёрном хвосте.
     # Оба — то же семейство титров, что и титулы глав, и живут тем же
     # списком: join() различает слои по стилю.
-    opening = textcard.opening_title(job)
+    # marks нужны заставке, чтобы выйти В ПАУЗУ после первой фразы, а не
+    # посреди неё: см. textcard.opening_at.
+    opening = textcard.opening_title(job, marks)
     if opening:
+        first_end = marks[0]["end"] if marks else 0.0
         log(f"── заставка: «{opening[0]['text']}» "
-            f"с {opening[0]['t']:.1f} с, кегль {opening[0]['size']}")
+            f"с {opening[0]['t']:.1f} с (первая фраза кончается "
+            f"на {first_end:.1f} с), кегль {opening[0]['size']}")
     else:
         log("── заставка: нет шрифта титров либо пустой заголовок")
     # THE END отсчитывается от КОНЦА НАЧИТКИ: чёрный хвост начинается
