@@ -147,17 +147,19 @@
       "THE LAST TABLET",
       "BURIED IN PLAIN SIGHT"
     ],
-    "_cover_texts": "Два хука ЗАГЛАВНЫМИ, 2-5 слов, разный угол (разрыв / масштаб / дата / вещь). Не полный title. Жёлтый extra-condensed Anton рисует модель.",
+    "_cover_texts": "Два хука ЗАГЛАВНЫМИ, 2-5 слов. Не полный title: хук говорит то, чего нет в заголовке. Шрифт Anton #FFD400.",
+    "cover_patterns": ["object", "split"],
+    "_cover_patterns": "Два разных паттерна из object/scene/silhouette/split/tension. См. docs/протокол-обложки.md. Не два scene.",
     "cover_scenes": [
-      "one colossal weathered clay tablet standing in a dark Mesopotamian ruin hall, low fog, storm light through a broken roof, thin golden horizon slit",
-      "tight cinematic view of cuneiform pressed into wet clay, raking gold light, deep shadows, dust hanging in the air"
+      "a colossal cracked cuneiform tablet filling the frame, gold rim light, dark navy void behind it",
+      "left half a living Mesopotamian city at dusk, right half the same mound empty and grass-covered today"
     ],
-    "_cover_scenes": "Два разных кадра под нижние две трети: широкий масштаб и предмет в упор. Верхнее небо в промпте оставляй пустым.",
+    "_cover_scenes": "Герой кадра под выбранный паттерн. Не «foggy ruins».",
     "cover_prompts": [
-      "YouTube thumbnail, 16:9 cinematic documentary photograph. ONE giant iconic subject filling the LOWER two-thirds: a colossal weathered clay tablet standing in a dark Mesopotamian ruin hall, low volumetric fog, storm light through a broken roof. The UPPER third is EMPTY dark storm sky. Thin golden-hour glow on the horizon, god rays, deep shadows, photoreal. No people facing camera. Typography lock: the ONLY text is \"{text}\" in extra-condensed ultra-bold ALL-CAPS Anton / Impact, bright yellow-gold #FFD400, letters as tall as one-third of the frame, centered in that empty upper sky.",
-      "YouTube thumbnail, 16:9 cinematic documentary photograph. ONE giant iconic subject filling the LOWER two-thirds: cuneiform pressed into wet clay filling the frame, raking gold light, dust in the air. The UPPER third is EMPTY dark negative space. High contrast, photoreal, mysterious mood. No people, no logos. Typography lock: the ONLY text is \"{text}\" in extra-condensed ultra-bold ALL-CAPS Anton / Impact, bright yellow-gold #FFD400, huge, phone-readable, two centered lines if needed."
+      "YouTube thumbnail 16:9. PATTERN object: extreme close-up of a colossal cracked cuneiform tablet filling the frame, gold rim light, dark navy void. High contrast. Empty negative space for type. Bottom-right clear for duration badge. No faces, no extra text. ONLY text \"{text}\" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, readable at 120px wide.",
+      "YouTube thumbnail 16:9. PATTERN split: 50/50 then/now of the same Mesopotamian city — living dusk city vs empty grass mound today. No arrows. High contrast, dark base. Empty region for type. ONLY text \"{text}\" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, huge, phone-readable."
     ],
-    "_cover_prompts": "Два полных промпта. Можно {text} и {scene}. Без жёлтого хука конвейер допишет TYPE_LOCK сам. Как писать — ИНСТРУКЦИЯ-ЧАТ.md.",
+    "_cover_prompts": "Два полных промпта. Можно {text} {scene} {pattern}. Без жёлтого хука конвейер допишет TYPE_LOCK. Кадр из протокола-обложки, не со скриншота пейзажа.",
     "shorts_questions": [
       "What was really buried there?",
       "Why did it survive at all?"

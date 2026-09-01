@@ -4,20 +4,16 @@ covers.py — две обложки ролика через xAI, с жёлтым
     Вызывается из youtube.py после сборки ролика.
     Можно отдельно:  python -c "from covers import main; main('jobs/…')"
 
-Стиль канала зафиксирован эталонами STILL UNSOLVED (Guidestones) и
-AMERICA'S FORGOTTEN CITY (Cahokia): тёмный кинематографичный пейзаж +
-ОЧЕНЬ КРУПНЫЙ extra-condensed жёлтый (#FFD400) текст ЗАГЛАВНЫМИ в
-пустом верхнем небе, 2–5 слов — хук, а не полный заголовок.
+ШРИФТ — со скриншота автора, и только он: extra-condensed ALL CAPS
+Anton / Impact, жёлтый #FFD400, 2–5 слов, огромный кегль. Композицию
+со скриншота не копировать (это был образец букв, не шаблон кадра).
 
-Текст рисует модель прямо на изображении (grok-imagine-image это
-умеет); PIL-наложение Anton — только запасной путь, когда ключа нет
-(смоук, локальная отладка).
+КАДР — из docs/протокол-обложки.md: исследования CTR 2026 для безликих
+history / mystery. Паттерны object / scene / silhouette / split /
+tension. Две обложки = два разных паттерна.
 
-Кэш: если cover_1.jpg / cover_2.jpg уже лежат в out/, повторно не
-рисуем. Перерисовать — удалить файлы и прогнать youtube.py снова.
-Пересборка монтажа обложки не трогает и денег не жжёт.
-
-Как писать хуки и сцены — ИНСТРУКЦИЯ-ЧАТ.md, раздел про обложки.
+Текст рисует модель (grok-imagine-image); PIL + Anton — запасной путь
+без ключа. Кэш: лежащие cover_1.jpg / cover_2.jpg не перерисовываются.
 """
 
 import json
@@ -44,40 +40,66 @@ BANNED_HOOKS = (
     "SHOCKING TRUTH", "WAIT FOR IT", "THE SECRET THEY",
 )
 
-# Композиция под CTR на телефоне. Модель иначе рисует объект в центре
-# и кладёт текст поверх него — на превью 160px хук и сюжет гасят друг
-# друга. Верхнее небо пустое, предмет в нижних двух третях: так сделаны
-# обложки, которые на канале уже кликают.
+# Паттерны кадра — не «ещё один туманный пейзаж». Сводка исследований
+# в docs/протокол-обложки.md. Имена совпадают с youtube.cover_patterns.
+PATTERNS = {
+    "object": (
+        "PATTERN object+overlay: extreme close-up of ONE artifact filling "
+        "most of the frame, shallow depth of field, dramatic rim light, "
+        "dark simple background. The object must be recognizable when the "
+        "whole image is only 120 pixels wide."
+    ),
+    "scene": (
+        "PATTERN cinematic scene: movie-poster establishing shot of ONE "
+        "place or moment, not a collage. Scale and atmosphere. Leave a "
+        "large empty region of the frame for type."
+    ),
+    "silhouette": (
+        "PATTERN mystery silhouette: a back-facing or fully shadowed human "
+        "figure with no visible face, plus ONE small piece of evidence in "
+        "the light. Identity stays hidden."
+    ),
+    "split": (
+        "PATTERN before/after: a clean 50/50 split of the SAME subject "
+        "then versus now. No arrows, no circles. The contrast is the hook."
+    ),
+    "tension": (
+        "PATTERN tension object: one wrong detail lit in darkness — a "
+        "broken seal, a redacted line, an empty plinth, a door that should "
+        "be open, a missing inscription. Uncanny, not gory, not shock-bait."
+    ),
+}
+
+# Контраст, поля, бейдж длительности, один герой. Палитра history/mystery:
+# тёмный navy/charcoal + один светлый предмет; жёлтый текст — pop-цвет.
 SCENE_LOCK = (
-    "YouTube thumbnail, 16:9 cinematic documentary photograph. "
-    "ONE giant iconic subject filling the LOWER two-thirds of the frame: "
+    "YouTube thumbnail, 16:9 photoreal cinematic still for a mystery-history "
+    "documentary. {pattern} "
+    "HERO (the only subject, instantly readable at postage-stamp size): "
     "{scene}. "
-    "The UPPER third is EMPTY dark storm sky — negative space reserved "
-    "for type; do not put the subject, furniture, or clutter there. "
-    "Low volumetric fog at the base, heavy storm clouds, thin golden-hour "
-    "glow on the horizon, god rays, deep shadows, high contrast, photoreal, "
-    "mysterious investigative mood. "
-    "No people facing camera; a tiny back-facing silhouette is allowed "
-    "only for scale. "
-    "No YouTube UI, no duration badge, no arrows, no red circles, "
-    "no logos, no watermarks, no extra text."
+    "High contrast two-color mass: dark navy or charcoal base, one lit "
+    "subject. Avoid beige/teal AI-default grading. "
+    "Leave the largest empty region of the frame (top OR side) as negative "
+    "space for the title — do not put the hero under the letters. "
+    "Keep the bottom-right 180x72 pixels empty for the YouTube duration "
+    "badge. Keep ~8 percent margins; no critical detail on the far edges "
+    "(mobile crop). Maximum four visual elements. "
+    "No people facing camera. No extra text besides the yellow hook. "
+    "No logos, arrows, circles, starbursts, watermarks, YouTube UI."
 )
 
-# Типографика канала. Менять кегль, цвет или гарнитуру здесь нельзя:
-# узнаваемость обложек — это один и тот же extra-condensed жёлтый капс.
+# Типографика — единственное, что копируется со скриншота автора.
 TYPE_LOCK = (
     "Typography lock (do not ignore): the ONLY text in the image is "
     "\"{text}\" in extra-condensed ultra-bold ALL-CAPS sans-serif "
     "(Anton / Impact condensed), bright saturated yellow-gold "
     + YELLOW_HEX +
-    ", letters as tall as about one-third of the frame, centered in "
-    "that empty upper sky, tight tracking, highly readable at phone "
-    "thumbnail size. If the phrase is three to five words, break it into "
-    "two centered lines. No outline glow, no 3D bevel, no second "
-    "subtitle, no channel name."
+    ", letter height about 20 to 30 percent of the frame so it stays "
+    "legible at 120 pixels wide, placed in the empty negative-space "
+    "region, one line if two words else two centered lines. Tight "
+    "tracking, flat letters, no 3D bevel, no second subtitle, no "
+    "channel name."
 )
-
-PROMPT = SCENE_LOCK + " " + TYPE_LOCK
 
 
 def log(*a):
@@ -137,13 +159,32 @@ def scene_hints(job):
         if len(hints) >= 2:
             break
     while len(hints) < 2:
-        hints.append("ancient ruins at night under moonlight")
+        hints.append("a single ancient artifact against a dark navy void")
     return hints[:2]
 
 
-def _format_custom(raw, text, scene):
+def cover_patterns(job):
+    """
+    Два имени паттерна из PATTERNS. По умолчанию object + scene:
+    крупный артефакт и киношный план — не два тумана.
+    """
+    y = job.get("youtube") or {}
+    out = []
+    for raw in y.get("cover_patterns") or []:
+        name = str(raw).strip().lower()
+        if name in PATTERNS and name not in out:
+            out.append(name)
+    for fallback in ("object", "scene", "tension", "silhouette", "split"):
+        if len(out) >= 2:
+            break
+        if fallback not in out:
+            out.append(fallback)
+    return out[:2]
+
+
+def _format_custom(raw, text, scene, pattern=""):
     try:
-        return str(raw).format(text=text, scene=scene)
+        return str(raw).format(text=text, scene=scene, pattern=pattern)
     except (KeyError, IndexError, ValueError):
         return str(raw)
 
@@ -156,22 +197,25 @@ def _needs_type_lock(body, text):
     return not (has_color and has_hook)
 
 
-def prompt_for(job, index, text=None, scene=None):
+def prompt_for(job, index, text=None, scene=None, pattern=None):
     """
     Полный промпт обложки index (0 или 1).
 
     Приоритет:
       1. youtube.cover_prompts[index] — полный текст от сценариста
-      2. youtube.cover_prompt — общий шаблон на обе (с {text}/{scene})
-      3. SCENE_LOCK + TYPE_LOCK по cover_scenes / image_prompts
+      2. youtube.cover_prompt — общий шаблон на обе (с {text}/{scene}/{pattern})
+      3. SCENE_LOCK + TYPE_LOCK по паттерну и cover_scenes
 
-    Свой промпт, в котором нет жёлтого хука, дополняется TYPE_LOCK:
-    иначе красивая сцена съедает бренд канала.
+    Свой промпт без жёлтого хука дополняется TYPE_LOCK: иначе модель
+    рисует красивый кадр без бренда канала.
     """
     texts = cover_texts(job) if text is None else None
     scenes = scene_hints(job) if scene is None else None
+    patterns = cover_patterns(job) if pattern is None else None
     text = text if text is not None else texts[index]
     scene = scene if scene is not None else scenes[index]
+    name = pattern if pattern is not None else patterns[index]
+    pattern_text = PATTERNS.get(name, PATTERNS["object"])
     y = job.get("youtube") or {}
     customs = list(y.get("cover_prompts") or [])
     raw = ""
@@ -180,11 +224,12 @@ def prompt_for(job, index, text=None, scene=None):
     elif str(y.get("cover_prompt") or "").strip():
         raw = y["cover_prompt"]
     if raw:
-        body = _format_custom(raw, text, scene)
+        body = _format_custom(raw, text, scene, pattern_text)
         if _needs_type_lock(body, text):
             body = body.rstrip() + " " + TYPE_LOCK.format(text=text)
         return body
-    return PROMPT.format(scene=scene, text=text)
+    return (SCENE_LOCK.format(pattern=pattern_text, scene=scene)
+            + " " + TYPE_LOCK.format(text=text))
 
 
 def xai_cover(prompt: str, dst: Path, model: str, key: str) -> bool:
@@ -226,9 +271,8 @@ def wrap_hook(text):
 
 def paint_hook(im, text):
     """
-    Жёлтый Anton в верхней трети кадра — тот же вид, что модель должна
-    нарисовать сама. Нужен запасному пути и смоуку: без него fallback
-    уходил в DejaVu и обложка переставала быть обложкой канала.
+    Жёлтый Anton — шрифт со скриншота автора. Запасной путь и смоук:
+    без него fallback уходил в DejaVu.
     """
     from PIL import ImageDraw, ImageFont
     if not FONT_FILE.exists():
@@ -337,44 +381,54 @@ def build_covers(job, out: Path, video: Path = None):
 
 def self_check(job=None):
     """
-    Бесплатная проверка промптов и шрифта. Смоук зовёт это до рендера:
-    обложка без пустого неба и без жёлтого Anton кликает хуже, а чинить
-    это после xAI уже поздно.
+    Бесплатная проверка шрифта и CTR-каркаса. Смоук зовёт до рендера.
+    Со скриншота автора проверяем Anton/#FFD400, не «туманное небо».
     """
     if not FONT_FILE.exists():
         raise SystemExit(f"нет шрифта обложки {FONT_FILE}")
     gold = {
         "id": "cover-self-check",
         "youtube": {
-            "cover_texts": ["STILL UNSOLVED", "AMERICA'S FORGOTTEN CITY"],
+            "cover_texts": ["NEVER FOUND", "PAGE 25 FOUND"],
+            "cover_patterns": ["object", "tension"],
             "cover_scenes": [
-                "four giant granite standing stones in a dark field, low fog",
-                "one colossal flat-topped earthen mound, mist, distant skyline",
+                "a cracked Egyptian death mask filling the frame, gold rim light, dark navy void",
+                "a single redacted line on a stamped 1983 intelligence page, one word still visible",
             ],
         },
     }
     p1 = prompt_for(gold, 0)
     p2 = prompt_for(gold, 1)
-    for p, hook in ((p1, "STILL UNSOLVED"),
-                    (p2, "AMERICA'S FORGOTTEN CITY")):
+    pats = cover_patterns(gold)
+    if pats != ["object", "tension"]:
+        raise SystemExit(f"обложка: паттерны сбились: {pats}")
+    if "close-up" not in p1.lower() and "object" not in p1.lower():
+        raise SystemExit("обложка: первый промпт не object-паттерн")
+    if "redacted" not in p2.lower() and "tension" not in p2.lower():
+        raise SystemExit("обложка: второй промпт не tension-паттерн")
+    for p, hook in ((p1, "NEVER FOUND"), (p2, "PAGE 25 FOUND")):
         low = p.lower()
         if hook not in p:
             raise SystemExit(f"обложка: в промпте нет хука {hook!r}")
         if "16:9" not in p:
             raise SystemExit("обложка: промпт без 16:9")
-        if YELLOW_HEX.lower() not in low and "yellow" not in low:
-            raise SystemExit("обложка: промпт без жёлтого текста")
-        if "upper" not in low:
-            raise SystemExit("обложка: промпт не держит текст в верхнем небе")
-        if "lower" not in low:
-            raise SystemExit("обложка: промпт не держит сюжет в нижней части")
+        if YELLOW_HEX.lower() not in low:
+            raise SystemExit("обложка: промпт без #FFD400")
         if "anton" not in low:
             raise SystemExit("обложка: промпт потерял гарнитуру Anton")
+        if "120" not in low:
+            raise SystemExit("обложка: промпт не требует читаемости с 120 px")
+        if "negative" not in low:
+            raise SystemExit("обложка: нет пустой зоны под текст")
+        if "duration" not in low and "bottom-right" not in low:
+            raise SystemExit("обложка: нет поля под бейдж длительности")
+        if "storm sky" in low or "golden-hour glow on the horizon" in low:
+            raise SystemExit(
+                "обложка: в дефолтный промпт снова зашили пейзаж со "
+                "скриншота — кадр должен идти от паттерна, не от тумана")
     if p1 == p2:
         raise SystemExit("обложка: два промпта совпали — нет A/B кадра")
 
-    # Свой промпт без типографики обязан получить TYPE_LOCK, иначе
-    # сценарист опишет стол и модель забудет жёлтый хук.
     tagged = {
         "id": "t",
         "youtube": {
@@ -382,7 +436,7 @@ def self_check(job=None):
             "cover_prompts": [
                 "dark archive vault, one giant CIA dossier in a cyan laser slit",
                 "YouTube thumbnail 16:9 of a stamped 1983 CIA folder, yellow "
-                "#FFD400 ALL-CAPS \"THE 1983 CIA DOSSIER\" in the empty upper sky",
+                "#FFD400 ALL-CAPS \"THE 1983 CIA DOSSIER\" in empty negative space",
             ],
         },
     }

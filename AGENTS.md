@@ -25,12 +25,13 @@ Your deliverables are always:
    footage as anachronistic. This is not hypothetical: it happened on
    `dead-internet-01`, which is the worked example to copy.
 2. `jobs/<id>.youtube.txt` — posting pack (title, description + sources,
-   tags, **two CTR cover prompts** with the locked yellow condensed
-   font, community post + image prompts, two Shorts titles/questions,
-   **pinned first comment**). Cover craft: `ИНСТРУКЦИЯ-ЧАТ.md`.
+   tags, **two CTR cover prompts** (font locked to channel yellow
+   condensed caps; composition from `docs/протокол-обложки.md`),
+   community post + image prompts, two Shorts titles/questions,
+   **pinned first comment**)
 
 Also read: `docs/протокол-сценария.md`, `docs/протокол-монтажа.md`,
-`jobs/ancient-01.json`, `channel/log.json`.
+`docs/протокол-обложки.md`, `jobs/ancient-01.json`, `channel/log.json`.
 
 Do **not** start GitHub Actions / full render unless the user explicitly
 asks. Script + posting pack first.

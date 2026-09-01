@@ -133,7 +133,7 @@ def main(job_path):
     print("── обложки")
     import covers
     for path in ("youtube.cover_texts", "youtube.cover_scenes",
-                 "youtube.cover_prompts"):
+                 "youtube.cover_prompts", "youtube.cover_patterns"):
         cur = job.get("youtube") or {}
         for key in path.split(".")[1:]:
             cur = (cur or {}).get(key) if isinstance(cur, dict) else None
@@ -143,8 +143,9 @@ def main(job_path):
                 "списком из двух строк")
     covers.self_check(job)
     texts = covers.cover_texts(job)
-    print(f"   хуки «{texts[0]}» / «{texts[1]}», Anton на месте, "
-          "промпт держит верхнее небо и #FFD400")
+    pats = covers.cover_patterns(job)
+    print(f"   хуки «{texts[0]}» / «{texts[1]}», паттерны {pats[0]}+{pats[1]}, "
+          "Anton #FFD400, CTR-каркас на месте")
 
     # Главы ↔ субтитры. Та же ловушка, что уронила ufos-history-01 на
     # этапе 3 после двух часов монтажа: split('.') резал «U.S.» / не
