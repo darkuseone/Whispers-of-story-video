@@ -126,6 +126,51 @@ def main(job_path):
                          f"ПОСЛЕ всего рендера")
     print(f"   списки на месте, теги {len(tags)}/{youtube.TAGS_LIMIT} символов")
 
+    # ШОРТСЫ. Рендер дорогой, здесь только то, что ломалось молча:
+    # шрифт/плашка вопроса, разрядка, сдвиг капшенов на t0, одни часы
+    # у картинки и звука. Без этого смоук пропускал Archivo и input -ss,
+    # а расхождение было видно только на телефоне. Стоит до проверки
+    # глав: ancient-mini падает на длине главы, а шортсы от этого не зависят.
+    print("── шортсы")
+    import shorts
+    if not shorts.FONT_QUESTION_FILE.exists():
+        raise SystemExit(f"нет шрифта вопроса {shorts.FONT_QUESTION_FILE}")
+    marks_s = [
+        {"text": "When you navigate into the room.", "start": 10.0, "end": 14.0},
+        {"text": "Search the archive next.", "start": 14.2, "end": 17.0},
+    ]
+    q = shorts.question_for(
+        {"mark_idx": 0}, marks_s,
+        ["Why did the CIA investigate the holographic universe?"], 1)
+    if q != q.upper():
+        raise SystemExit(f"шортс: вопрос не заглавными: {q!r}")
+    if "CIA" not in q.replace("\n", " "):
+        raise SystemExit(f"шортс: вопрос потерял смысл при переносе: {q!r}")
+    ass_p = Path("/tmp/shorts-smoke.ass")
+    n_cap = shorts.write_ass(marks_s, t0=10.0, dur=8.0, out=ass_p, question=q)
+    ass = ass_p.read_text(encoding="utf-8")
+    if "Archivo" in ass or "QBox" in ass:
+        raise SystemExit("шортс: вопрос всё ещё Archivo / QBox")
+    if shorts.FONT_QUESTION not in ass:
+        raise SystemExit(f"шортс: в ASS нет {shorts.FONT_QUESTION}")
+    if r"\fsp" not in ass:
+        raise SystemExit("шортс: нет анимации разрядки \\fsp")
+    if r"\move" in ass:
+        raise SystemExit("шортс: вопрос снова едет через \\move")
+    if n_cap < 1:
+        raise SystemExit("шортс: write_ass не вывел ни одного субтитра")
+    if "Dialogue: 2,0:00:00.00," not in ass:
+        raise SystemExit("шортс: капшен при t0=10 начинается не с нуля")
+    if "0:00:04.20" not in ass:
+        raise SystemExit("шортс: второй капшен не сдвинулся на t0")
+    filt = shorts.sync_filters(10.0, 8.0, 7.6, "x.ass", "/fonts")
+    if "atrim=start=10.000:duration=8.000" not in filt:
+        raise SystemExit(f"шортс: atrim не на t0/dur: {filt}")
+    if "trim=duration=8.000" not in filt:
+        raise SystemExit(f"шортс: видео не выровнено в dur: {filt}")
+    print(f"   вопрос {len(q.splitlines())} строк, капшенов {n_cap}, "
+          f"ASS без Archivo/QBox, часы t0+dur")
+
     # Главы ↔ субтитры. Та же ловушка, что уронила ufos-history-01 на
     # этапе 3 после двух часов монтажа: split('.') резал «U.S.» / не
     # учитывал «Gods?». Проверяем по marks.json бесплатно, до рендера.

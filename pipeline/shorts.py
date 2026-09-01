@@ -13,9 +13,9 @@ shots.json (пути ИСХОДНИКОВ) и marks.json. Ключей не тр
   2 revelation  развязка / поворот с ответом на вопрос
 
 ОТКУДА УДЕРЖАНИЕ (по практике Shorts 2025–26):
-  - первые 3–5 с: крупный ВОПРОС (хук), без простыни текста
+  - вопрос СВЕРХУ на всю длину: VFX-появление, потом висит
   - дальше начитка ОТВЕЧАЕТ на этот вопрос
-  - обычные субтитры ЦЕЛЫМИ предложениями ПО ЦЕНТРУ (не
+  - обычные субтитры ЦЕЛЫМИ предложениями ВНИЗУ (не
     пословно / не караоке по 1–3 слова — они плывут относительно
     звука, если тайм-коды слов без пауз между главами)
   - вопрос сверху, перенос строк, поля — не вылезает за край
@@ -72,49 +72,45 @@ CUT_MERGED_MAX = 7.0
 # здесь стоял DejaVu Sans — шрифт, который есть везде и не значит
 # ничего.
 #
-#   Anton      — вопрос наверху. Плотный гротеск без вариантов
-#                начертания: одна ширина, одна насыщенность, всегда
-#                одинаковый. В чёрной плашке читается на любом кадре.
-#   Montserrat — субтитры и призыв. Геометричный, спокойный, не спорит
-#     ExtraBold  с вопросом за внимание.
+#   Montserrat SemiBold — вопрос наверху. Тот же геометрический гротеск,
+#                что на заставке длинного ролика (Regular + разрядка),
+#                на шаг жирнее, чтобы жёлтый читался на телефоне.
+#   Montserrat ExtraBold — субтитры и призыв. Не спорит с вопросом:
+#                вопрос тонкий с трекингом, субтитр плотный без него.
 #
 # Менять эту пару — значит менять лицо канала. Если когда-нибудь
 # понадобится, менять надо СРАЗУ ВЕЗДЕ и осознанно, а не подставлять
 # другой шрифт одному выпуску.
 FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
-# Заголовок — ARCHIVO BLACK. Anton стоял здесь раньше и был слишком
-# узким: на обложках канала заголовок набран широким тяжёлым
-# гротеском, и шапка шортса должна выглядеть с ним одинаково.
-# Archivo Black при том же кегле шире Anton на треть (869px против
-# 638 на строке из 25 знаков) — отсюда и более короткая строка ниже.
-FONT_QUESTION = "Archivo Black"
-# Имя ИМЕННО такое, с начертанием. У файла два имени семейства:
-# «Montserrat» со стилем ExtraBold и «Montserrat ExtraBold» со
-# стилем Regular. По первому libass ищет обычный вес, не находит
-# его в папке и молча подставляет системный шрифт — субтитры
-# выходили набранными не тем, чем задумано, и заметить это можно
-# было только глазами на готовом кадре.
+FONT_QUESTION_FILE = FONT_DIR / "Montserrat-SemiBold.ttf"
+# Имя ИМЕННО с начертанием. У файла два имени семейства: «Montserrat»
+# со стилем SemiBold и «Montserrat SemiBold» со стилем Regular.
+# По короткому libass ищет обычный вес, не находит его в папке (там
+# Regular — отдельный файл) и молча подставляет системный шрифт.
+FONT_QUESTION = "Montserrat SemiBold"
+# То же правило, что у вопроса: полное имя семейства, не «Montserrat».
 FONT_CAPTION = "Montserrat ExtraBold"
 
 # Размеры (pt в координатах PlayRes 1080x1920).
 # КРУПНО — ЭТО ТРЕБОВАНИЕ, А НЕ ВКУС. Шортс смотрят с телефона в руке,
 # и кегль, приличный на мониторе, читается там как мелкий шрифт в
-# договоре. Прежние 54/48 выглядели именно так.
-QSIZE = 56               # вопрос в постоянном положении наверху
+# договоре. У вопроса кегль ниже прежних 56: широкая разрядка сама
+# занимает ширину, и 56pt с трекингом вылезал за край на двух строках.
+QSIZE = 44               # вопрос в постоянном положении наверху
 CAPSIZE = 64             # субтитр
 CTASIZE = 46
+Q_TRACK = 6.0            # добавка \fsp между буквами, px PlayRes
+Q_FILL = 0.90            # доля ширины кадра, которую занимает строка
 
 # Цвета ASS: &HAABBGGRR, где AA — ПРОЗРАЧНОСТЬ наоборот: 00 значит
 # непрозрачно, FF — невидимо. Перепутать концы легко, а видно ошибку
 # только на готовом кадре.
 C_QUESTION = "&H0000D4FF"        # #FFD400, фирменный жёлтый с обложек
+C_CHROMA_RED = "&H000000FF"
+C_CHROMA_CYAN = "&H00FFFF00"
 C_CAPTION = "&H00FFFFFF"         # чистый белый, без примеси
 C_CTA = "&H00FFFFFF"
 
-# Рамка вопроса — ПОЛУПРОЗРАЧНАЯ: сквозь неё виден кадр, и шапка не
-# выглядит наклейкой поверх видео.
-BOX_QUESTION = "&H73000000"      # чёрный, ~55% плотности
-BOX_ALPHA = "&H73&"              # та же прозрачность для \1a в событии
 # У субтитров подложки нет вовсе — белый текст по чёрной обводке.
 # Полупрозрачная плашка, стоявшая здесь раньше, делала их блёклыми на
 # светлом небе и при этом закрывала кадр.
@@ -133,37 +129,30 @@ OUTLINE_CAPTION = "&H00000000"
 # нём от одной до трёх, и при верхней привязке текст рос бы вниз, в
 # зону кнопок, каждый раз на разную величину. С нижней привязкой низ
 # стоит на месте, а растёт блок вверх, в пустую часть кадра.
-QUESTION_TOP_Y = 210             # верх блока вопроса
+QUESTION_TOP_Y = 210             # верх блока вопроса (\an8)
 CAPTION_BOTTOM_Y = 1560          # низ блока субтитров
 CTA_BOTTOM_Y = 1560              # призыв встаёт на место субтитров
 
-# ХУК. Первые секунды вопрос идёт КРУПНО почти во весь кадр, потом
-# уменьшается и уезжает наверх, где и висит до конца. Это один
-# непрерывный ход, а не два разных титра: у зрителя, долиставшего до
-# шортса, должен успеть отпечататься вопрос, а дальше он не мешает
-# смотреть.
+# ПОЯВЛЕНИЕ ВОПРОСА. Он сразу наверху и висит до конца шортса.
+# Крупный хук по центру, который потом уезжал наверх, убран: на
+# телефоне он спорил с начиткой, а заставка канала — это разрядка
+# и спокойная шапка, не плакат во весь кадр.
 #
-# Делается ОДНИМ событием ASS с \move и \t. Двумя титрами со стыком
-# получался скачок: у крупного и мелкого разная высота блока, и в
-# момент подмены текст дёргался.
-HOOK_BIG_Y = 860                 # центр крупного вопроса
-# Масштаб хука НЕ ПОСТОЯННЫЙ, а считается под конкретный вопрос:
-# «во весь экран» у длинного и у короткого вопроса — это разные
-# проценты, и одной цифрой оба не накрыть. Постоянные 158% давали то
-# текст за краями кадра, то половину пустой ширины.
-HOOK_FILL = 0.94                 # какую долю ширины занимает хук
-HOOK_SCALE_MAX = 210             # потолок для очень коротких вопросов
-HOOK_HOLD = 0.85                 # сколько секунд держим крупным
-HOOK_SHRINK = 0.65               # за сколько уменьшается и уезжает
+# Анимация — пачка ASS-событий на одних координатах, без \move:
+# хроматический сдвиг, разрядка \fsp, резкость \blur, линия-scan.
+Q_INTRO = 0.80                   # разрядка + резкость, секунды
+Q_CHROMA = 0.36                  # RGB-сдвиг гаснет
+Q_SCAN = 0.85                    # линия прочерчивает блок
+Q_BLUR = 2.4
+Q_CHROMA_DX = 8                  # горизонтальный разъезд хрома, px
 
 CTA_TEXT = "FULL STORY ON THE CHANNEL"
 CTA_SECONDS = 2.4
 
-# Вопрос: до 3 строк × ~26 символов. Раньше QUESTION_MAX=52 одной
-# строкой на 54pt — текст уезжал за края кадра.
-QUESTION_LINE = 26
+# Вопрос: до 3 строк. Перенос по ширине с трекингом, не по числу
+# символов: 26 знаков Archivo и 26 знаков Montserrat с \fsp — разная
+# ширина, и лимит в символах снова выталкивал строку за край.
 QUESTION_MAX_LINES = 3
-QUESTION_MAX = QUESTION_LINE * QUESTION_MAX_LINES
 
 
 def log(*a):
@@ -338,16 +327,25 @@ def pick_windows(story, marks, total):
 
 def wrap_question(text: str) -> str:
     """
-    Перенос вопроса на 2–3 строки по словам. Раньше одна длинная строка
-    на 54pt вылезала за края 1080px — «What did people see…» обрезалось.
+    Перенос вопроса на 2–3 строки по РЕАЛЬНОЙ ширине с трекингом.
+
+    Заглавные — как на заставке длинного ролика. Лимит в символах здесь
+    не годится: разрядка растягивает строку почти вдвое относительно
+    плотного Archivo, и 26 знаков уже не влезают.
     """
-    words = text.strip().split()
-    if not words:
-        return "What really happened?"
+    raw = " ".join((text or "").split()).upper()
+    if not raw:
+        raw = "WHAT REALLY HAPPENED?"
+    words = raw.split()
+    limit = SW * Q_FILL
+
+    def fits(s: str) -> bool:
+        return text_width(s, QSIZE, Q_TRACK) <= limit
+
     lines, cur, i = [], words[0], 1
     while i < len(words):
         trial = f"{cur} {words[i]}"
-        if len(trial) <= QUESTION_LINE:
+        if fits(trial):
             cur = trial
             i += 1
             continue
@@ -356,11 +354,14 @@ def wrap_question(text: str) -> str:
         i += 1
         if len(lines) >= QUESTION_MAX_LINES - 1:
             last = " ".join([cur] + words[i:])
-            if len(last) > QUESTION_LINE:
-                last = last[: QUESTION_LINE - 1].rsplit(" ", 1)[0]
-                if text.rstrip().endswith("?") and not last.endswith("?"):
-                    last = last.rstrip(".!") + "?"
-                else:
+            full_last = last
+            while last and not fits(last) and " " in last:
+                last = last.rsplit(" ", 1)[0]
+            if last != full_last:
+                if raw.endswith("?") and not last.endswith("?"):
+                    trial_q = last.rstrip(".!") + "?"
+                    last = trial_q if fits(trial_q) else last.rstrip(".!") + "…"
+                elif not last.endswith(("?", "!", "…")):
                     last += "…"
             lines.append(last)
             return "\n".join(lines[:QUESTION_MAX_LINES])
@@ -389,13 +390,7 @@ def question_for(win, marks, job_questions, n):
                     break
             cut = cut.rstrip(".!")
             raw = (cut + "?") if cut else "What really happened?"
-    # убираем лишнюю длину до переноса
-    flat = " ".join(raw.split())
-    if len(flat) > QUESTION_MAX:
-        flat = flat[: QUESTION_MAX - 1].rsplit(" ", 1)[0]
-        if not flat.endswith("?"):
-            flat += "?"
-    return wrap_question(flat)
+    return wrap_question(raw)
 
 
 # ─────────────────────── ВЕРТИКАЛЬНЫЙ ВИДЕОРЯД ───────────────────────
@@ -588,11 +583,16 @@ def wrap_caption(text: str, line: int = CAPTION_LINE,
 def captions_from_marks(marks, t0, dur):
     """
     Обычные субтитры: целые предложения из marks.json, время относительно
-    начала шортса (= тот же таймлайн, с которого режется звук из final.mp4).
+    начала шортса (= тот же таймлайн, с которого atrim режет звук).
 
     Раньше резали по 2–3 слова из пословных тайм-кодов — на телефоне это
     выглядело как караоке, и после пауз между главами слова уезжали от
     начитки. Предложения из marks совпадают с SRT длинного ролика.
+
+    Окно, начавшееся в середине фразы: start обрезается в 0, текст
+    остаётся целиком. Не ждём отрицательного ms-t0 — иначе реплика
+    появилась бы «с начала предложения», которого в этом звуке уже нет,
+    и выглядело бы как рассинхрон.
     """
     t1 = t0 + dur
     caps = []
@@ -608,75 +608,82 @@ def captions_from_marks(marks, t0, dur):
         if end - start < 0.20:
             continue
         caps.append(dict(text=text, start=round(start, 3), end=round(end, 3)))
+    caps.sort(key=lambda p: p["start"])
     for i, p in enumerate(caps):
-        if i + 1 < len(caps):
+        if i + 1 < len(caps) and caps[i + 1]["start"] > p["start"] + 0.20:
             p["end"] = min(p["end"], caps[i + 1]["start"] - 0.04)
-        p["end"] = max(p["end"], p["start"] + 0.35)
+        p["end"] = max(p["end"], p["start"] + 0.20)
     return caps
 
 
-# Поля рамки вокруг вопроса, в пикселях PlayRes.
-QBOX_PAD_X = 34
-QBOX_PAD_Y = 16
-
-
-def text_width(text: str, size: int) -> float:
+def text_width(text: str, size: int, tracking: float = 0.0,
+               font_file: Path | None = None) -> float:
     """
     Ширина самой длинной строки НАСТОЯЩИМ шрифтом из assets/fonts.
 
-    Прикидка «по 0.6 кегля на знак» тут не годится: у Archivo Black
-    буквы широкие, у Anton узкие, разница на строке в четверть ширины
-    кадра. Именно из-за неё хук то вылезал за края, то оставлял
-    половину экрана пустой.
+    tracking — те же пиксели, что ASS \\fsp: Pillow их не считает,
+    добавляем по числу промежутков между знаками.
 
-    Нет Pillow или файла шрифта — возвращаем грубую оценку. Рамка и
-    масштаб будут неточными, но шортс соберётся: оформление не тот
-    случай, ради которого стоит ронять сборку.
+    РАЗБИРАЕМ ОБА ВИДА ПЕРЕНОСА. В ASS строки разделяет «\\N», а не
+    «\\n», и на этом уже один раз обожглись: замер получал весь вопрос
+    одной строкой в две тысячи пикселей.
     """
-    # РАЗБИРАЕМ ОБА ВИДА ПЕРЕНОСА. В ASS строки разделяет «\\N», а не
-    # «\\n», и на этом уже один раз обожглись: замер получал весь вопрос
-    # одной строкой в две тысячи пикселей, hook_scale честно считал по
-    # ней масштаб — и «огромный» хук выходил ВДВОЕ МЕЛЬЧЕ обычной шапки.
-    # На кадре это видно сразу, в коде — нет.
     text = text.replace("\\N", "\n")
     lines = [l for l in text.split("\n") if l.strip()] or [""]
+    font_file = font_file or FONT_QUESTION_FILE
     try:
         from PIL import ImageFont
-        f = ImageFont.truetype(str(FONT_DIR / "ArchivoBlack-Regular.ttf"), size)
-        return max(f.getbbox(l)[2] - f.getbbox(l)[0] for l in lines)
+        f = ImageFont.truetype(str(font_file), size)
+        widths = []
+        for line in lines:
+            box = f.getbbox(line)
+            w = box[2] - box[0]
+            w += tracking * max(len(line) - 1, 0)
+            widths.append(w)
+        return max(widths)
     except Exception:
-        return max(len(l) for l in lines) * size * 0.62
+        return max(len(l) * (size * 0.52 + tracking) for l in lines)
 
 
-def question_box(question: str):
-    """Полуширина и полувысота рамки под вопросом."""
-    lines = [l for l in question.replace("\\N", "\n").split("\n")
-             if l.strip()] or [""]
-    widest = text_width(question, QSIZE)
-    height = len(lines) * QSIZE * 1.25
-    return widest / 2 + QBOX_PAD_X, height / 2 + QBOX_PAD_Y
+def question_anchor(question: str) -> tuple[int, float, float]:
+    """Число строк, ширина самой длинной, высота блока."""
+    q = question.replace("\\N", "\n").strip()
+    lines = [l for l in q.split("\n") if l.strip()] or [""]
+    widest = text_width(q, QSIZE, Q_TRACK)
+    height = len(lines) * QSIZE * 1.22
+    return len(lines), widest, height
 
 
-def hook_scale(question: str) -> int:
+def sync_filters(t0: float, dur: float, fade_st: float,
+                 ass_esc: str, fdir: str) -> str:
     """
-    На сколько процентов раздуть вопрос в первые секунды.
+    Картинка и звук на одних часах длиной dur.
 
-    Считается так, чтобы САМАЯ ДЛИННАЯ строка заняла HOOK_FILL ширины
-    кадра. У короткого вопроса это больше процентов, у длинного меньше,
-    и оба выглядят одинаково — «во весь экран».
+    concat -c copy набирает погрешность timebase; input -ss по MP4
+    прыгает на ключевой кадр. Здесь и то и другое снимается: видео
+    trim+tpad в ровно dur, звук atrim от t0 на ту же dur.
     """
-    widest = text_width(question, QSIZE)
-    if widest <= 0:
-        return 150
-    return int(min(HOOK_SCALE_MAX, SW * HOOK_FILL / widest * 100))
+    video = (
+        f"[0:v]fps={SFPS},setpts=PTS-STARTPTS,"
+        f"trim=duration={dur:.3f},setpts=PTS-STARTPTS,"
+        f"tpad=stop_mode=clone:stop=-1,"
+        f"ass={ass_esc}:fontsdir={fdir},"
+        f"fade=t=in:d=0.12,fade=t=out:st={fade_st:.2f}:d=0.40[v]"
+    )
+    audio = (
+        f"[1:a]atrim=start={t0:.3f}:duration={dur:.3f},"
+        f"asetpts=PTS-STARTPTS,"
+        f"afade=t=out:st={fade_st:.2f}:d=0.40[a]"
+    )
+    return video + ";" + audio
 
 
 def write_ass(marks, t0, dur, out: Path, question: str):
     """
     Три слоя, и место у каждого своё на всю длину шортса.
 
-      Question  наверху. Первые секунды — крупно во весь кадр, потом
-                уменьшается, уезжает наверх и висит там до конца.
+      Question  наверху с VFX-появлением, дальше висит до конца.
+      Scan      тонкая жёлтая линия под блоком, только на входе.
       Caption   ВНИЗУ, прижат к нижней границе безопасной зоны.
       Cta       в самом конце, на месте субтитров.
 
@@ -691,16 +698,14 @@ def write_ass(marks, t0, dur, out: Path, question: str):
         " OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut,"
         " ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow,"
         " Alignment, MarginL, MarginR, MarginV, Encoding\n"
-        # Вопрос. BorderStyle 3 = сплошная плашка за текстом: жёлтый на
-        # светлом архивном кадре без неё пропадает.
-        # Вопрос — ТОЛЬКО ТЕКСТ. Рамку рисует отдельный слой QBox:
-        # BorderStyle 3 тянет подложку на КАЖДУЮ СТРОКУ отдельно, и у
-        # строк разной длины выходит рваная лесенка вместо рамки.
+        # Вопрос: без плашки и без обводки. Обводка утолщает штрих и
+        # убивает геометрию Montserrat — как у титров длинного ролика,
+        # держит мягкая тень. Alignment 8 = верх по центру: верх блока
+        # стоит на QUESTION_TOP_Y при любом числе строк.
         f"Style: Question,{FONT_QUESTION},{QSIZE},{C_QUESTION},{C_QUESTION},"
-        f"&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,4,0,5,40,40,0,1\n"
-        # Рамка: один ровный полупрозрачный прямоугольник.
-        f"Style: QBox,{FONT_QUESTION},{QSIZE},{BOX_QUESTION},{BOX_QUESTION},"
-        f"{BOX_QUESTION},{BOX_QUESTION},0,0,0,0,100,100,0,0,1,0,0,5,0,0,0,1\n"
+        f"&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,0,3,8,40,40,0,1\n"
+        f"Style: Scan,{FONT_QUESTION},20,{C_QUESTION},{C_QUESTION},"
+        f"&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1\n"
         # Субтитр. BorderStyle 1 = обводка вместо подложки, Alignment 2 =
         # низ по центру, блок растёт вверх.
         f"Style: Caption,{FONT_CAPTION},{CAPSIZE},{C_CAPTION},{C_CAPTION},"
@@ -714,48 +719,42 @@ def write_ass(marks, t0, dur, out: Path, question: str):
     rows = []
     q = _ass_esc(question.strip())
     if q:
-        # Куда приезжает вопрос. Привязка у него по ЦЕНТРУ блока (\an5) —
-        # иначе крупный и мелкий вариант пришлось бы сшивать двумя
-        # титрами, а на стыке текст дёргается. Центр считается от верхней
-        # границы и реальной высоты блока, поэтому верх стоит на
-        # QUESTION_TOP_Y при любом числе строк.
-        lines = q.count("\\N") + 1
-        anchor = QUESTION_TOP_Y + lines * QSIZE * 1.25 / 2
-        t1 = int(HOOK_HOLD * 1000)
-        t2 = int((HOOK_HOLD + HOOK_SHRINK) * 1000)
-        # РАМКА И ТЕКСТ — ДВА СОБЫТИЯ С ОДИНАКОВЫМ ходом. Рамка идёт
-        # слоем ниже, поэтому текст всегда поверх неё.
-        k = hook_scale(question.strip()) / 100
-        bw, bh = question_box(question.strip())
-        # ФИГУРА ПРИВЯЗЫВАЕТСЯ ПО ЛЕВОМУ ВЕРХНЕМУ УГЛУ (\an7) и рисуется
-        # от нуля — это замерено: с \an5 и координатами от -bw до +bw
-        # libass ставит её мимо, прямоугольник уезжает в угол кадра.
-        # Значит угол считаем сами, и отдельно для крупного состояния:
-        # при \fscx фигура растёт ВПРАВО-ВНИЗ от точки, и чтобы центр
-        # остался на месте, точку надо сдвинуть на половину уже
-        # увеличенного размера.
-        bx1, by1 = 540 - bw * k, HOOK_BIG_Y - bh * k
-        bx2, by2 = 540 - bw, anchor - bh
-        box = (f"m 0 0 l {bw * 2:.0f} 0 "
-               f"l {bw * 2:.0f} {bh * 2:.0f} l 0 {bh * 2:.0f}")
-        # РАМКА ПРОЯВЛЯЕТСЯ ТОЛЬКО К КОНЦУ ХОДА. Пока вопрос идёт во весь
-        # экран, она не нужна и мешала бы: её края при таком масштабе
-        # упираются в границы кадра. Рамка — принадлежность шапки, и
-        # появляется вместе с шапкой.
-        rows.append(
-            f"Dialogue: 0,{_ass_t(0)},{_ass_t(dur)},QBox,,0,0,0,,"
-            f"{{\\an7\\move({bx1:.0f},{by1:.0f},{bx2:.0f},{by2:.0f},{t1},{t2})"
-            f"\\fscx{int(k * 100)}\\fscy{int(k * 100)}"
-            f"\\t({t1},{t2},\\fscx100\\fscy100)"
-            f"\\1a&HFF&\\t({t1},{t2},\\1a{BOX_ALPHA})\\p1}}{box}{{\\p0}}")
-        # Текст меняет КЕГЛЬ (\fs), рамка — МАСШТАБ (\fscx/\fscy):
-        # у фигуры кегля нет, а у текста масштаб потянул бы за собой
-        # обводку и межстрочье.
+        _n, widest, block_h = question_anchor(question.strip())
+        intro_ms = int(Q_INTRO * 1000)
+
+        def q_tags(x: float) -> str:
+            # Привязка по ВЕРХУ (\an8): вопрос сразу в шапке и не едет.
+            return (
+                f"{{\\an8\\pos({x:.0f},{QUESTION_TOP_Y})\\q2"
+                f"\\fsp0\\blur{Q_BLUR}"
+                f"\\t(0,{intro_ms},\\fsp{Q_TRACK:.0f}\\blur0)"
+            )
+
+        # Хрома: те же буквы, чуть в стороны, гаснут к концу сдвига.
+        # Тот же \\fsp, иначе слои разъедутся, пока разрядка ещё идёт.
+        for dx, color in (
+                (Q_CHROMA_DX, C_CHROMA_RED),
+                (-Q_CHROMA_DX, C_CHROMA_CYAN)):
+            rows.append(
+                f"Dialogue: 0,{_ass_t(0)},{_ass_t(Q_CHROMA)},Question,,0,0,0,,"
+                f"{q_tags(540 + dx)}\\1c{color}&\\alpha&H64&\\fad(40,200)}}{q}")
         rows.append(
             f"Dialogue: 1,{_ass_t(0)},{_ass_t(dur)},Question,,0,0,0,,"
-            f"{{\\an5\\move(540,{HOOK_BIG_Y},540,{anchor:.0f},{t1},{t2})"
-            f"\\fs{int(QSIZE * k)}"
-            f"\\t({t1},{t2},\\fs{QSIZE})\\q2\\fad(160,0)}}{q}")
+            f"{q_tags(540)}\\fad(120,0)}}{q}")
+        # Линия-scan: растёт слева направо под блоком, потом гаснет.
+        # \\an7 и фигура от нуля — с \\an5 и отрицательными координатами
+        # libass увозит прямоугольник в угол кадра.
+        scan_w = max(80.0, widest)
+        scan_x = 540 - scan_w / 2
+        scan_y = QUESTION_TOP_Y + block_h + 10
+        grow_ms = min(450, int(Q_SCAN * 1000) - 80)
+        box = (f"m 0 0 l {scan_w:.0f} 0 "
+               f"l {scan_w:.0f} 3 l 0 3")
+        rows.append(
+            f"Dialogue: 0,{_ass_t(0)},{_ass_t(Q_SCAN)},Scan,,0,0,0,,"
+            f"{{\\an7\\pos({scan_x:.0f},{scan_y:.0f})"
+            f"\\fscx0\\t(0,{grow_ms},\\fscx100)\\fad(40,380)\\p1}}"
+            f"{box}{{\\p0}}")
 
     # Субтитры гаснут раньше призыва: место у них одно, и наложить их
     # друг на друга значило бы получить кашу в последние две секунды.
@@ -816,11 +815,11 @@ def render_short(n, win, shots, words, marks, final: Path, sdir: Path,
     # Шрифты канала берутся из репозитория, а не из системы —
     # см. FONT_DIR. Без этого libass подставит что найдёт.
     fdir = str(FONT_DIR.resolve()).replace("\\", "/").replace(":", "\\:")
-    filt = (f"[0:v]ass={ass_esc}:fontsdir={fdir},"
-            f"fade=t=in:d=0.12,fade=t=out:st={fade_st:.2f}:d=0.40[v];"
-            f"[1:a]afade=t=out:st={fade_st:.2f}:d=0.40[a]")
+    filt = sync_filters(t0, dur, fade_st, ass_esc, fdir)
+    # Звук — вторым входом ЦЕЛИКОМ. Не -ss перед -i: в MP4 это прыжок
+    # на ключевой кадр видео, и atrim тогда сидит уже не на t0.
     run(f"ffmpeg -y -i {shlex.quote(str(body))} "
-        f"-ss {t0:.3f} -t {dur:.3f} -i {shlex.quote(str(final))} "
+        f"-i {shlex.quote(str(final))} "
         f"-filter_complex {shlex.quote(filt)} "
         f"-map [v] -map [a] -t {dur:.3f} "
         f"-c:v libx264 -crf 20 -preset veryfast -pix_fmt yuv420p "
