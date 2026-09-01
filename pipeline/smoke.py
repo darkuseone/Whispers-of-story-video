@@ -126,6 +126,26 @@ def main(job_path):
                          f"ПОСЛЕ всего рендера")
     print(f"   списки на месте, теги {len(tags)}/{youtube.TAGS_LIMIT} символов")
 
+    # ОБЛОЖКИ. Промпт и хук проверяются здесь, до xAI: без пустого верхнего
+    # неба и без жёлтого Anton модель рисует красивый кадр, который в ленте
+    # не кликает. Шрифт лежит в репозитории — без него fallback уходит в
+    # системный DejaVu.
+    print("── обложки")
+    import covers
+    for path in ("youtube.cover_texts", "youtube.cover_scenes",
+                 "youtube.cover_prompts"):
+        cur = job.get("youtube") or {}
+        for key in path.split(".")[1:]:
+            cur = (cur or {}).get(key) if isinstance(cur, dict) else None
+        if cur is not None and not isinstance(cur, list):
+            raise SystemExit(
+                f"{path} записано как {type(cur).__name__}, а должно быть "
+                "списком из двух строк")
+    covers.self_check(job)
+    texts = covers.cover_texts(job)
+    print(f"   хуки «{texts[0]}» / «{texts[1]}», Anton на месте, "
+          "промпт держит верхнее небо и #FFD400")
+
     # Главы ↔ субтитры. Та же ловушка, что уронила ufos-history-01 на
     # этапе 3 после двух часов монтажа: split('.') резал «U.S.» / не
     # учитывал «Gods?». Проверяем по marks.json бесплатно, до рендера.
