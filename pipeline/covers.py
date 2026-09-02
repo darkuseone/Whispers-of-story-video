@@ -4,15 +4,16 @@ covers.py — две обложки ролика через xAI, с жёлтым
     Вызывается из youtube.py после сборки ролика.
     Можно отдельно:  python -c "from covers import main; main('jobs/…')"
 
-Стиль канала (см. скриншот в задании): тёмный кинематографичный фон +
-ОЧЕНЬ КРУПНЫЙ жёлтый/золотой текст ЗАГЛАВНЫМИ, 2–5 слов — хук, а не
-полный заголовок. Текст рисует модель прямо на изображении
-(grok-imagine-image это умеет); PIL-наложение — только запасной путь,
-когда ключа нет (смоук, локальная отладка).
+ШРИФТ — со скриншота автора, и только он: extra-condensed ALL CAPS
+Anton / Impact, жёлтый #FFD400, 2–5 слов, огромный кегль. Композицию
+со скриншота не копировать (это был образец букв, не шаблон кадра).
 
-Кэш: если cover_1.jpg / cover_2.jpg уже лежат в out/, повторно не
-рисуем. Перерисовать — удалить файлы и прогнать youtube.py снова.
-Пересборка монтажа обложки не трогает и денег не жжёт.
+КАДР — из docs/протокол-обложки.md: исследования CTR 2026 для безликих
+history / mystery. Паттерны object / scene / silhouette / split /
+tension. Две обложки = два разных паттерна.
+
+Текст рисует модель (grok-imagine-image); PIL + Anton — запасной путь
+без ключа. Кэш: лежащие cover_1.jpg / cover_2.jpg не перерисовываются.
 """
 
 import json
@@ -26,17 +27,78 @@ import requests
 XAI = "https://api.x.ai/v1"
 W, H = 1280, 720
 
-# Промпт собран под тот вид, что на канале: тёмный кадр, один крупный
-# жёлтый хук, без мелкого текста, без людей лицом в камеру (правило
-# канала), без логотипов и водяных знаков.
-PROMPT = (
-    "YouTube thumbnail, 16:9, cinematic dark atmospheric photograph of "
-    "{scene}, high contrast, dramatic lighting, deep shadows, mysterious "
-    "mood, photoreal. Huge bold bright yellow gold all-caps text "
-    "\"{text}\" centered in the upper half of the frame, thick letters, "
-    "highly readable on a phone screen, text is part of the image. "
-    "No people facing camera, no logos, no watermarks, no small subtitle "
-    "lines, no channel name, no extra text besides the yellow hook."
+ROOT = Path(__file__).resolve().parent.parent
+FONT_FILE = ROOT / "assets" / "fonts" / "Anton-Regular.ttf"
+YELLOW = (255, 212, 0)          # #FFD400 — тот же жёлтый, что на шортсах
+YELLOW_HEX = "#FFD400"
+
+# Кликбейт, который YouTube читает как Unsatisfying, и хуки, которые
+# на превью не работают: слишком общие, чтобы выделить ролик в ленте.
+BANNED_HOOKS = (
+    "WATCH THIS", "YOU WON'T BELIEVE", "YOU WONT BELIEVE",
+    "MUST SEE", "MUST WATCH", "CLICK HERE", "GONE WRONG",
+    "SHOCKING TRUTH", "WAIT FOR IT", "THE SECRET THEY",
+)
+
+# Паттерны кадра — не «ещё один туманный пейзаж». Сводка исследований
+# в docs/протокол-обложки.md. Имена совпадают с youtube.cover_patterns.
+PATTERNS = {
+    "object": (
+        "PATTERN object+overlay: extreme close-up of ONE artifact filling "
+        "most of the frame, shallow depth of field, dramatic rim light, "
+        "dark simple background. The object must be recognizable when the "
+        "whole image is only 120 pixels wide."
+    ),
+    "scene": (
+        "PATTERN cinematic scene: movie-poster establishing shot of ONE "
+        "place or moment, not a collage. Scale and atmosphere. Leave a "
+        "large empty region of the frame for type."
+    ),
+    "silhouette": (
+        "PATTERN mystery silhouette: a back-facing or fully shadowed human "
+        "figure with no visible face, plus ONE small piece of evidence in "
+        "the light. Identity stays hidden."
+    ),
+    "split": (
+        "PATTERN before/after: a clean 50/50 split of the SAME subject "
+        "then versus now. No arrows, no circles. The contrast is the hook."
+    ),
+    "tension": (
+        "PATTERN tension object: one wrong detail lit in darkness — a "
+        "broken seal, a redacted line, an empty plinth, a door that should "
+        "be open, a missing inscription. Uncanny, not gory, not shock-bait."
+    ),
+}
+
+# Контраст, поля, бейдж длительности, один герой. Палитра history/mystery:
+# тёмный navy/charcoal + один светлый предмет; жёлтый текст — pop-цвет.
+SCENE_LOCK = (
+    "YouTube thumbnail, 16:9 photoreal cinematic still for a mystery-history "
+    "documentary. {pattern} "
+    "HERO (the only subject, instantly readable at postage-stamp size): "
+    "{scene}. "
+    "High contrast two-color mass: dark navy or charcoal base, one lit "
+    "subject. Avoid beige/teal AI-default grading. "
+    "Leave the largest empty region of the frame (top OR side) as negative "
+    "space for the title — do not put the hero under the letters. "
+    "Keep the bottom-right 180x72 pixels empty for the YouTube duration "
+    "badge. Keep ~8 percent margins; no critical detail on the far edges "
+    "(mobile crop). Maximum four visual elements. "
+    "No people facing camera. No extra text besides the yellow hook. "
+    "No logos, arrows, circles, starbursts, watermarks, YouTube UI."
+)
+
+# Типографика — единственное, что копируется со скриншота автора.
+TYPE_LOCK = (
+    "Typography lock (do not ignore): the ONLY text in the image is "
+    "\"{text}\" in extra-condensed ultra-bold ALL-CAPS sans-serif "
+    "(Anton / Impact condensed), bright saturated yellow-gold "
+    + YELLOW_HEX +
+    ", letter height about 20 to 30 percent of the frame so it stays "
+    "legible at 120 pixels wide, placed in the empty negative-space "
+    "region, one line if two words else two centered lines. Tight "
+    "tracking, flat letters, no 3D bevel, no second subtitle, no "
+    "channel name."
 )
 
 
@@ -71,15 +133,103 @@ def cover_texts(job):
 
 
 def scene_hints(job):
-    """Короткие описания сцены из первых image_prompts / archive_queries."""
+    """
+    Две разных сцены под две обложки.
+
+    Сначала youtube.cover_scenes — это то, что сценарист написал именно
+    под превью. Иначе первый кусок image_prompts / archive_queries, как
+    раньше: лучше слабая сцена, чем пустой промпт.
+    """
+    y = job.get("youtube") or {}
     hints = []
-    for p in (job.get("image_prompts") or [])[:4]:
-        hints.append(re.split(r",", p)[0].strip())
-    for q in (job.get("archive_queries") or [])[:2]:
-        hints.append(q)
+    for s in y.get("cover_scenes") or []:
+        bit = str(s).strip()
+        if bit and bit not in hints:
+            hints.append(bit)
+    for p in (job.get("image_prompts") or [])[:8]:
+        bit = re.split(r",", str(p))[0].strip()
+        if bit and bit not in hints:
+            hints.append(bit)
+        if len(hints) >= 2:
+            break
+    for q in (job.get("archive_queries") or [])[:4]:
+        bit = str(q).strip()
+        if bit and bit not in hints:
+            hints.append(bit)
+        if len(hints) >= 2:
+            break
     while len(hints) < 2:
-        hints.append("ancient ruins at night under moonlight")
+        hints.append("a single ancient artifact against a dark navy void")
     return hints[:2]
+
+
+def cover_patterns(job):
+    """
+    Два имени паттерна из PATTERNS. По умолчанию object + scene:
+    крупный артефакт и киношный план — не два тумана.
+    """
+    y = job.get("youtube") or {}
+    out = []
+    for raw in y.get("cover_patterns") or []:
+        name = str(raw).strip().lower()
+        if name in PATTERNS and name not in out:
+            out.append(name)
+    for fallback in ("object", "scene", "tension", "silhouette", "split"):
+        if len(out) >= 2:
+            break
+        if fallback not in out:
+            out.append(fallback)
+    return out[:2]
+
+
+def _format_custom(raw, text, scene, pattern=""):
+    try:
+        return str(raw).format(text=text, scene=scene, pattern=pattern)
+    except (KeyError, IndexError, ValueError):
+        return str(raw)
+
+
+def _needs_type_lock(body, text):
+    """Свой промпт без жёлтого хука — модель нарисует красивый кадр без CTR."""
+    low = body.lower()
+    has_color = YELLOW_HEX.lower() in low or "yellow" in low
+    has_hook = text.upper() in body.upper()
+    return not (has_color and has_hook)
+
+
+def prompt_for(job, index, text=None, scene=None, pattern=None):
+    """
+    Полный промпт обложки index (0 или 1).
+
+    Приоритет:
+      1. youtube.cover_prompts[index] — полный текст от сценариста
+      2. youtube.cover_prompt — общий шаблон на обе (с {text}/{scene}/{pattern})
+      3. SCENE_LOCK + TYPE_LOCK по паттерну и cover_scenes
+
+    Свой промпт без жёлтого хука дополняется TYPE_LOCK: иначе модель
+    рисует красивый кадр без бренда канала.
+    """
+    texts = cover_texts(job) if text is None else None
+    scenes = scene_hints(job) if scene is None else None
+    patterns = cover_patterns(job) if pattern is None else None
+    text = text if text is not None else texts[index]
+    scene = scene if scene is not None else scenes[index]
+    name = pattern if pattern is not None else patterns[index]
+    pattern_text = PATTERNS.get(name, PATTERNS["object"])
+    y = job.get("youtube") or {}
+    customs = list(y.get("cover_prompts") or [])
+    raw = ""
+    if index < len(customs) and str(customs[index] or "").strip():
+        raw = customs[index]
+    elif str(y.get("cover_prompt") or "").strip():
+        raw = y["cover_prompt"]
+    if raw:
+        body = _format_custom(raw, text, scene, pattern_text)
+        if _needs_type_lock(body, text):
+            body = body.rstrip() + " " + TYPE_LOCK.format(text=text)
+        return body
+    return (SCENE_LOCK.format(pattern=pattern_text, scene=scene)
+            + " " + TYPE_LOCK.format(text=text))
 
 
 def xai_cover(prompt: str, dst: Path, model: str, key: str) -> bool:
@@ -110,12 +260,58 @@ def xai_cover(prompt: str, dst: Path, model: str, key: str) -> bool:
     return dst.exists() and dst.stat().st_size > 1000
 
 
+def wrap_hook(text):
+    """2 слова — одна строка; 3–5 — две, чтобы кегль остался огромным."""
+    words = str(text).split()
+    if len(words) <= 2:
+        return [" ".join(words)] if words else ["WATCH THIS"]
+    mid = (len(words) + 1) // 2
+    return [" ".join(words[:mid]), " ".join(words[mid:])]
+
+
+def paint_hook(im, text):
+    """
+    Жёлтый Anton — шрифт со скриншота автора. Запасной путь и смоук:
+    без него fallback уходил в DejaVu.
+    """
+    from PIL import ImageDraw, ImageFont
+    if not FONT_FILE.exists():
+        raise SystemExit(f"нет шрифта обложки {FONT_FILE}")
+    d = ImageDraw.Draw(im)
+    lines = wrap_hook(text)
+    max_w = int(W * 0.92)
+    max_h = int(H * 0.42)
+    lo, hi, best = 56, 200, 72
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        font = ImageFont.truetype(str(FONT_FILE), mid)
+        widths = [d.textlength(ln, font=font) for ln in lines]
+        gap = int(mid * 0.06)
+        height = mid * len(lines) + gap * (len(lines) - 1)
+        if max(widths) <= max_w and height <= max_h:
+            best = mid
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    font = ImageFont.truetype(str(FONT_FILE), best)
+    gap = int(best * 0.06)
+    y = int(H * 0.07)
+    for ln in lines:
+        w = d.textlength(ln, font=font)
+        x = (W - w) / 2
+        # мягкая тень, не чёрная обводка: на эталонах канала обводки нет
+        d.text((x + 2, y + 3), ln, font=font, fill=(0, 0, 0))
+        d.text((x, y), ln, font=font, fill=YELLOW)
+        y += best + gap
+    return im
+
+
 def pil_fallback(video: Path, at: float, text: str, dst: Path):
     """
-    Запасной путь без xAI: кадр из ролика + крупный жёлтый текст.
+    Запасной путь без xAI: кадр из ролика + крупный жёлтый Anton.
     Нужен смоуку и локальной отладке — не замена боевым обложкам.
     """
-    from PIL import Image, ImageDraw, ImageFont, ImageFilter
+    from PIL import Image, ImageDraw, ImageFilter
     raw = dst.parent / f"_cover_raw_{dst.stem}.png"
     subprocess.run(
         ["ffmpeg", "-v", "error", "-ss", f"{at:.2f}", "-i", str(video),
@@ -127,32 +323,7 @@ def pil_fallback(video: Path, at: float, text: str, dst: Path):
         sd.line([(0, i), (W, i)], fill=int(200 * (1 - i / (H / 2)) ** 1.2))
     im = Image.composite(Image.new("RGB", im.size, (0, 0, 0)), im,
                          shade.filter(ImageFilter.GaussianBlur(6)))
-    d = ImageDraw.Draw(im)
-    size = 78
-    try:
-        font = ImageFont.truetype(
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size)
-    except OSError:
-        font = ImageFont.load_default()
-    words, lines, cur = text.split(), [], ""
-    for w in words:
-        probe = (cur + " " + w).strip()
-        if d.textlength(probe, font=font) > W - 80 and cur:
-            lines.append(cur)
-            cur = w
-        else:
-            cur = probe
-    if cur:
-        lines.append(cur)
-    y = 80
-    yellow = (255, 214, 32)
-    for ln in lines[:3]:
-        # обводка — читаемость на любом кадре
-        for dx, dy in ((-3, 0), (3, 0), (0, -3), (0, 3),
-                       (-2, -2), (2, 2), (-2, 2), (2, -2)):
-            d.text((40 + dx, y + dy), ln, font=font, fill=(0, 0, 0))
-        d.text((40, y), ln, font=font, fill=yellow)
-        y += size + 10
+    paint_hook(im, text)
     im.save(dst, quality=92)
     raw.unlink(missing_ok=True)
     return dst
@@ -187,7 +358,7 @@ def build_covers(job, out: Path, video: Path = None):
         if dst.exists() and dst.stat().st_size > 1000:
             log(f"обложка {n}: уже есть, не трогаю ({text})")
             continue
-        prompt = PROMPT.format(scene=scene, text=text)
+        prompt = prompt_for(job, n - 1, text=text, scene=scene)
         if key:
             log(f"обложка {n}: рисую через xAI — «{text}»")
             if xai_cover(prompt, dst, model, key):
@@ -208,6 +379,119 @@ def build_covers(job, out: Path, video: Path = None):
     return paths
 
 
+def self_check(job=None):
+    """
+    Бесплатная проверка шрифта и CTR-каркаса. Смоук зовёт до рендера.
+    Со скриншота автора проверяем Anton/#FFD400, не «туманное небо».
+    """
+    if not FONT_FILE.exists():
+        raise SystemExit(f"нет шрифта обложки {FONT_FILE}")
+    gold = {
+        "id": "cover-self-check",
+        "youtube": {
+            "cover_texts": ["NEVER FOUND", "PAGE 25 FOUND"],
+            "cover_patterns": ["object", "tension"],
+            "cover_scenes": [
+                "a cracked Egyptian death mask filling the frame, gold rim light, dark navy void",
+                "a single redacted line on a stamped 1983 intelligence page, one word still visible",
+            ],
+        },
+    }
+    p1 = prompt_for(gold, 0)
+    p2 = prompt_for(gold, 1)
+    pats = cover_patterns(gold)
+    if pats != ["object", "tension"]:
+        raise SystemExit(f"обложка: паттерны сбились: {pats}")
+    if "close-up" not in p1.lower() and "object" not in p1.lower():
+        raise SystemExit("обложка: первый промпт не object-паттерн")
+    if "redacted" not in p2.lower() and "tension" not in p2.lower():
+        raise SystemExit("обложка: второй промпт не tension-паттерн")
+    for p, hook in ((p1, "NEVER FOUND"), (p2, "PAGE 25 FOUND")):
+        low = p.lower()
+        if hook not in p:
+            raise SystemExit(f"обложка: в промпте нет хука {hook!r}")
+        if "16:9" not in p:
+            raise SystemExit("обложка: промпт без 16:9")
+        if YELLOW_HEX.lower() not in low:
+            raise SystemExit("обложка: промпт без #FFD400")
+        if "anton" not in low:
+            raise SystemExit("обложка: промпт потерял гарнитуру Anton")
+        if "120" not in low:
+            raise SystemExit("обложка: промпт не требует читаемости с 120 px")
+        if "negative" not in low:
+            raise SystemExit("обложка: нет пустой зоны под текст")
+        if "duration" not in low and "bottom-right" not in low:
+            raise SystemExit("обложка: нет поля под бейдж длительности")
+        if "storm sky" in low or "golden-hour glow on the horizon" in low:
+            raise SystemExit(
+                "обложка: в дефолтный промпт снова зашили пейзаж со "
+                "скриншота — кадр должен идти от паттерна, не от тумана")
+    if p1 == p2:
+        raise SystemExit("обложка: два промпта совпали — нет A/B кадра")
+
+    tagged = {
+        "id": "t",
+        "youtube": {
+            "cover_texts": ["PAGE 25 FOUND", "THE 1983 CIA DOSSIER"],
+            "cover_prompts": [
+                "dark archive vault, one giant CIA dossier in a cyan laser slit",
+                "YouTube thumbnail 16:9 of a stamped 1983 CIA folder, yellow "
+                "#FFD400 ALL-CAPS \"THE 1983 CIA DOSSIER\" in empty negative space",
+            ],
+        },
+    }
+    a = prompt_for(tagged, 0)
+    b = prompt_for(tagged, 1)
+    if "PAGE 25 FOUND" not in a or YELLOW_HEX not in a:
+        raise SystemExit("обложка: сцене без хука не дописали TYPE_LOCK")
+    if "THE 1983 CIA DOSSIER" not in b or YELLOW_HEX.lower() not in b.lower():
+        raise SystemExit("обложка: готовый промпт потерял свой хук")
+
+    if job is not None:
+        y = job.get("youtube") or {}
+        raw = list(y.get("cover_texts") or [])
+        for t in raw[:2]:
+            n = len(re.sub(r"[^\w\s'\-]", "", str(t),
+                           flags=re.UNICODE).split())
+            if n > 5:
+                log(f"   ! cover_text длиннее 5 слов, на превью обрежется: {t!r}")
+        texts = cover_texts(job)
+        for t in texts:
+            if t in BANNED_HOOKS:
+                raise SystemExit(
+                    f"обложка: хук {t!r} — кликбейт без содержания. "
+                    "См. ИНСТРУКЦИЯ-ЧАТ.md, раздел про обложки.")
+        prompts = [prompt_for(job, i) for i in range(2)]
+        if prompts[0] == prompts[1] and texts[0] == texts[1]:
+            raise SystemExit(
+                "обложка: оба варианта совпали и текстом, и кадром — "
+                "нечего сравнивать в Test & Compare")
+        for i, (t, p) in enumerate(zip(texts, prompts), 1):
+            if t not in p:
+                raise SystemExit(f"обложка {i}: промпт без хука {t!r}")
+            if "yellow" not in p.lower() and YELLOW_HEX.lower() not in p.lower():
+                raise SystemExit(f"обложка {i}: промпт без жёлтого текста")
+
+    from PIL import Image
+    im = Image.new("RGB", (W, H), (18, 18, 22))
+    paint_hook(im, "STILL UNSOLVED")
+
+    def has_yellow(box):
+        crop = im.crop(box)
+        w, h = crop.size
+        for x in range(0, w, 8):
+            for y in range(0, h, 8):
+                r, g, b = crop.getpixel((x, y))[:3]
+                if r > 200 and g > 160 and b < 80:
+                    return True
+        return False
+
+    if not has_yellow((0, 0, W, H // 3)):
+        raise SystemExit("обложка: Anton не попал в верхнюю треть кадра")
+    if has_yellow((0, 2 * H // 3, W, H)):
+        raise SystemExit("обложка: жёлтый текст съехал в нижнюю треть")
+
+
 def main(job_path):
     job = json.loads(Path(job_path).read_text(encoding="utf-8"))
     out = Path("work") / job["id"] / "out"
@@ -218,4 +502,8 @@ def main(job_path):
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1])
+    if len(sys.argv) > 1 and sys.argv[1] == "--check":
+        self_check()
+        print("covers self-check ok")
+    else:
+        main(sys.argv[1])
