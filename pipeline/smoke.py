@@ -27,9 +27,77 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+# ВЕРХНИЙ УРОВЕНЬ jobs/<id>.json — ЗАКРЫТЫЙ СПИСОК.
+#
+# style_override уже проверяется так (см. build.OVERRIDABLE): опечатка в
+# имени поля роняет сборку сразу, а не превращается в тихо неработающую
+# настройку. Верхний уровень спецификации жил без этой защиты, и это тот
+# же класс инцидентов, что уже стоил роликов:
+#   - "similarity_boost" вместо "similarity" в voice_settings молча терял
+#     0.85 — озвучка звучала иначе, и заметно это было только на слух;
+#   - без "vet_context" отбраковка забраковала материал собственного
+#     видео как «не тот период» (dead-internet-01, до того как поле
+#     завели).
+#
+# Список составлен по факту: что читает код (job.get(...) / job[...] по
+# всем модулям pipeline/), а не что кто-то когда-то написал в спецификации
+# — иначе поле, которое перестали читать, никогда бы не всплыло, а
+# опечатка в новом поле проходила бы молча ровно так же, как раньше.
+TOP_LEVEL_KEYS = {
+    "id", "script_blocks",
+    # озвучка
+    "voice_id", "voice_model", "voice_settings",
+    # генерация изображений/видео
+    "image_model", "image_prompts", "video_prompts",
+    # поисковые запросы материала и источники
+    "footage_queries", "archive_queries", "photo_sources", "video_sources",
+    # отбраковка (vet.py)
+    "vet_context", "vet_vision", "vet_model", "vet_pool_factor",
+    "trusted_sources", "material_overshoot",
+    # добор после отбраковки (assets.refill_after_vet / fill_gaps)
+    "fill_limit", "fill_prompts",
+    # Magnific (доля генерации, пока не выключен переменной среды)
+    "magnific_share",
+    # ручная правка отбора: reject.clip / reject.arch по номерам с листов
+    "reject",
+    # монтаж
+    "style_override", "lut", "archive_lut",
+    "music", "bed_gain_db", "tail_hold",
+    # разное
+    "topic", "youtube", "batch",
+    # ручное переопределение памяти канала (CLAUDE.md, channel.py)
+    "recent_luts", "recent_openings",
+}
+
+
+def check_top_level(job):
+    """
+    Опечатка в имени поля верхнего уровня — не ошибка, а тишина: код
+    просто не находит ключ и берёт умолчание. Здесь это ловится сразу,
+    до того как деньги ушли на озвучку и генерацию под пустое умолчание.
+
+    Ключи с подчёркивания — комментарии протокола сценария (`_`,
+    `_проверить`, `_структура`...) и произвольные заметки автора
+    (`_техправки`, `_музыка_пример` и т.п.) — так заведено в самих
+    спецификациях, они не тронуты.
+    """
+    unknown = sorted(k for k in job
+                     if not k.startswith("_") and k not in TOP_LEVEL_KEYS)
+    if unknown:
+        raise SystemExit(
+            "верхний уровень спецификации: неизвестные поля "
+            + ", ".join(unknown) + "\nЕсли это заметка для человека — "
+            "добавь подчёркивание в начало имени (как _проверить). Если "
+            "это должно на что-то влиять — сверься со списком допустимых:\n"
+            + ", ".join(sorted(TOP_LEVEL_KEYS)))
+
 
 def main(job_path):
     job = json.loads(Path(job_path).read_text(encoding="utf-8"))
+    print("── верхний уровень спецификации")
+    check_top_level(job)
+    print(f"   {len(job)} полей, опечаток в именах нет")
+
     work = Path("work") / job["id"] / "assets"
     if not work.exists():
         raise SystemExit(
