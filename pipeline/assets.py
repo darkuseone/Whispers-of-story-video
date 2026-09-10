@@ -1022,13 +1022,75 @@ _REL_WEAK = {"dark", "night", "light", "lights", "room", "background",
              "timelapse", "white", "black", "colour", "color", "screen"}
 
 
+# 5.8.1 — СТЕММИНГ. «monument»/«monuments», «stone»/«stones» раньше не
+# пересекались вовсе: разные слова для _match_words. Без библиотек — режем
+# типовые окончания на обеих сторонах (запрос и теги), поэтому сравнение
+# остаётся честным, даже когда сам «корень» лингвистически неточный.
+#
+# «es» отрезается ТОЛЬКО когда без неё осталось бы слово на шипящую
+# (box+es, glass+es, dish+es) — иначе «stones» резалось бы в «ston»
+# вместо «stone»: у «stone» до «s» уже стоит «e», это не вставная гласная
+# перед «es», а часть корня. Проверено на обоих примерах из ТЗ.
+_SIBILANT_END = ("s", "x", "z", "ch", "sh")
+
+
+def _stem(word: str) -> str:
+    w = word
+    if w.endswith("ing") and len(w) - 3 >= 3:
+        return w[:-3]
+    if w.endswith("ed") and len(w) - 2 >= 3:
+        return w[:-2]
+    if w.endswith("es") and len(w) - 2 >= 3 and w[:-2].endswith(_SIBILANT_END):
+        return w[:-2]
+    if w.endswith("s") and not w.endswith("ss") and len(w) - 1 >= 3:
+        return w[:-1]
+    return w
+
+
+# 5.8.2 — СЛОВАРЬ СИНОНИМОВ ТЕМЫ. Поле job["synonyms"] — сценарист пишет
+# {"guidestones": ["monument", "granite", "slab", "stele"]}: узкое имя
+# темы (какое употребит script_grounded_queries) слева, общие слова стока
+# справа. Расширяется МЕШОК СЛОВ НАХОДКИ (have), а не запроса: файл,
+# помеченный тегом «granite», получает в свой мешок ещё и «guidestones»
+# и начинает совпадать с запросом по теме, хотя ни разу не назван ею
+# буквально. Установлен один раз на job (_set_synonyms) — источники
+# (ALL_SOURCES) вызываются с сигнатурой (query, n), это единственное
+# место, где вообще виден job, тянуть его через каждый fn(q, n) незачем.
+_SYNONYMS: dict = {}
+
+
+def _set_synonyms(job):
+    global _SYNONYMS
+    raw = job.get("synonyms") if isinstance(job, dict) else None
+    _SYNONYMS = ({_stem(str(k).lower()): [_stem(str(v).lower()) for v in vs]
+                 for k, vs in raw.items()}
+                if isinstance(raw, dict) else {})
+
+
 def _match_words(query: str, tags: str):
-    """Значимые слова запроса, слова находки и их пересечение."""
-    want = {w for w in re.findall(r"[a-z]+", (query or "").lower())
+    """Значимые слова запроса, слова находки (со стеммингом и синонимами
+    темы) и их пересечение."""
+    want = {_stem(w) for w in re.findall(r"[a-z]+", (query or "").lower())
             if len(w) > 2 and w not in _REL_STOP and w not in _REL_WEAK}
-    have = {w for w in re.findall(r"[a-z]+", (tags or "").lower())
+    have = {_stem(w) for w in re.findall(r"[a-z]+", (tags or "").lower())
             if w not in _REL_WEAK}
+    if _SYNONYMS:
+        have |= {key for key, values in _SYNONYMS.items() if have & set(values)}
     return want, have, want & have
+
+
+# 5.8.3 — БИГРАММЫ. Мешок слов одиночный терял порядок: «desert road»
+# матчился с «road» чего угодно наравне с точным совпадением. Вес втрое
+# больше самого дорогого одиночного попадания (BIGRAM_WEIGHT = 3 ×
+# длинное слово) — «desert road» обязан обыграть голое «road» без
+# всяких порогов, не только в среднем по больнице.
+BIGRAM_WEIGHT = 9.0
+
+
+def _bigrams(text: str) -> set:
+    words = [w for w in re.findall(r"[a-z]+", (text or "").lower())
+            if len(w) > 2 and w not in _REL_STOP]
+    return {f"{a} {b}" for a, b in zip(words, words[1:])}
 
 
 def relevance_score(query: str, tags: str) -> float:
@@ -1055,7 +1117,12 @@ def relevance_score(query: str, tags: str) -> float:
         score += 3.0 if len(w) >= 7 else 2.0
     # Доля запроса, которую находка закрыла: два слова из трёх лучше двух
     # из десяти. Иначе длинный запрос всегда выигрывал бы у точного.
-    return round(score + 2.0 * len(hits) / len(want), 3)
+    score += 2.0 * len(hits) / len(want)
+    # 5.8.3 — двухсловные сочетания весят отдельно и сверху, а не вместо
+    # одиночных: «desert road» должен обыгрывать «road», а не заменять
+    # собой всю остальную арифметику.
+    score += BIGRAM_WEIGHT * len(_bigrams(query) & _bigrams(tags))
+    return round(score, 3)
 
 
 def _best_by_relevance(cands, q, n):
@@ -2038,6 +2105,7 @@ def fetch_material(job, work: Path):
     правятся после того, как посмотришь, что по ним нашлось, и гонять ради
     этого заново озвучку за деньги незачем.
     """
+    _set_synonyms(job)
     purge_broken(work)
     vids = sources_from(job, "video_sources", VIDEO_SOURCES)
     phot = sources_from(job, "photo_sources", PHOTO_SOURCES)
@@ -2116,6 +2184,7 @@ def refill_after_vet(job, work: Path):
     переписываются. После докачки — повторная отбраковка: иначе в ролик
     уедет тот же брак вторым заходом.
     """
+    _set_synonyms(job)
     rej = vet.rejected_from(work)
     # НЕПРОСМОТРЕННОЕ — НЕ БРАК. Отбраковка останавливается, когда годного
     # набралось с запасом (vet.pool_budget), и остаток помечает отказом:

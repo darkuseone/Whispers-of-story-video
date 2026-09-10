@@ -51,6 +51,8 @@ TOP_LEVEL_KEYS = {
     "image_model", "image_prompts", "video_prompts",
     # поисковые запросы материала и источники
     "footage_queries", "archive_queries", "photo_sources", "video_sources",
+    # словарь синонимов темы для подбора материала (5.8.2)
+    "synonyms",
     # отбраковка (vet.py)
     "vet_context", "vet_vision", "vet_model", "vet_pool_factor",
     "trusted_sources", "material_overshoot",
