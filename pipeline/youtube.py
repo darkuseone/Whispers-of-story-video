@@ -27,6 +27,8 @@ import sys
 import unicodedata
 from pathlib import Path
 
+import timing
+
 W_THUMB, H_THUMB = 1280, 720
 FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 FONT_PLAIN = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
@@ -107,32 +109,9 @@ def stamp(sec: float) -> str:
 
 
 def first_sentence(text: str) -> str:
-    """
-    Первое предложение блока — ТА ЖЕ граница, что в assets.sentence_marks.
-
-    Раньше брали split('.')[0]: на «U.S. Air Force» ключ обрезался до «the U»,
-    а на «Chariots of the Gods? was published…» ключ включал «was…», хотя
-    субтитры режутся по «? » и реплика заканчивается на Gods?. Отсюда
-    «не нашёл её начало в субтитрах» уже ПОСЛЕ двух часов монтажа.
-
-    Проверка «точка перед пробелом» одна такую границу не держит: у
-    инициального сокращения из БУКВЫ-ТОЧКИ-БУКВЫ-ТОЧКИ (R.C., U.S.) первая
-    точка не перед пробелом и не ловится, а ПОСЛЕДНЯЯ — перед пробелом, и
-    выглядит точь-в-точь как конец предложения. На georgia-guidestones-01
-    `For thirty-five years, "R.C. Christian" was a locked box…` обрывалось
-    на `R.C.`, а не на настоящем конце фразы: короткое «for thirtyfive
-    years rc» не находилось ни в одной реплике, и вся глава 9 срывала
-    сборку youtube.py на последнем шаге. Точки внутри такого сокращения —
-    ВСЕ, включая последнюю, — из кандидатов на границу исключаются.
-    """
-    text = text.strip()
-    abbrev_end = {m.end() - 1
-                  for m in re.finditer(r"\b(?:[A-Z]\.){2,}", text)}
-    for i, ch in enumerate(text):
-        if ch in ".!?" and (i + 1 >= len(text) or text[i + 1] in " \n") \
-                and i not in abbrev_end:
-            return text[: i + 1].strip()
-    return text
+    """Первое предложение блока — timing.first_sentence (5.7), та же
+    граница, что в timing.sentence_marks на настоящей озвучке."""
+    return timing.first_sentence(text)
 
 
 def _chapter_keys(block: str) -> list[str]:

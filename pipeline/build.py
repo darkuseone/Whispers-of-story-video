@@ -29,8 +29,8 @@ build.py — собирает ролик из готовых материало�
 а не при просмотре.
 """
 
+import hashlib
 import json
-import math
 import os
 import subprocess
 import sys
@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import channel
 import render
+import timing
 import vet
 import style as style_mod
 from render import W, H, FPS
@@ -57,7 +58,9 @@ OVERLAYS = ROOT / "assets" / "overlays"
 # спецификации, тогда жребий не бросается вовсе.
 MUSIC_DIR = ROOT / "assets" / "music"
 
-SEG_SIZE = 12          # кадров в одной группе склейки
+SEG_SIZE = 12          # кадров в одной группе склейки, ЦЕЛЬ, не константа
+                       # — см. group_bounds(), группа тянется дальше, если
+                       # ровно на этом кадре закрывается глава
 
 # Движения для фотографий во вступлении: только скольжение и наезд.
 # Наклоны там читаются вяло, а статики быть не должно вовсе.
@@ -111,6 +114,25 @@ CLIP_REPEAT_MOVES = ["drift_in", "drift_left", "drift_out", "drift_right",
 # делают финал финалом.
 TAIL_FADE_SECONDS = 6.0
 
+# ПРОВАЛ В ЧЁРНОЕ НА ГРАНИЦЕ ГЛАВЫ.
+#
+# xfade=fadeblack сам по себе уходит в чёрное и выходит из него ВНУТРИ
+# своей длительности (1.6-2.8 с) — паузы на чёрном там нет, кадр A
+# перетекает в чёрное и тут же в кадр B одним непрерывным движением.
+# Титулу главы (textcard.chapter_titles) нужна именно ПАУЗА: он должен
+# сесть на спокойный тёмный кадр, а не на середину перетекания.
+#
+# Поэтому кадр, ЗАКРЫВАЮЩИЙ ГЛАВУ, гасится СВОИМ ходом в последние
+# CHAPTER_FADE_HOLD секунд — до всякого xfade, это фильтр на его
+# собственном входе. Кадр, ЭТУ ГЛАВУ ОТКРЫВАЮЩИЙ, симметрично проявляется
+# из чёрного в первые CHAPTER_FADE_HOLD секунд. Между ними по-прежнему
+# идёт обычный xfade (fadeblack/fadegrays) — он просто стартует уже из
+# затемнённого кадра A и приходит в проявляющийся кадр B, и на выходе
+# получается растянутый на секунду с лишним провал, а не мгновенное
+# перетекание. Стоит два fade на группу с границей главы — на фоне
+# noise/vignette, которые есть у КАЖДОЙ группы, это ноль.
+CHAPTER_FADE_HOLD = 0.8
+
 # ТИШИНА ПОСЛЕ ПОСЛЕДНЕГО СЛОВА. Уход в чёрное выше решал только половину
 # задачи: картинка гасла, а начитка при этом договаривала фразу до самого
 # конца файла и обрывалась вместе с ним. На готовом ролике это слышно как
@@ -122,12 +144,18 @@ TAIL_FADE_SECONDS = 6.0
 # его и включают. Стоит это один фильтр tpad на последней группе склейки,
 # то есть ноль.
 #
-# Было четыре секунды. Стало одиннадцать — под финальный титр, и делятся
-# они так (см. textcard.THE_END_AT / THE_END_HOLD):
+# Было четыре секунды. Стало одиннадцать — под финальный титр. Это ЧИСТЫЙ
+# чёрный хвост ПОСЛЕ заморозки-затемнения (см. TAIL_FADE_SECONDS и
+# «ГИБРИДНЫЙ ФИНАЛ» в join()) — он начинается не в конце последнего
+# слова, а через TAIL_FADE_SECONDS после него, когда кадр уже полностью
+# погас. Секунды считаются от НАЧАЛА ЗАМОРОЗКИ (t=0 = последнее слово),
+# делятся так (см. textcard.THE_END_AT / THE_END_HOLD):
 #
-#   0.0 - 1.2   чёрный кадр, пусто
-#   1.2 - 5.2   THE END проявляется, висит и уходит
-#   5.2 - 11.0  настоящая тишина без единого знака на экране
+#   0.0 - 6.0    последний кадр замирает и темнеет (TAIL_FADE_SECONDS)
+#   4.0 - 8.0    THE END проявляется, висит и уходит — половина времени
+#                на угасающем кадре, половина уже на чёрном
+#   6.0 - 17.0   чистый чёрный (TAIL_FADE_SECONDS + TAIL_HOLD_SECONDS)
+#   8.0 - 17.0   настоящая тишина без единого знака на экране
 #
 # Последний отрезок и есть послевкусие, ради которого хвост заведён:
 # титр, доигрывающий до самого конца файла, съедал бы его целиком. Ролик
@@ -856,6 +884,7 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     arch_pick = ShotPicker([(p, "arch", kw_of(p)) for p in archive], total, prior)
     clip_pick = ShotPicker([(p, "clip", kw_of(p)) for p in clips], total, prior,
                            caps=clip_caps)
+    total_clip_capacity = sum(clip_caps.values())
     if clips:
         once = sum(1 for v in clip_caps.values() if v <= 1)
         log(f"  сток: {len(clips)} клипов, "
@@ -907,8 +936,19 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
             return None
         return CLIP_REPEAT_MOVES[(times_before - 1) % len(CLIP_REPEAT_MOVES)]
 
-    def clip_available():
-        """Ложь, когда пул стока исчерпан по MAX_CLIP_REPEATS — см. константу."""
+    intro_reserve_hit = [False]
+
+    def clip_available(phase: str = "intro"):
+        """Ложь, когда пул стока исчерпан по MAX_CLIP_REPEATS, или когда
+        вступление выбрало свой резерв и лезет в куски, оставленные телу
+        (см. intro_clip_reserve чуть ниже по функции)."""
+        if phase == "intro" and sum(clip_pick.used.values()) >= intro_clip_reserve:
+            if not intro_reserve_hit[0]:
+                intro_reserve_hit[0] = True
+                log(f"  сток: вступление выбрало свой резерв "
+                    f"({intro_clip_reserve} из {total_clip_capacity} кусков) — "
+                    f"остальное бережётся для тела")
+            return False
         if not clip_pick.exhausted(MAX_CLIP_REPEATS):
             return True
         if not clip_cap_hit[0]:
@@ -1049,6 +1089,38 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     intro_end = op["end"]
     log(f"  открытие: {st.opening}, вступление до {intro_end:.0f} с")
 
+    # РЕЗЕРВ СТОКА ПОД ТЕЛО.
+    #
+    # Пул кусков один на весь ролик (clip_caps), а вступление идёт ПЕРВЫМ
+    # и жадно забирает видео — его доля 70-80% против 20-30% у тела.
+    # На богатом материале это неважно: вступление организически берёт
+    # меньше кусков, чем вообще есть. Но на бедном (см. CLAUDE.md —
+    # georgia-guidestones-01, отбраковка оставила 13 клипов на 39 слотов)
+    # вступление успевает забрать пул ЦЕЛИКОМ ещё до того, как тело
+    # начнётся: MaterialMix честно считает долю по времени, но считать
+    # уже нечем. Замер до фикса: тело 8.4% видео при заказанных 24%.
+    #
+    # Делим не секунды, а ШТУКИ КУСКОВ: секунды видео фазы, делённые на
+    # средний кусок ЭТОЙ фазы. Кусок — общая единица (грид `typical` в
+    # capacity), но средняя длина куска у фаз разная: вступление режет
+    # по 3-8 с, тело — по границам предложений, то есть кусками порядка
+    # `base_dur` (обычно вдвое длиннее). Делить капасити по одним
+    # секундам без поправки на длину куска — недооценивать аппетит
+    # вступления вдвое: ровно так первая версия фикса урезала вступление
+    # до 36% при заказанных 78%, хотя тело своей доли почти достигло на
+    # меньшем резерве. На богатом материале резерв заведомо больше
+    # органического аппетита вступления и ни на что не влияет; связывает
+    # он только сценарий дефицита, для которого и написан.
+    _intro_avg_piece = sum(st.intro_clip_duration_range) / 2.0
+    _body_avg_piece = max(st.base_dur, 1.0)
+    _intro_pieces = (intro_end * st.intro_clip_share) / _intro_avg_piece
+    _body_pieces = ((max(total - intro_end, 0.0) * st.body_clip_share)
+                     / _body_avg_piece)
+    _pieces_sum = _intro_pieces + _body_pieces
+    intro_clip_reserve = (
+        round(total_clip_capacity * _intro_pieces / _pieces_sum)
+        if _pieces_sum > 0 else total_clip_capacity)
+
     # Докуда хук подбирается под развязку. Дальше двадцатой секунды это
     # уже не «обещание», а спойлер длиной в главу.
     tease_until = intro_start + 20.0
@@ -1160,6 +1232,46 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
                 run_len = 1
                 rng_pair = st.intro_photo_duration_range
                 dur = round(st.rng.uniform(*rng_pair), 3)
+            elif idx == 0 and op["first_long"]:
+                # 2.1.1: ДЛИННЫЙ ПЕРВЫЙ ПЛАН РЕЖЕТСЯ НА 2-3 КУСКА ОДНОГО
+                # ФАЙЛА. Раньше starlit/slow_reveal/long_establish ставили
+                # один неподвижный план на 5.5-12 с — треть роликов
+                # открывалась вообще без смены кадра в первые десять
+                # секунд. План остаётся «установочным» (тот же файл, та
+                # же сцена, тот же проезд), но дышит: длиннее восьми
+                # секунд — три куска, короче — два (делить шестисекундный
+                # slow_reveal на три значило бы куски по две секунды, а
+                # это уже quick_cuts, не establishing).
+                #
+                # Куски режутся cutter.take_start НАПРЯМУЮ, в обход
+                # clip_pick.take() — тот уже один раз выбрал ЭТОТ файл
+                # (src), и спрашивать его снова означало бы рисковать
+                # получить другой файл на второй кусок «одного плана».
+                # Из-за этого ShotPicker.used засчитывает файлу только
+                # ОДИН показ, хотя на таймлайне их 2-3, — сознательный
+                # компромисс: это внутренняя нарезка одного непрерывного
+                # плана, а не повторное появление стока в разных местах
+                # ролика, ровно то, от чего защищает MAX_CLIP_REPEATS.
+                n = 3 if dur >= 8.0 else 2
+                piece = round(dur / n, 3)
+                for k in range(n):
+                    p_start, p_stretch, p_total = clip_timing(src, piece)
+                    p_tr, p_trd = (tr, trd) if k == 0 else st.pick_transition(short=True)
+                    shots.append(dict(
+                        kind="clip", file=src, tag="clip",
+                        src_start=p_start, stretch=p_stretch,
+                        src_total=p_total,
+                        move=(repeat_move(clip_pick.last_repeat) if k == 0
+                              else repeat_move(k)),
+                        start=round(t, 3), duration=piece,
+                        transition=p_tr, transition_dur=p_trd,
+                        effect=st.effect(), beat_kind="hook",
+                        why=f"вступление ({st.opening}), план дышит "
+                            f"{k + 1}/{n}"))
+                    mix.charge("clip", piece, phase="intro")
+                    t += piece
+                idx += 1
+                continue
             else:
                 src_start, stretch, src_total = clip_timing(src, dur)
                 shots.append(dict(kind="clip", file=src, tag="clip",
@@ -1258,6 +1370,11 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
                 shots[-1]["transition_dur"] = ctrd
                 shots[-1]["why"] = (shots[-1].get("why", "") +
                                     " · закрывает главу")
+                # Помечен для group_bounds(): такой кадр не имеет права
+                # оказаться последним в своей группе склейки — иначе
+                # переход, только что выбранный сюда, съедает concat
+                # -c copy на стыке групп, и затемнение исчезает целиком.
+                shots[-1]["chapter_close"] = True
         if beat is not None:
             cfg = st.shot_for(beat, pace, bi, start_probe)
             is_anchor = False        # выдохи из pacing делают ту же работу
@@ -1296,6 +1413,57 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
                 best, best_err = j, err
         end = marks[best]["end"]
         i = best + 1
+
+        # ГРАНИЦА ГЛАВЫ, ЕСЛИ ОНА ВПЕРЕДИ, ПЕРЕВЕШИВАЕТ ПОДБОР ПО WANT.
+        #
+        # Поиск выше ищет границу предложения БЛИЖАЙШУЮ К WANT и ничего не
+        # знает про edges — а кадр, который пересекает границу главы
+        # внутри своей длительности, получает transition=chapter и
+        # chapter_close ЗАДНИМ ЧИСЛОМ, уже на СЛЕДУЮЩЕЙ итерации (см.
+        # at_edge выше). Раз выбор в цикле выше уже сделан ПО WANT, а не
+        # по границе, видео-рез и затемнение падают там, где кадр решил
+        # кончиться сам — иногда за десять секунд ПОСЛЕ того, как титул
+        # главы уже появился, отстоял своё и погас.
+        #
+        # Замер на gateway-process-01: 4 из 12 границ разошлись с видео-
+        # резом на 9.3-11.3 с — ровно те случаи, где ближайшая по want
+        # граница предложения лежит заметно дальше самой границы главы.
+        # На остальных восьми граница и без того ближе к want, и правка
+        # здесь молчит — cost() её не трогает.
+        #
+        # Правка ЗДЕСЬ, отдельным шагом, а не в самом cost(): изменить cost() значило
+        # бы сдвигать ЛЮБУЮ границу к ближайшей главе всегда, даже когда
+        # она у самого начала кадра — а до этой точки в коде ещё нет
+        # свежего `edges` (он читается один раз выше, до pop). Проверяем
+        # отдельным, явным кандидатом: ищем границу предложения БЛИЖАЙШУЮ
+        # к самой edges[0], и меняем на неё, только если она не увела
+        # кадр в абсурдную длину и правда ближе к границе, чем то, что
+        # выбрал обычный поиск.
+        if edges and edges[0] > start:
+            edge_t = edges[0]
+            # Тянуться за границей можно не бесконечно: дальше 2.5×want
+            # или свыше жёсткого потолка кадра это уже не «кадр слегка
+            # зацепил границу», а «кадр растянут ради неё» — так делать
+            # нельзя, лучше остаться с прежним поведением (задняя правка
+            # на следующей итерации).
+            reach = min(want * 2.5, st.max_shot_seconds - 0.5)
+            if edge_t - start <= reach:
+                k = best
+                # marks отсортированы по времени; ищем ближайшую К ГРАНИЦЕ
+                # (а не к want) отдельным проходом, вперёд от текущего best
+                while k < len(marks) - 1 and marks[k]["end"] < edge_t:
+                    k += 1
+                # ближайший кандидат — сам k либо k-1, смотря что ближе
+                cands = [k]
+                if k > i:
+                    cands.append(k - 1)
+                edge_best = min(cands, key=lambda m: abs(marks[m]["end"] - edge_t))
+                if (marks[edge_best]["end"] - start <= reach
+                        and abs(marks[edge_best]["end"] - edge_t)
+                        < abs(marks[best]["end"] - edge_t)):
+                    best = edge_best
+                    end = marks[best]["end"]
+                    i = best + 1
 
         # Кому достаётся кадр — футажу или картинке.
         #
@@ -1347,7 +1515,7 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         gap_needed = 1 if behind else next_gap
         clip_ok = (not is_anchor and since_clip >= gap_needed
                    and beat_ok
-                   and dur <= CLIP_MAX_SECONDS and clip_available())
+                   and dur <= CLIP_MAX_SECONDS and clip_available("body"))
         got = mix.pick((["clip"] if clip_ok else []) + ["gen", "arch"],
                        phase="body")
 
@@ -1729,6 +1897,58 @@ def xfade_dur(shot):
 PAD = round(2 / FPS, 3)     # два кадра запаса в хвосте каждого клипа
 
 
+def group_bounds(shots):
+    """
+    Границы групп склейки: по SEG_SIZE кадров, НО кадр, ЗАКРЫВАЮЩИЙ
+    ГЛАВУ (`shot["chapter_close"]`, см. plan_shots), никогда не
+    становится последним кадром своей группы.
+
+    Почему это не мелочь. У последнего кадра группы `render_dur`
+    считается БЕЗ ЗАПАСА НА ПЕРЕХОД (см. `set_render_durations` ниже:
+    «у последнего кадра группы перехода нет, группы сшиваются встык») —
+    а дальше группы клеятся `concat -c copy`, то есть жёстким резом.
+    Переход, записанный на таком кадре (`shot["transition"]`), в ffmpeg
+    просто не попадает: его никто не читает ни здесь, ни в `join()`
+    (там цикл идёт `for k in range(1, len(group))`, а транзишн последнего
+    кадра группы не участвует ни в одном `xfade`).
+
+    Для обычного кадра это значит незапланированный жёсткий рез вместо
+    мягкого — на глаз малозаметно на фоне остального монтажа. Но для
+    границы главы это ЕДИНСТВЕННОЕ место, где план решил уйти в чёрное
+    (`pick_transition(chapter=True)`), и потеря перехода означает потерю
+    затемнения целиком — примерно на каждой двенадцатой границе, если
+    ничего не делать.
+
+    Честный фикс — перенести хвост перехода в НАЧАЛО следующей группы —
+    ломает `concat -c copy` и требует лишнего запаса на рендере
+    предыдущей группы; расписан и отклонён отдельно (см. ТЗ). Здесь фикс
+    дешёвый: сдвигается ГРАНИЦА группы, а не кадры плана и не таймлайн
+    звука — рендерится тот же материал, просто другим числом кадров в
+    файле склейки. Обычные (не-chapter) стыки групп по-прежнему жёсткие
+    — это отдельная, более дорогая правка, здесь не тронута.
+
+    Возвращает список (start, end) полуоткрытых диапазонов индексов,
+    в сумме без пропусков и перехлёстов покрывающих range(len(shots)).
+    """
+    n = len(shots)
+    bounds = []
+    start = 0
+    while start < n:
+        end = min(start + SEG_SIZE, n)
+        # Растягиваем группу, пока её предполагаемый последний кадр —
+        # закрывающий главу и в ролике ещё есть кадры дальше. Потолок
+        # SEG_SIZE + 4 — подряд идущие короткие главы (тестовые
+        # спецификации) не должны разогнать группу до абсурда; в этом
+        # случае одна граница честно теряет затемнение, как и раньше,
+        # а не рвёт остальную раскладку.
+        while (end < n and shots[end - 1].get("chapter_close")
+               and end - start < SEG_SIZE + 4):
+            end += 1
+        bounds.append((start, end))
+        start = end
+    return bounds
+
+
 def set_render_durations(shots):
     """
     xfade склеивает соседние кадры ВНАХЛЁСТ: каждый переход вычитает свою
@@ -1749,6 +1969,11 @@ def set_render_durations(shots):
     после перехода. У последнего кадра группы перехода нет (группы сшиваются
     встык), поэтому и запаса нет — иначе он оказался бы на экране.
 
+    КАКОЙ КАДР СЧИТАЕТСЯ ПОСЛЕДНИМ В ГРУППЕ, решает `group_bounds()`, а
+    не простое деление на SEG_SIZE: граница главы не имеет права
+    оказаться этим кадром, иначе его переход (уход в чёрное) выбрасывается
+    вместе с запасом — см. докстринг `group_bounds`.
+
     ПЕРЕХОД НЕ ДЛИННЕЕ КАДРОВ, которые он склеивает. Здесь это не
     придирка: переходы на канале длинные (до 2.6 секунды, а на границах
     глав до 2.8), кадры во вступлении короткие (от трёх секунд), и
@@ -1765,8 +1990,8 @@ def set_render_durations(shots):
         if sh["transition_dur"] > limit:
             sh["transition_dur"] = round(max(0.25, limit), 2)
 
-    for gi in range(0, len(shots), SEG_SIZE):
-        group = shots[gi:gi + SEG_SIZE]
+    for gs, ge in group_bounds(shots):
+        group = shots[gs:ge]
         for k, sh in enumerate(group):
             extra = 0.0 if k == len(group) - 1 else xfade_dur(sh) + PAD
             sh["render_dur"] = round(sh["duration"] + extra, 3)
@@ -1923,8 +2148,27 @@ def join(group, out: Path, st, overlay, first=False, moments=None, last=False):
     # архивное фото получает семейный грейд, а генерация — архивный.
     # Считается это ровно столько же: кадров на входе почти столько же,
     # сколько на выходе, xfade их не размножает.
-    fc = [f'[{k}:v]lut3d=file={grade_for(sh, st)}[g{k}]'
-          for k, sh in enumerate(group)]
+    #
+    # ЗДЕСЬ ЖЕ — ПРОВАЛ В ЧЁРНОЕ НА ГРАНИЦЕ ГЛАВЫ (см. CHAPTER_FADE_HOLD).
+    # fade ставится ПОСЛЕ lut3d в ТОЙ ЖЕ per-input цепочке, а не общим
+    # постпроцессом на готовую группу: иначе чёрное не чёрное — LUT
+    # поднимает нулевой уровень (та же грабля, что у открытия из чёрного
+    # ниже), а «общий пост» красит уже склеенную группу целиком, а не
+    # конкретный кадр перед конкретной границей.
+    #
+    # group_bounds() (см. выше) гарантирует, что закрывающий главу кадр и
+    # кадр, эту главу открывающий, ВСЕГДА оказываются в одной группе —
+    # иначе их было бы нечем связать per-input фильтром без второго
+    # прохода ffmpeg по соседней группе.
+    fc = []
+    for k, sh in enumerate(group):
+        filt = f'lut3d=file={grade_for(sh, st)}'
+        if sh.get("chapter_close"):
+            fade_at = max(0.0, sh["render_dur"] - CHAPTER_FADE_HOLD)
+            filt += f',fade=t=out:st={fade_at:.3f}:d={CHAPTER_FADE_HOLD:.2f}'
+        if k > 0 and group[k - 1].get("chapter_close"):
+            filt += f',fade=t=in:st=0:d={CHAPTER_FADE_HOLD:.2f}'
+        fc.append(f'[{k}:v]{filt}[g{k}]')
 
     prev, off = "g0", 0.0
     for k in range(1, len(group)):
@@ -1957,6 +2201,27 @@ def join(group, out: Path, st, overlay, first=False, moments=None, last=False):
     else:
         tail = "graded"
 
+    # 5.4 — ЗАМЕРЕНО, РЕШЕНИЕ «НЕ ТРОГАТЬ». Подозрение было на noise как на
+    # самый дорогой фильтр графа после x264. Замер в изоляции (film_look
+    # + один фильтр, 32.8 с реального куска, crf22/veryfast) дал обратное:
+    # +29% у noise, +74% у vignette — виньетка дороже. Но в РЕАЛЬНОМ join()
+    # (та же группа 12 кадров, 76 с итога, полный граф: lut3d на каждый
+    # вход + xfade + этот post + кодирование) noise+vignette вместе стоят
+    # 153.1 с против 127.5 с без них — то есть ~20% времени группы, а не
+    # 74%: изолированный замер завышал долю, не видя decode/lut3d/xfade,
+    # которые в полном графе доминируют. У виньетки с постоянным углом нет
+    # временной изменчивости (eval=init, не «frame») — маску можно было бы
+    # посчитать один раз и накладывать blend'ом вместо покадрового фильтра,
+    # и тривиальная проверка (vignette(white) == сама маска, разница 0)
+    # это подтверждает. Но blend=multiply в текущем графе ffmpeg-цветовых
+    # пространств даёт неверный результат (мультипликация по каналам U/V
+    # вместо RGB тянет картинку в цвет — замерено пиксельным сравнением,
+    # не выведено на глаз), и корректный обход (format=gbrp/rgb24 вокруг
+    # blend) не нашёлся с ходу. Правка на 20% ради этого нужного эффекта
+    # неготова, а половинчатую — с недопроверенной цветопередачей —
+    # в бой не пускаем: если пересматривать, замерять полным join(), а не
+    # изолированным post-фильтром, разница в замерах выше — ровно тот
+    # случай.
     post = []
     if st.grain:
         post.append(f"noise=alls={st.grain}:allf=t+u")
@@ -1979,13 +2244,23 @@ def join(group, out: Path, st, overlay, first=False, moments=None, last=False):
     # проявление идёт не из черноты, а из синеватой мути.
     if first and st.opening in ("black_card", "starlit"):
         post.append(f"fade=t=in:st=0:d={2.6 if st.opening == 'starlit' else 1.4}")
-    # УХОД В ЧЁРНОЕ В САМОМ КОНЦЕ. Ролик смотрят перед сном, и обрыв
-    # картинки на полном свете будит. Считается от длины группы: время
-    # внутри неё идёт от нуля, а сколько её осталось — знаем только здесь.
+    # ГИБРИДНЫЙ ФИНАЛ (2.3). Ролик смотрят перед сном, и обрыв картинки на
+    # полном свете будит — но и fade=t=out ПРЯМО НА ДВИЖЕНИИ (было так)
+    # тоже не финал: последние TAIL_FADE_SECONDS зритель терял финальный
+    # образ ролика, картинка гасла ещё в движении, до того как что-то
+    # успевало устояться на кадре. Здесь последний РЕАЛЬНЫЙ кадр сначала
+    # ЗАМИРАЕТ (tpad=stop_mode=clone), а гаснет уже неподвижный, тем же
+    # tpad что дорисовывает и чёрный хвост — тем же вызовом ffmpeg и тем
+    # же кодировщиком, склейка остаётся без перекодирования (concat -c
+    # copy требует совпадения параметров потока до последнего бита).
+    # Затемнение стартует СРАЗУ на границе (st=seg, без паузы): пауза
+    # перед началом fade читалась бы как «видео зависло», а не как финал.
+    # Считается от длины группы: время внутри неё идёт от нуля, а сколько
+    # её осталось — знаем только здесь.
     if last:
         seg = sum(sh["duration"] for sh in group)
-        st_fade = max(0.0, seg - TAIL_FADE_SECONDS)
-        post.append(f"fade=t=out:st={st_fade:.2f}:d={TAIL_FADE_SECONDS:.1f}")
+        post.append(f"tpad=stop_mode=clone:stop_duration={TAIL_FADE_SECONDS:.1f}")
+        post.append(f"fade=t=out:st={seg:.2f}:d={TAIL_FADE_SECONDS:.1f}")
         # ...и держим чёрный кадр ещё несколько секунд после того, как
         # начитка кончилась. Кадры дорисовывает tpad — тем же вызовом
         # ffmpeg и тем же кодировщиком, поэтому финальная сшивка остаётся
@@ -2022,6 +2297,79 @@ def join(group, out: Path, st, overlay, first=False, moments=None, last=False):
         if tail:
             print(tail)
         raise subprocess.CalledProcessError(r.returncode, cmd, r.stdout, r.stderr)
+
+
+# Поля кадра, от которых зависят ПИКСЕЛИ группы — план решает, что вообще
+# рисуется. Забыть поле здесь — значит доверить кэшу seg, который на
+# самом деле устарел (та же дисциплина, что у group_fingerprint в целом).
+_SHOT_FINGERPRINT_FIELDS = (
+    "file", "kind", "tag", "src_start", "stretch", "move", "effect",
+    "transition", "transition_dur", "duration", "render_dur", "speed",
+    "ease", "framing_name", "chapter_close",
+)
+_MOMENT_FINGERPRINT_FIELDS = (
+    "t", "text", "style", "place", "hold", "size", "dense", "underline",
+    "y_shift", "dim", "font", "frame_kind", "lines", "fade_in", "fade_out",
+)
+
+
+def group_fingerprint(group, st, overlay, moments, first, last) -> str:
+    """
+    Отпечаток ВСЕГО, что попадает в пиксели готовой группы (5.2).
+
+    Кэшируется не кадр, а уже сжатый seg_NNN.mp4 — план кадров группы
+    решает раскладку, цветокор и виньетка/зерно красят её целиком, оверлей
+    ложится тем же файлом, титры/плашки/акценты вписаны в пиксели
+    join()'ом. Совпал отпечаток с сохранённым рядом с seg — можно
+    доверять кэшу и не перекладывать/раскодировать его заново; не совпал —
+    группа считается отсутствующей, будто кэша не было вовсе. Тот же
+    класс проверки, что policy_key у vet.py: забыть одно поле здесь — и
+    получится ролик, собранный из старых групп с новыми титрами (риск,
+    прямо названный в ТЗ 5.2).
+
+    first/last — не только флаги, от них зависит fade-в-чёрное на первой
+    группе (st.opening) и заморозка+хвост на последней (st.tail_hold),
+    поэтому оба входят в отпечаток отдельно от самого плана.
+    """
+    h = hashlib.sha1()
+    for sh in group:
+        for k in _SHOT_FINGERPRINT_FIELDS:
+            h.update(str(sh.get(k, "")).encode("utf-8"))
+            h.update(b"\0")
+    h.update(f"{first}|{last}|{st.crf}|{st.preset}|{st.lut}|"
+            f"{st.archive_lut}|{st.grain}|{st.vignette}|{overlay}|"
+            f"{st.overlay_opacity}|{st.overlay_flip}|{st.opening}|"
+            f"{getattr(st, 'tail_hold', 0.0)}".encode("utf-8"))
+    h.update(b"\0")
+    for m in moments or []:
+        for k in _MOMENT_FINGERPRINT_FIELDS:
+            h.update(str(m.get(k, "")).encode("utf-8"))
+            h.update(b"\0")
+    return h.hexdigest()[:16]
+
+
+def join_group(args):
+    """
+    Обёртка join() под ThreadPoolExecutor.map (5.1) — та же сигнатура по
+    духу, что у render_one: один аргумент-кортеж, детерминированный
+    порядок результатов (map отдаёт их в порядке задач, не завершения).
+
+    5.2 — кэш групп: seg_NNN.mp4 существует и рядом лежит seg_NNN.key с
+    ТЕМ ЖЕ отпечатком (group_fingerprint) — группа не собирается заново.
+    Файл может пережить свой план (restore из кэша Actions между
+    прогонами, где план/стиль сменился) — сверка отпечатка, а не только
+    существования файла, и есть защита от этого; без неё «файл лежит»
+    молча значило бы «файл годится».
+    """
+    gidx, group, seg, first, last, st, overlay, moments = args
+    fp = group_fingerprint(group, st, overlay, moments, first, last)
+    key_path = seg.with_suffix(".key")
+    if (seg.exists() and key_path.exists()
+            and key_path.read_text().strip() == fp):
+        return seg, True
+    join(group, seg, st, overlay, first=first, moments=moments, last=last)
+    key_path.write_text(fp)
+    return seg, False
 
 
 def beds_for(st, job, total: float = 0.0):
@@ -2249,7 +2597,11 @@ def main(job_path):
     # схлопывается в череду фотографий с одинаковым наездом независимо от
     # того, какой богатый вектор стиля ему достался.
     log("── проверка плана на признаки шаблона")
-    findings = rails.audit(shots, st.vector, getattr(st, "beats", None))
+    # Считается ОДИН раз и переиспользуется дальше в склейке (см. ниже):
+    # и проверка, и рендер обязаны смотреть на одни и те же границы групп.
+    bounds = group_bounds(shots)
+    findings = rails.audit(shots, st.vector, getattr(st, "beats", None),
+                           group_bounds=bounds)
     metrics = rails.metrics(shots)
     hard = rails.report(findings, log)
     log(f"  разброс длительностей {metrics['cv_duration']}, "
@@ -2298,8 +2650,9 @@ def main(job_path):
     if opening:
         first_end = marks[0]["end"] if marks else 0.0
         log(f"── заставка: «{opening[0]['text']}» "
-            f"с {opening[0]['t']:.1f} с (первая фраза кончается "
-            f"на {first_end:.1f} с), кегль {opening[0]['size']}")
+            f"с {opening[0]['t']:.1f} с на {opening[0]['hold']:.1f} с "
+            f"(первая фраза кончается на {first_end:.1f} с), "
+            f"кегль {opening[0]['size']}")
     else:
         log("── заставка: нет шрифта титров либо пустой заголовок")
     # THE END отсчитывается от КОНЦА НАЧИТКИ: чёрный хвост начинается
@@ -2311,6 +2664,21 @@ def main(job_path):
     titles = opening + titles + ending
     # дальше все три слоя живут одним списком: join() различает их по стилю
     moments = sorted(cards + moments + titles, key=lambda m: m["t"])
+
+    # СКВОЗНЫЕ ТЕКСТОВЫЕ АКЦЕНТЫ (2.4) — четвёртый слой, самый тихий: не
+    # факт и не событие, а короткая синхронная подпись к уже произнесённому
+    # слову. Считается ПОСЛЕДНИМ — только так видно, где уже стоит титул,
+    # полноэкранная карточка или плашка-число (2.4.2, проверка коллизий).
+    words = (timing.words_from_alignment(job, assets / "voice")
+            or timing.words_from_marks(marks))
+    acc = textcard.accents(job, words, getattr(st, "beats", []), marks,
+                           shots, st.vector, st.rng, total,
+                           existing_moments=moments)
+    if acc:
+        log(f"── акценты: {len(acc)} шт.")
+        for m in acc:
+            log(f"  {m['t']/60:5.1f} мин  {m['text']} ({m['frame_kind']})")
+    moments = sorted(moments + acc, key=lambda m: m["t"])
 
     # Карточка стиля кладётся рядом с роликом: из неё channel.py потом
     # запишет ролик в журнал. Пишется ЗДЕСЬ, а не до плана: в неё входят
@@ -2339,16 +2707,35 @@ def main(job_path):
 
     log("── склейка и цветокор")
     overlay = ensure_overlays(st)
-    segs = []
-    n_groups = math.ceil(len(shots) / SEG_SIZE)
-    for gi in range(0, len(shots), SEG_SIZE):
-        group = shots[gi:gi + SEG_SIZE]
-        seg = tmp / f"seg_{gi//SEG_SIZE:03d}.mp4"
-        if not seg.exists():
-            join(group, seg, st, overlay, first=(gi == 0), moments=moments,
-                 last=(gi + SEG_SIZE >= len(shots)))
-        segs.append(seg)
-        log(f"  группа {gi//SEG_SIZE + 1}/{n_groups}")
+    # bounds — тот же список, что уже посчитан выше для rails.audit: и
+    # проверка, и рендер обязаны смотреть на одни и те же границы групп,
+    # иначе какой-то кадр посчитает себя то последним в группе, то нет,
+    # и xfade либо промахнётся мимо запаса, либо не получит его вовсе.
+    # Индекс группы (gidx) для имени файла берётся из enumerate, а не из
+    # позиции в списке кадров: group_bounds — чистая функция плана, при
+    # том же плане (тот же job, тот же style) она детерминированно даёт
+    # те же границы, и кэш seg_NNN.mp4 между прогонами stage: render не
+    # ломается.
+    n_groups = len(bounds)
+    tasks = [(gidx, shots[gs:ge], tmp / f"seg_{gidx:03d}.mp4", gs == 0,
+             ge >= len(shots), st, overlay, moments)
+            for gidx, (gs, ge) in enumerate(bounds)]
+    # 5.1 — ГРУППЫ НЕЗАВИСИМЫ: каждая пишет свой seg_NNN.mp4, читает
+    # только свои кадры и общие read-only LUT/оверлей, единственная связь
+    # между ними — флаги first/last, посчитанные ДО цикла. render_one уже
+    # гонит рендер кадров пулом потоков (см. выше); склейка групп раньше
+    # шла строго последовательно, хотя x264 в render_one успевал занять
+    # все ядра, а здесь простаивал. max_workers=cores()//2, а не cores():
+    # x264 в самом join() сам многопоточный, и N параллельных процессов
+    # на N ядрах — переподписка. Риск — память (каждый процесс держит
+    # декодеры группы плюс фильтр-граф), поэтому начинаем с половины ядер,
+    # не со всех.
+    with ThreadPoolExecutor(max_workers=max(1, cores() // 2)) as ex:
+        results = list(ex.map(join_group, tasks))
+    segs = [seg for seg, _cached in results]
+    cached = sum(1 for _seg, was_cached in results if was_cached)
+    log(f"  {n_groups} групп"
+       + (f" ({cached} из кэша seg, отпечаток совпал)" if cached else ""))
 
     log("── сшивка")
     silent = tmp / "silent.mp4"
@@ -2368,11 +2755,17 @@ def main(job_path):
     if beds:
         log(f"  дакинг: sidechain ({st.duck_style}, глубина {st.duck_depth})"
             + (f", ям-событий {len(dips)}" if dips else ""))
+    # Полный хвост звука = заморозка-затемнение (TAIL_FADE_SECONDS, идёт на
+    # ПОСЛЕДНЕЙ группе ВСЕГДА, гибридный финал 2.3) + чистый чёрный
+    # (tail_hold, может быть и нулём). Видео теперь длиннее начитки именно
+    # на эту сумму — не подровнять звук под неё значит подставить mux
+    # -shortest: он молча обрежет картинку обратно по короткой дорожке.
+    full_tail = TAIL_FADE_SECONDS + max(0.0, st.tail_hold)
     render.build_audio(assets / "voice_full.m4a", beds or None, mixed, total,
                        bed_gain_db=job.get("bed_gain_db", st.bed_gain_db),
                        duck_depth=st.duck_depth, duck_style=st.duck_style,
                        event_dips=dips, switch_at=st.bed_switch_at,
-                       switch_points=switches, tail=st.tail_hold)
+                       switch_points=switches, tail=full_tail)
 
     log("── финал")
     final = out / "final.mp4"
@@ -2389,17 +2782,20 @@ def main(job_path):
     n_srt = render.write_srt(marks, out / "subs.srt", max_end=media_end)
     size_gb = final.stat().st_size / 2**30
     log(f"  видео {vd:.3f} с, звук {ad:.3f} с, тайм-коды {total:.3f} с "
+        f"+ {TAIL_FADE_SECONDS:.1f} с заморозки-затемнения "
         f"+ {st.tail_hold:.1f} с тихого хвоста")
     log(f"  субтитры {n_srt} реплик до {media_end:.3f} с "
         f"(из {len(marks)} по тайм-кодам)")
     # Хвост проверяется ЗАМЕРОМ. Он весь состоит из того, чего в логе не
     # видно: tpad мог не дорисовать кадры, apad — не дотянуть дорожку, а
     # mux с -shortest молча обрежет ролик по любому из них, и обнаружится
-    # это только на просмотре.
-    if st.tail_hold > 0 and vd < total + st.tail_hold - 0.5:
-        log(f"  ! тихий хвост не доехал: ролик {vd:.2f} с при ожидаемых "
-            f"{total + st.tail_hold:.2f} с — смотри tpad в join() и apad "
-            f"в render.build_audio")
+    # это только на просмотре. Заморозка идёт ВСЕГДА (не только при
+    # tail_hold > 0) — гибридный финал 2.3 сам по себе плюс
+    # TAIL_FADE_SECONDS к длине ролика.
+    if vd < total + full_tail - 0.5:
+        log(f"  ! хвост не доехал: ролик {vd:.2f} с при ожидаемых "
+            f"{total + full_tail:.2f} с (заморозка + чёрный) — смотри "
+            f"tpad в join() и apad в render.build_audio")
     log(f"  файл  {size_gb:.2f} ГБ  ({final.stat().st_size * 8 / vd / 1e6:.1f} Мбит/с)")
     if abs(vd - ad) > 0.5:
         log(f"  ! видео и звук разошлись на {abs(vd - ad):.2f} с — "

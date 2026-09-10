@@ -248,8 +248,17 @@ TRANSITIONS = [
 # имеет право быть заметной: это конец мысли, а не середина. Здесь идут
 # самые долгие и самые «закрывающие» переходы, и только здесь разрешён
 # уход в чёрное.
-CHAPTER_TRANSITIONS = ["fadeblack", "fadeslow", "fade", "dissolve",
-                       "fadegrays", "circleclose"]
+#
+# СПИСОК СУЖЕН ДО ДВУХ, И ЭТО НЕ ПОТЕРЯ РАЗНООБРАЗИЯ, А ПОЧИНКА. Из
+# прежних шести только fadeblack и fadegrays реально уходят в тёмное —
+# fade/dissolve/circleclose просто растворяют один кадр в другой на
+# полной яркости. Затемнение при старом списке выпадало примерно на
+# трети границ; заказано «затемнение НА КАЖДОЙ границе», а не «иногда
+# повезёт». CHAPTER_TRANSITION_WEIGHTS ниже держит fadeblack основным
+# (около 3/4 границ), fadegrays — редким разнообразием («раз в три-
+# четыре главы»), а не монетой 50/50.
+CHAPTER_TRANSITIONS = ["fadeblack", "fadegrays"]
+CHAPTER_TRANSITION_WEIGHTS = (3.0, 1.0)
 CHAPTER_TRANSITION_DUR = (1.6, 2.8)
 
 # ─────────────────────────── ЭФФЕКТЫ КАДРА ───────────────────────────
@@ -564,6 +573,7 @@ class StyleEngine:
         self.escalation_cut_probability = round(r.uniform(0.10, 0.22), 3)
         # Переходы на границах глав — самое заметное место склейки.
         self.chapter_transitions = list(CHAPTER_TRANSITIONS)
+        self.chapter_transition_weights = CHAPTER_TRANSITION_WEIGHTS
         self.chapter_transition_dur = CHAPTER_TRANSITION_DUR
 
         # ── вступление ────────────────────────────────────────────────
@@ -720,7 +730,13 @@ class StyleEngine:
                    ролик в среднем. None — общий hard_cut_probability.
         """
         if chapter:
-            tr = self.rng.choice(self.chapter_transitions)
+            # ВЗВЕШЕННЫЙ выбор, не self.rng.choice: список короткий (два
+            # варианта), и равная монетка дала бы fadegrays на каждой
+            # второй границе — то есть не «редкое разнообразие», а
+            # второй основной переход. chapter_transition_weights держит
+            # fadeblack доминирующим.
+            tr = self.rng.choices(self.chapter_transitions,
+                                  weights=self.chapter_transition_weights)[0]
             d = round(self.rng.uniform(*self.chapter_transition_dur), 2)
             return tr, d
         p_cut = self.hard_cut_probability if hard_p is None else hard_p

@@ -27,9 +27,81 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+# ВЕРХНИЙ УРОВЕНЬ jobs/<id>.json — ЗАКРЫТЫЙ СПИСОК.
+#
+# style_override уже проверяется так (см. build.OVERRIDABLE): опечатка в
+# имени поля роняет сборку сразу, а не превращается в тихо неработающую
+# настройку. Верхний уровень спецификации жил без этой защиты, и это тот
+# же класс инцидентов, что уже стоил роликов:
+#   - "similarity_boost" вместо "similarity" в voice_settings молча терял
+#     0.85 — озвучка звучала иначе, и заметно это было только на слух;
+#   - без "vet_context" отбраковка забраковала материал собственного
+#     видео как «не тот период» (dead-internet-01, до того как поле
+#     завели).
+#
+# Список составлен по факту: что читает код (job.get(...) / job[...] по
+# всем модулям pipeline/), а не что кто-то когда-то написал в спецификации
+# — иначе поле, которое перестали читать, никогда бы не всплыло, а
+# опечатка в новом поле проходила бы молча ровно так же, как раньше.
+TOP_LEVEL_KEYS = {
+    "id", "script_blocks",
+    # озвучка
+    "voice_id", "voice_model", "voice_settings", "hook_pause",
+    # генерация изображений/видео
+    "image_model", "image_prompts", "video_prompts",
+    # поисковые запросы материала и источники
+    "footage_queries", "archive_queries", "photo_sources", "video_sources",
+    # словарь синонимов темы для подбора материала (5.8.2)
+    "synonyms",
+    # отбраковка (vet.py)
+    "vet_context", "vet_vision", "vet_model", "vet_pool_factor",
+    "trusted_sources", "material_overshoot",
+    # добор после отбраковки (assets.refill_after_vet / fill_gaps)
+    "fill_limit", "fill_prompts",
+    # Magnific (доля генерации, пока не выключен переменной среды)
+    "magnific_share",
+    # ручная правка отбора: reject.clip / reject.arch по номерам с листов
+    "reject",
+    # монтаж
+    "style_override", "lut", "archive_lut",
+    "music", "bed_gain_db", "tail_hold",
+    # сквозные текстовые акценты по ключевым фразам (2.4.1)
+    "accents",
+    # разное
+    "topic", "youtube", "batch",
+    # ручное переопределение памяти канала (CLAUDE.md, channel.py)
+    "recent_luts", "recent_openings",
+}
+
+
+def check_top_level(job):
+    """
+    Опечатка в имени поля верхнего уровня — не ошибка, а тишина: код
+    просто не находит ключ и берёт умолчание. Здесь это ловится сразу,
+    до того как деньги ушли на озвучку и генерацию под пустое умолчание.
+
+    Ключи с подчёркивания — комментарии протокола сценария (`_`,
+    `_проверить`, `_структура`...) и произвольные заметки автора
+    (`_техправки`, `_музыка_пример` и т.п.) — так заведено в самих
+    спецификациях, они не тронуты.
+    """
+    unknown = sorted(k for k in job
+                     if not k.startswith("_") and k not in TOP_LEVEL_KEYS)
+    if unknown:
+        raise SystemExit(
+            "верхний уровень спецификации: неизвестные поля "
+            + ", ".join(unknown) + "\nЕсли это заметка для человека — "
+            "добавь подчёркивание в начало имени (как _проверить). Если "
+            "это должно на что-то влиять — сверься со списком допустимых:\n"
+            + ", ".join(sorted(TOP_LEVEL_KEYS)))
+
 
 def main(job_path):
     job = json.loads(Path(job_path).read_text(encoding="utf-8"))
+    print("── верхний уровень спецификации")
+    check_top_level(job)
+    print(f"   {len(job)} полей, опечаток в именах нет")
+
     work = Path("work") / job["id"] / "assets"
     if not work.exists():
         raise SystemExit(
@@ -321,6 +393,60 @@ def main(job_path):
         getattr(st, "chapter_edges", []), st.rng)
     print(f"   карточек {len(cards)}, титулов глав {len(titles)}")
 
+    # 2.4 — сквозные текстовые акценты. existing собирает те же три слоя,
+    # что build.main видит к этому моменту (карточки, плашки, титры), иначе
+    # проверка коллизий (2.4.2) смотрела бы не на то, от чего реально
+    # уклоняется accents() в бою.
+    print("── акценты")
+    import timing as timing_mod
+    mm = textcard.moments(getattr(st, "beats", []), marks, st.vector, st.rng,
+                          skip_times=[c["t"] for c in cards])
+    opening = textcard.opening_title(job, marks)
+    ending = textcard.the_end(total)
+    existing = sorted(cards + mm + titles + opening + ending,
+                      key=lambda m: m["t"])
+    words = (timing_mod.words_from_alignment(job, work / "voice")
+            or timing_mod.words_from_marks(marks))
+    acc = textcard.accents(job, words, getattr(st, "beats", []), marks,
+                           shots, st.vector, st.rng, total,
+                           existing_moments=existing)
+    for a in acc:
+        if a["t"] < textcard.ACCENT_LEAD_IN - 1e-6:
+            raise SystemExit(
+                f"акцент на {a['t']:.1f} с раньше "
+                f"{textcard.ACCENT_LEAD_IN:.0f} с — правило «ничего в "
+                "первые 30 секунд» (2.4.1) нарушено")
+        if a["t"] > total - textcard.ACCENT_TAIL_OUT + 1e-6:
+            raise SystemExit(
+                f"акцент на {a['t']:.1f} с в последних "
+                f"{textcard.ACCENT_TAIL_OUT:.0f} с ролика (2.4.1)")
+    for a, b in zip(acc, acc[1:]):
+        if b["t"] - a["t"] < textcard.ACCENT_MIN_GAP - 1e-6:
+            raise SystemExit("акценты ближе "
+                             f"{textcard.ACCENT_MIN_GAP:.0f} с друг к другу")
+    for a in acc:
+        for e in existing:
+            if (e["t"] - textcard.ACCENT_COLLIDE_PAD <= a["t"] <=
+                    e["t"] + float(e.get("hold", 3.0))
+                    + textcard.ACCENT_COLLIDE_PAD):
+                raise SystemExit(
+                    f"акцент на {a['t']:.1f} с наехал на {e['style']} "
+                    f"на {e['t']:.1f} с — проверка коллизий (2.4.2) не "
+                    "сработала")
+    max_allowed = min(textcard.ACCENT_MAX_PER_2400S,
+                      max(1, round(textcard.ACCENT_MAX_PER_2400S
+                                  * total / 2400.0)))
+    if len(acc) > max_allowed:
+        raise SystemExit(f"акцентов {len(acc)} при потолке {max_allowed} "
+                         "на эту длину ролика")
+    for a in acc:
+        if a["frame_kind"] != "clip" and not (1 <= len(a.get("lines") or []) <= 3):
+            raise SystemExit(f"акцент на картинке на {a['t']:.1f} с без "
+                             "разбивки на строки (2.4.2)")
+    n_clip = sum(1 for a in acc if a["frame_kind"] == "clip")
+    print(f"   {len(acc)} шт. (потолок {max_allowed}), "
+         f"клип/картинка {n_clip}/{len(acc) - n_clip}")
+
     print("── подложки")
     beds = build.beds_for(st, job, total)
     if not beds:
@@ -333,6 +459,116 @@ def main(job_path):
                              f"смотри bed_switch_points")
         print(f"   треков {len(beds)}, смены на "
               + ", ".join(f"{p/60:.1f} мин" for p in switches))
+
+    # 3.3.8 — шортсы раньше не проверял никто, а дефектов оформления там
+    # больше всего: они не в коде, а в вопросе, шрифте, замере ширины.
+    # Всё здесь считается по marks.json и тексту, без рендера.
+    print("── шортсы")
+    import random
+    import tempfile
+    import shorts as shorts_mod
+    import timing
+    words = (timing.words_from_alignment(job, work / "voice")
+             or timing.words_from_marks(marks))
+    story = getattr(st, "beats", None) or []
+    wins = shorts_mod.pick_segments(story, marks, total)
+    if not wins:
+        raise SystemExit("шортсы: pick_segments не дал ни одного окна")
+    min_len = shorts_mod.MIN_LEN_SOFT if total < 180 else shorts_mod.MIN_LEN
+    for w in wins:
+        seg_dur = sum(t1 - t0 for t0, t1 in w["segs"])
+        if seg_dur < min_len - 0.5:
+            raise SystemExit(
+                f"шортсы: окно «{w['role']}» короче {min_len:.0f} с "
+                f"({len(w['segs'])} кусков, {seg_dur:.1f} с)")
+        for t0, t1 in w["segs"]:
+            if t1 <= t0:
+                raise SystemExit(
+                    f"шортсы: окно «{w['role']}» несёт кусок с "
+                    f"нулевой/отрицательной длиной ({t0:.2f}-{t1:.2f})")
+    # КУСКИ ОДНОГО ШОРТСА НЕ ПЕРЕСЕКАЮТСЯ. 3.3.6 монтирует шортс из 2-3
+    # кусков РАЗНЫХ мест ролика (хук/обещание/развязка и т.п.) — они не
+    # обязаны идти по возрастанию времени как единое окно, но один и тот
+    # же отрезок видео не может звучать в шортсе дважды.
+    for w in wins:
+        segs = sorted(w["segs"])
+        for a, b in zip(segs, segs[1:]):
+            if a[1] > b[0] + 0.01:
+                raise SystemExit(
+                    f"шортс «{w['role']}»: куски {a} и {b} пересекаются")
+
+    job_qs = list((job.get("youtube") or {}).get("shorts_questions") or [])
+    fonts_needed = ("ArchivoBlack-Regular.ttf", "Montserrat-ExtraBold.ttf")
+    for fname in fonts_needed:
+        if not (shorts_mod.FONT_DIR / fname).exists():
+            raise SystemExit(
+                f"шортсы: нет шрифта {fname} в {shorts_mod.FONT_DIR}")
+
+    for n, w in enumerate(wins, 1):
+        # question_for сам роняет смоук, если shorts_questions не задан
+        # или не кончается на «?» — see 3.3.5, не выдумывать вопрос.
+        q = shorts_mod.question_for(job_qs, n)
+        wrapped = shorts_mod.wrap_question(q)
+        n_lines = wrapped.count("\n") + 1
+        if n_lines > shorts_mod.QUESTION_MAX_LINES:
+            raise SystemExit(
+                f"шортс {n}: вопрос «{q}» не влезает в "
+                f"{shorts_mod.QUESTION_MAX_LINES} строки")
+        scale = shorts_mod.hook_scale(q)
+        if not (100 <= scale <= shorts_mod.HOOK_SCALE_MAX):
+            raise SystemExit(
+                f"шортс {n}: hook_scale {scale} вне 100-"
+                f"{shorts_mod.HOOK_SCALE_MAX} — замер ширины хука сломан "
+                f"(та самая грабля с \\N в question_box)")
+
+        segs = w["segs"]
+        dur = round(sum(t1 - t0 for t0, t1 in segs), 3)
+        # СУБТИТРЫ НЕ НАЕЗЖАЮТ НА CTA — проверяется по ГОТОВОМУ .ass, а не
+        # по сырому captions_from_words: тот отдаёт естественный конец
+        # фразы, а write_ass сам обрезает его до cta_from - 0.10 при
+        # рендере. Проверка по сырым концам ловила фантомные пересечения
+        # ровно там, где реальный рендер уже подрезан и ничего не
+        # накладывается — так и поймано при первом прогоне этой проверки.
+        ass_tmp = Path(tempfile.mkstemp(suffix=".ass")[1])
+        try:
+            shorts_mod.write_ass(words, segs, dur, ass_tmp, q)
+            ass_text = ass_tmp.read_text(encoding="utf-8")
+        finally:
+            ass_tmp.unlink(missing_ok=True)
+        cta_start = None
+        cap_ends = []
+        for line in ass_text.splitlines():
+            if not line.startswith("Dialogue:"):
+                continue
+            parts = line.split(",", 9)
+            style, end_s = parts[3], parts[2]
+            end_sec = sum(float(x) * m for x, m in
+                         zip(reversed(end_s.split(":")), (1, 60, 3600)))
+            if style == "Cta":
+                cta_start_s = parts[1]
+                cta_start = sum(float(x) * m for x, m in
+                               zip(reversed(cta_start_s.split(":")), (1, 60, 3600)))
+            elif style == "Caption":
+                cap_ends.append(end_sec)
+        if cta_start is not None and any(e > cta_start + 0.01 for e in cap_ends):
+            raise SystemExit(
+                f"шортс {n}: в готовом .ass есть субтитр, кончающийся "
+                f"позже начала призыва ({cta_start:.2f} с) — write_ass "
+                f"больше не обрезает Caption под cta_from")
+
+        rng = random.Random(f"{job['id']}-short-{n}")
+        cutter = build.ClipCutter()
+        cuts = []
+        for t0, t1 in segs:
+            cuts += shorts_mod.cut_plan(shots, t0, t1, rng, words=words,
+                                        cutter=cutter)
+        cut_sum = round(sum(c["dur"] for c in cuts), 3)
+        if abs(cut_sum - dur) > 0.05:
+            raise SystemExit(
+                f"шортс {n}: сумма кусков {cut_sum:.2f} с при окне "
+                f"{dur:.2f} с — разошлось")
+    print(f"   {len(wins)} окна, вопросы/шрифты/замер ширины на месте, "
+          f"субтитры не наезжают на CTA, куски сходятся с длиной окна")
 
     print("\nСМОУК-ПРОГОН ПРОЙДЕН")
 

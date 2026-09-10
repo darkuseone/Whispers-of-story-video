@@ -75,6 +75,13 @@ MAX_DURATION_MODE_SHARE = 0.30
 # Аварийный порог: и разброс мёртвый, и движение одно, и вставок нет.
 MONOTONY_HARD = "СЛАЙДШОУ"
 
+# 2.1.1 — сколько смен кадра обязано быть в первые 10 с открытия. Зритель
+# решает, остаться ли, по КАРТИНКЕ в эти секунды, и одна неподвижная
+# установочная панорама на 8-12 с (starlit/slow_reveal/long_establish)
+# держит его без единой склейки дольше половины этого окна.
+OPENING_MIN_CUTS_10S = 3
+OPENING_WINDOW = 10.0
+
 
 class Finding:
     __slots__ = ("level", "code", "text")
@@ -88,12 +95,20 @@ class Finding:
         return f"[{self.level}] {self.code}: {self.text}"
 
 
-def audit(shots, style_vector=None, beats=None):
+def audit(shots, style_vector=None, beats=None, group_bounds=None):
     """
     Смотрит готовый план и возвращает список замечаний.
 
     Пустой список — план прошёл. Это не гарантия качества, это отсутствие
     известных признаков шаблона.
+
+    group_bounds — границы групп склейки из build.group_bounds(shots), то
+    есть ТЕ ЖЕ, что реально пойдут в рендер. Передаётся явно, а не
+    пересчитывается здесь заново: rails.py не импортирует build (build
+    сам импортирует rails, обратный импорт дал бы цикл), а держать
+    вторую копию той же арифметики — значит рано или поздно развести их
+    и снова проверять не тот путь, который работает в бою. Не передан —
+    проверка группировки просто пропускается.
     """
     out = []
     if not shots:
@@ -106,8 +121,11 @@ def audit(shots, style_vector=None, beats=None):
     out += _check_long_shots(shots)
     out += _check_transitions(shots)
     out += _check_slideshow(shots)
+    out += _check_opening_cuts(shots)
     if beats:
         out += _check_beat_coverage(shots, beats)
+    if group_bounds:
+        out += _check_chapter_group_boundary(shots, group_bounds)
     return out
 
 
@@ -154,6 +172,29 @@ def _check_material_runs(shots):
             f"(потолок {MAX_IMAGE_RUN}) — участок читается как слайдшоу. "
             f"Добери сток этапом material либо опусти clip_rhythm"))
     return out
+
+
+def _check_opening_cuts(shots):
+    """
+    2.1.1 — не меньше OPENING_MIN_CUTS_10S смен кадра в первые
+    OPENING_WINDOW секунд, чем бы ни выпало открытие (opening_plan в
+    build.py). build.py сам режет длинный первый план на 2-3 куска
+    одного файла (starlit/slow_reveal/long_establish) — эта проверка
+    ловит случай, когда материала под нарезку не нашлось и план
+    вернулся к одному неподвижному плану, а также любой будущий тип
+    открытия, который забудет про этот пол.
+    """
+    if not shots:
+        return []
+    t0 = shots[0]["start"]
+    n = sum(1 for s in shots if s["start"] < t0 + OPENING_WINDOW)
+    if n < OPENING_MIN_CUTS_10S:
+        return [Finding(
+            "заметка", "ОТКРЫТИЕ_БЕЗ_ДИНАМИКИ",
+            f"в первые {OPENING_WINDOW:.0f} с открытия {n} кадр(ов) при "
+            f"поле {OPENING_MIN_CUTS_10S} — зритель решает, остаться ли, "
+            f"по картинке, а она не меняется")]
+    return []
 
 
 def _check_moves(shots):
@@ -248,6 +289,35 @@ def _check_transitions(shots):
             f"переход «{top}» стоит в {share*100:.0f}% склеек "
             f"(потолок {MAX_TRANSITION_SHARE*100:.0f}%) — опусти "
             f"transition_focus в векторе стиля")]
+    return []
+
+
+def _check_chapter_group_boundary(shots, group_bounds):
+    """
+    Ни один кадр, закрывающий главу (shot["chapter_close"]), не имеет
+    права оказаться последним кадром своей группы склейки.
+
+    Такой кадр теряет свой переход НАЦЕЛО: последний кадр группы
+    рендерится без запаса на xfade (см. build.set_render_durations), а
+    группы сшиваются concat -c copy, жёстким резом. Для обычного кадра
+    это малозаметно, для границы главы — это единственное место, где
+    план решил уйти в чёрное, и потеря перехода означает потерю
+    затемнения целиком. Чинит это build.group_bounds() ДО рендера; эта
+    проверка — не починка, а сигнализация: если группировка когда-нибудь
+    разойдётся с этим правилом (например, кто-то вернёт наивное деление
+    на SEG_SIZE в одном из двух мест, а не в обоих), она должна быть
+    видна здесь, а не обнаружена глазами на ролике с главой без
+    затемнения.
+    """
+    n = len(shots)
+    bad = [ge - 1 for gs, ge in group_bounds
+          if ge < n and shots[ge - 1].get("chapter_close")]
+    if bad:
+        return [Finding(
+            "стоп", "ГЛАВА_БЕЗ_ЗАТЕМНЕНИЯ",
+            f"{len(bad)} границ главы (кадры {bad}) остались последними "
+            f"в своей группе склейки — их переход в чёрное съест "
+            f"concat -c copy на стыке групп. Смотри build.group_bounds()")]
     return []
 
 

@@ -32,6 +32,28 @@ W, H, FPS = 1920, 1080, 30
 PREP_W = 3000
 PREP_H = PREP_W * H // W          # 1687 -> ниже округляется до чётного
 
+# ПРОМЕЖУТОЧНОЕ КОДИРОВАНИЕ (5.3). render_one пишет clip_NNNN.mp4 —
+# кадры, которые join() тут же передавит второй раз через xfade/цветокор
+# до crf 22. Второй проход доминирует над качеством первого: замерять
+# нужно было не «одинаковая ли картинка на выходе» (она одинаковая при
+# любом промежуточном crf не хуже финального), а «что дешевле по
+# времени и месту». Раньше здесь стоял -crf 18 -preset veryfast.
+#
+# Замер на 19 реальных кадрах плана (work/wave1-verify-test/out/shots.json,
+# смесь clip/image, суммарно ~110 с материала):
+#   crf18 veryfast (было)     52.8 с, 56.9 МБ
+#   crf20 veryfast            52.4 с (-0.9%), 48.4 МБ (-15%)
+#   crf16 ultrafast           34.8 с (-34.1%), 185.8 МБ (+227%)
+# crf20 почти не ускоряет (veryfast и так быстрый пресет, crf на нём
+# время почти не двигает) — выигрыш там только в месте на диске. crf16
+# ultrafast даёт настоящее ускорение этапа рендера кадров ценой втрое
+# больших ПРОМЕЖУТОЧНЫХ файлов в tmp/, который не кэшируется и не
+# попадает в репозиторий — раздутие там бесплатное, а crf16 к тому же
+# ВЫШЕ качеством входа второго прохода, чем прежний crf18, так что
+# потери на финале не прибавляется вовсе.
+INTERMEDIATE_CRF = 16
+INTERMEDIATE_PRESET = "ultrafast"
+
 
 def run(cmd, quiet=True):
     r = subprocess.run(cmd, shell=True, capture_output=quiet, text=quiet)
@@ -142,7 +164,8 @@ def render_clip(image: Path, out: Path, move: str, speed: float, dur: float,
                 effect=None, ease=None):
     vf = with_effect(motion_filter(move, speed, dur, ease), effect)
     cmd = (f"ffmpeg -y -loop 1 -t {dur:.3f} -r {FPS} -i {shlex.quote(str(image))} "
-           f"-vf {shlex.quote(vf)} -c:v libx264 -crf 18 -preset veryfast "
+           f"-vf {shlex.quote(vf)} -c:v libx264 -crf {INTERMEDIATE_CRF} "
+           f"-preset {INTERMEDIATE_PRESET} "
            f"-pix_fmt yuv420p -an {shlex.quote(str(out))}")
     run(cmd)
 
@@ -217,7 +240,7 @@ def render_footage_clip(src: Path, out: Path, dur: float, start: float = 0.0,
     loop = "" if head else "-stream_loop -1 "
     cmd = (f"ffmpeg -y {loop}-ss {start:.2f} -i {shlex.quote(str(src))} "
            f"-vf {shlex.quote(vf)} -t {dur:.3f} "
-           f"-c:v libx264 -crf 18 -preset veryfast "
+           f"-c:v libx264 -crf {INTERMEDIATE_CRF} -preset {INTERMEDIATE_PRESET} "
            f"-pix_fmt yuv420p -an {shlex.quote(str(out))}")
     run(cmd)
 

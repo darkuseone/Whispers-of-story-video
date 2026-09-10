@@ -36,6 +36,7 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).parent))
 import magnific
+import timing
 import vet
 
 UA = {"User-Agent": "sleep-docs-pipeline/1.0 (educational video project)"}
@@ -269,6 +270,10 @@ BLOCK_CHARS_WARN_V3 = 4500
 # job может перебить полем voice_model / voice_settings.model_id.
 DEFAULT_VOICE_MODEL = "eleven_v3"
 
+# Пауза под карточку названия (HOOK_PAUSE_DEFAULT/MAX) — в timing.py
+# (5.7): нужна и здесь, и words_from_alignment в timing.py, а два места
+# с одной и той же константой рано или поздно разойдутся.
+
 
 def tts_block(text, out_mp3: Path, voice_id, api_key, stability=0.50,
               similarity=0.80, style=0.20, speed=None,
@@ -378,45 +383,6 @@ def available_voices(api_key, limit=25):
         return f"(список голосов получить не вышло: {e})"
 
 
-def sentence_marks(text, align, offset):
-    """
-    Превращает посимвольные тайм-коды в границы предложений.
-    Это и есть точки, где робот будет менять кадр.
-
-    Точка перед пробелом сама по себе границу не держит: у инициального
-    сокращения из БУКВЫ-ТОЧКИ-БУКВЫ-ТОЧКИ (R.C., U.S.) последняя точка
-    тоже стоит перед пробелом и неотличима от конца предложения. На
-    georgia-guidestones-01 «R.C. Christian» встречается тринадцать раз, и
-    без этой проверки почти каждое упоминание рвало реплику пополам —
-    "R." отдельной репликой, "C. Christian was…" следующей — а дальше по
-    этому же месту не находил себя youtube.chapters (та же граница у
-    youtube.first_sentence). Все точки внутри такого сокращения, включая
-    последнюю, из кандидатов на разрыв исключены.
-    """
-    chars, starts, ends = align["chars"], align["starts"], align["ends"]
-    if not chars:
-        return []
-    joined = "".join(chars)
-    abbrev_end = {m.end() - 1
-                  for m in re.finditer(r"\b(?:[A-Z]\.){2,}", joined)}
-    marks, buf, buf_start = [], [], None
-    for i, ch in enumerate(chars):
-        if buf_start is None:
-            buf_start = starts[i]
-        buf.append(ch)
-        if ch in ".!?" and i + 1 < len(chars) and chars[i + 1] in " \n" \
-                and i not in abbrev_end:
-            marks.append({"text": "".join(buf).strip(),
-                          "start": round(buf_start + offset, 3),
-                          "end": round(ends[i] + offset, 3)})
-            buf, buf_start = [], None
-    if buf:
-        marks.append({"text": "".join(buf).strip(),
-                      "start": round((buf_start or 0) + offset, 3),
-                      "end": round(ends[-1] + offset, 3)})
-    return marks
-
-
 def _silence_mp3(path: Path, seconds: float):
     """Тишина для драматической паузы между главами."""
     import subprocess
@@ -425,6 +391,23 @@ def _silence_mp3(path: Path, seconds: float):
         f'-c:a libmp3lame -q:a 4 "{path}"',
         shell=True, check=True,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def _cut_mp3(src: Path, dst: Path, start: float, end: float | None):
+    """
+    Кусок mp3 потоковым копированием — без переозвучки, без потери качества.
+
+    Для паузы под карточку названия: блок 1 уже оплачен и лежит на диске,
+    резать его дешевле и честнее, чем просить ElevenLabs заново. end=None
+    режет до конца файла.
+    """
+    import subprocess
+    args = ["ffmpeg", "-y", "-i", str(src), "-ss", f"{max(start, 0.0):.3f}"]
+    if end is not None:
+        args += ["-to", f"{end:.3f}"]
+    args += ["-c", "copy", str(dst)]
+    subprocess.run(args, check=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def _voice_wanted(job, model_id: str) -> dict:
@@ -484,9 +467,14 @@ def build_voice(job, work: Path):
                   else BLOCK_CHARS_WARN)
 
     # Паузы 2–3 с между главами: интрига/выдох, не мёртвая тишина на минуту.
-    # Длина детерминирована от id ролика, чтобы пересборка не плясала.
-    seed = abs(hash(job.get("id", "x"))) % 1000
+    # Формула — timing.chapter_pause_seconds (5.7): та же, что использует
+    # words_from_alignment для пословных тайм-кодов, разойдись они —
+    # тайм-коды после первой же главы уедут вперёд настоящего звука.
     n_blocks = len(job["script_blocks"])
+
+    hook_pause = max(0.0, min(timing.HOOK_PAUSE_MAX,
+                              float(job.get("hook_pause",
+                                            timing.HOOK_PAUSE_DEFAULT))))
 
     parts, marks, offset = [], [], 0.0
     for i, block in enumerate(job["script_blocks"], 1):
@@ -504,22 +492,54 @@ def build_voice(job, work: Path):
                            model_id=model_id)
             (adir / f"block_{i:02d}.json").write_text(json.dumps(al))
         al = json.loads((adir / f"block_{i:02d}.json").read_text())
-        marks += sentence_marks(block, al, offset)
-        dur = _duration(mp3)
-        offset += dur
-        parts.append(mp3)
+        block_marks = timing.sentence_marks(block, al, offset)
+
+        # ПАУЗА ПОД КАРТОЧКУ НАЗВАНИЯ. Только у блока 1 и только если в нём
+        # реально больше одной фразы — иначе резать нечего. Блок уже оплачен
+        # и лежит на диске (mp3 целиком), режем его потоковым копированием:
+        # это секунды, а не новый запрос к ElevenLabs.
+        if i == 1 and hook_pause > 0 and len(block_marks) >= 2:
+            a_path = adir / "block_01_a.mp3"
+            b_path = adir / "block_01_b.mp3"
+            pause_path = adir / "hook_pause.mp3"
+            cut_at = block_marks[0]["end"]
+            if not a_path.exists() or not b_path.exists():
+                _cut_mp3(mp3, a_path, 0.0, cut_at)
+                _cut_mp3(mp3, b_path, cut_at, None)
+                if _duration(a_path) < 0.1 or _duration(b_path) < 0.1:
+                    raise SystemExit(
+                        f"нарезка блока 1 под паузу дала пустой кусок "
+                        f"(a={_duration(a_path):.2f} с, "
+                        f"b={_duration(b_path):.2f} с) — cut_at={cut_at:.2f} "
+                        f"с при длине блока {_duration(mp3):.2f} с. "
+                        f"Проверь границу первой фразы (sentence_marks) или "
+                        f"удали {a_path.name}/{b_path.name} и пересобери.")
+            if not pause_path.exists() \
+                    or abs(_duration(pause_path) - hook_pause) > 0.05:
+                _silence_mp3(pause_path, hook_pause)
+            # Реальная длина отрезанного куска может на кадр-другой mp3
+            # (~26 мс) разойтись с alignment — берём то, что физически легло
+            # на диск, иначе титул и монтаж будут спорить о доле секунды.
+            real_cut = _duration(a_path)
+            block_marks[0]["end"] = round(real_cut, 3)
+            for m in block_marks[1:]:
+                m["start"] = round(m["start"] + hook_pause, 3)
+                m["end"] = round(m["end"] + hook_pause, 3)
+            marks += block_marks
+            offset += real_cut + hook_pause + _duration(b_path)
+            parts += [a_path, pause_path, b_path]
+            log(f"  пауза под карточку названия после первой фразы блока 1: "
+                f"{hook_pause:.1f} с")
+        else:
+            marks += block_marks
+            dur = _duration(mp3)
+            offset += dur
+            parts.append(mp3)
 
         # Драматическая пауза после главы (кроме последней). Не каждый
         # стык одинаков: часть чуть короче, часть ближе к трём секундам.
         if i < n_blocks:
-            pause = 2.0 + ((seed + i * 7) % 11) / 10.0   # 2.0 … 3.0
-            # На особо «крючковых» концах главы — ближе к верхней границе:
-            # вопрос, многоточие, короткое ударное предложение.
-            tail = block.rstrip()[-120:].lower()
-            if ("?" in tail or tail.endswith("...")
-                    or re.search(r"\b(we don.?t know|nobody knows|"
-                                 r"still looking|hang on|listen)\b", tail)):
-                pause = min(3.0, pause + 0.4)
+            pause = timing.chapter_pause_seconds(job, i)
             sil = adir / f"pause_{i:02d}.mp3"
             if not sil.exists() or abs(_duration(sil) - pause) > 0.15:
                 _silence_mp3(sil, pause)
@@ -772,12 +792,17 @@ def images_batch(items, out: Path, model, key, poll=120, max_wait=5400):
 
 # ────────── РАСПРЕДЕЛЕНИЕ КАРТИНОК МЕЖДУ ПОСТАВЩИКАМИ ──────────
 
-# Доля кадров, которую рисует Magnific. Остальное — xAI, как на соседнем
-# канале. Заказано прямо: 70 на 30.
-MAGNIFIC_SHARE = 0.70
+# Доля кадров, которую рисует Magnific, ЕСЛИ ОН ВКЛЮЧЁН (MAGNIFIC_ENABLED=1
+# в magnific.py) — заказано прямо: 70 на 30. Имя намеренно с суффиксом
+# _IF_ENABLED (5.10): «MAGNIFIC_SHARE = 0.70» рядом с выключенным каналом
+# читается как «сейчас так и делится», хотя build_images ниже обнуляет
+# share до 0.0, когда magnific.available() пуст — вся генерация уезжает
+# xAI. Число менять НЕЛЬЗЯ бездумно в 0: это сломает документированное
+# поведение при возврате MAGNIFIC_ENABLED=1 (CLAUDE.md), а не текущее.
+MAGNIFIC_SHARE_IF_ENABLED = 0.70
 
 
-def split_providers(prompts, share=MAGNIFIC_SHARE, seed=0):
+def split_providers(prompts, share=MAGNIFIC_SHARE_IF_ENABLED, seed=0):
     """
     Делит промпты между Magnific и xAI. Возвращает (magnific, xai) —
     списки пар (номер, промпт), нумерация сквозная от единицы.
@@ -816,7 +841,7 @@ def build_images(job, prompts, out: Path, xai_model, xai_key):
     Возвращает число готовых файлов.
     """
     out.mkdir(parents=True, exist_ok=True)
-    share = float(job.get("magnific_share", MAGNIFIC_SHARE))
+    share = float(job.get("magnific_share", MAGNIFIC_SHARE_IF_ENABLED))
     mag_key = magnific.available()
     if not mag_key:
         # Отключён выключателем или ключа нет — причины разные, и в логе
@@ -1002,13 +1027,75 @@ _REL_WEAK = {"dark", "night", "light", "lights", "room", "background",
              "timelapse", "white", "black", "colour", "color", "screen"}
 
 
+# 5.8.1 — СТЕММИНГ. «monument»/«monuments», «stone»/«stones» раньше не
+# пересекались вовсе: разные слова для _match_words. Без библиотек — режем
+# типовые окончания на обеих сторонах (запрос и теги), поэтому сравнение
+# остаётся честным, даже когда сам «корень» лингвистически неточный.
+#
+# «es» отрезается ТОЛЬКО когда без неё осталось бы слово на шипящую
+# (box+es, glass+es, dish+es) — иначе «stones» резалось бы в «ston»
+# вместо «stone»: у «stone» до «s» уже стоит «e», это не вставная гласная
+# перед «es», а часть корня. Проверено на обоих примерах из ТЗ.
+_SIBILANT_END = ("s", "x", "z", "ch", "sh")
+
+
+def _stem(word: str) -> str:
+    w = word
+    if w.endswith("ing") and len(w) - 3 >= 3:
+        return w[:-3]
+    if w.endswith("ed") and len(w) - 2 >= 3:
+        return w[:-2]
+    if w.endswith("es") and len(w) - 2 >= 3 and w[:-2].endswith(_SIBILANT_END):
+        return w[:-2]
+    if w.endswith("s") and not w.endswith("ss") and len(w) - 1 >= 3:
+        return w[:-1]
+    return w
+
+
+# 5.8.2 — СЛОВАРЬ СИНОНИМОВ ТЕМЫ. Поле job["synonyms"] — сценарист пишет
+# {"guidestones": ["monument", "granite", "slab", "stele"]}: узкое имя
+# темы (какое употребит script_grounded_queries) слева, общие слова стока
+# справа. Расширяется МЕШОК СЛОВ НАХОДКИ (have), а не запроса: файл,
+# помеченный тегом «granite», получает в свой мешок ещё и «guidestones»
+# и начинает совпадать с запросом по теме, хотя ни разу не назван ею
+# буквально. Установлен один раз на job (_set_synonyms) — источники
+# (ALL_SOURCES) вызываются с сигнатурой (query, n), это единственное
+# место, где вообще виден job, тянуть его через каждый fn(q, n) незачем.
+_SYNONYMS: dict = {}
+
+
+def _set_synonyms(job):
+    global _SYNONYMS
+    raw = job.get("synonyms") if isinstance(job, dict) else None
+    _SYNONYMS = ({_stem(str(k).lower()): [_stem(str(v).lower()) for v in vs]
+                 for k, vs in raw.items()}
+                if isinstance(raw, dict) else {})
+
+
 def _match_words(query: str, tags: str):
-    """Значимые слова запроса, слова находки и их пересечение."""
-    want = {w for w in re.findall(r"[a-z]+", (query or "").lower())
+    """Значимые слова запроса, слова находки (со стеммингом и синонимами
+    темы) и их пересечение."""
+    want = {_stem(w) for w in re.findall(r"[a-z]+", (query or "").lower())
             if len(w) > 2 and w not in _REL_STOP and w not in _REL_WEAK}
-    have = {w for w in re.findall(r"[a-z]+", (tags or "").lower())
+    have = {_stem(w) for w in re.findall(r"[a-z]+", (tags or "").lower())
             if w not in _REL_WEAK}
+    if _SYNONYMS:
+        have |= {key for key, values in _SYNONYMS.items() if have & set(values)}
     return want, have, want & have
+
+
+# 5.8.3 — БИГРАММЫ. Мешок слов одиночный терял порядок: «desert road»
+# матчился с «road» чего угодно наравне с точным совпадением. Вес втрое
+# больше самого дорогого одиночного попадания (BIGRAM_WEIGHT = 3 ×
+# длинное слово) — «desert road» обязан обыграть голое «road» без
+# всяких порогов, не только в среднем по больнице.
+BIGRAM_WEIGHT = 9.0
+
+
+def _bigrams(text: str) -> set:
+    words = [w for w in re.findall(r"[a-z]+", (text or "").lower())
+            if len(w) > 2 and w not in _REL_STOP]
+    return {f"{a} {b}" for a, b in zip(words, words[1:])}
 
 
 def relevance_score(query: str, tags: str) -> float:
@@ -1035,7 +1122,12 @@ def relevance_score(query: str, tags: str) -> float:
         score += 3.0 if len(w) >= 7 else 2.0
     # Доля запроса, которую находка закрыла: два слова из трёх лучше двух
     # из десяти. Иначе длинный запрос всегда выигрывал бы у точного.
-    return round(score + 2.0 * len(hits) / len(want), 3)
+    score += 2.0 * len(hits) / len(want)
+    # 5.8.3 — двухсловные сочетания весят отдельно и сверху, а не вместо
+    # одиночных: «desert road» должен обыгрывать «road», а не заменять
+    # собой всю остальную арифметику.
+    score += BIGRAM_WEIGHT * len(_bigrams(query) & _bigrams(tags))
+    return round(score, 3)
 
 
 def _best_by_relevance(cands, q, n):
@@ -2018,6 +2110,7 @@ def fetch_material(job, work: Path):
     правятся после того, как посмотришь, что по ним нашлось, и гонять ради
     этого заново озвучку за деньги незачем.
     """
+    _set_synonyms(job)
     purge_broken(work)
     vids = sources_from(job, "video_sources", VIDEO_SOURCES)
     phot = sources_from(job, "photo_sources", PHOTO_SOURCES)
@@ -2096,6 +2189,7 @@ def refill_after_vet(job, work: Path):
     переписываются. После докачки — повторная отбраковка: иначе в ролик
     уедет тот же брак вторым заходом.
     """
+    _set_synonyms(job)
     rej = vet.rejected_from(work)
     # НЕПРОСМОТРЕННОЕ — НЕ БРАК. Отбраковка останавливается, когда годного
     # набралось с запасом (vet.pool_budget), и остаток помечает отказом:
