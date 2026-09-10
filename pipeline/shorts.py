@@ -46,6 +46,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import assets
 import render
 from editorial import beats as beats_mod
 
@@ -200,6 +201,15 @@ def words_from_alignment(job, vdir: Path):
     """Слова с временами из посимвольных тайм-кодов ElevenLabs + паузы."""
     words, offset = [], 0.0
     n_blocks = len(job["script_blocks"])
+    # ПАУЗА ПОД КАРТОЧКУ НАЗВАНИЯ (2.1.2, assets.build_voice, hook_pause).
+    # block_01.mp3 на диске НЕ меняется — build_voice режет его копию на
+    # a/pause/b только для voice_full.m4a, alignment остаётся целым и
+    # непрерывным. Без поправки здесь слова после первой фразы обгоняли
+    # бы настоящий звук на hook_pause секунд ровно там, где шортс режет
+    # свой хук, — то самое место, где рассинхрон виднее всего.
+    hook_pause = max(0.0, min(
+        assets.HOOK_PAUSE_MAX,
+        float(job.get("hook_pause", assets.HOOK_PAUSE_DEFAULT))))
     for i in range(1, n_blocks + 1):
         mp3 = vdir / f"block_{i:02d}.mp3"
         aljson = vdir / f"block_{i:02d}.json"
@@ -211,13 +221,24 @@ def words_from_alignment(job, vdir: Path):
         ends = al.get("ends") or []
         if not chars:
             return None
+        cut_at = None
+        if i == 1 and hook_pause > 0:
+            fm = assets.sentence_marks(job["script_blocks"][0], al, 0.0)
+            if len(fm) >= 2:
+                cut_at = fm[0]["end"]
+
+        def shifted(t0, t1):
+            if cut_at is not None and t0 >= cut_at - 1e-6:
+                return t0 + offset + hook_pause, t1 + offset + hook_pause
+            return t0 + offset, t1 + offset
+
         buf, t0, t1 = [], None, None
         for ch, s, e in zip(chars, starts, ends):
             if ch.isspace():
                 if buf:
+                    ws, we = shifted(t0, t1)
                     words.append(dict(text="".join(buf),
-                                      start=round(t0 + offset, 3),
-                                      end=round(t1 + offset, 3)))
+                                      start=round(ws, 3), end=round(we, 3)))
                     buf, t0 = [], None
                 continue
             if t0 is None:
@@ -225,9 +246,12 @@ def words_from_alignment(job, vdir: Path):
             t1 = e
             buf.append(ch)
         if buf:
-            words.append(dict(text="".join(buf), start=round(t0 + offset, 3),
-                              end=round(t1 + offset, 3)))
+            ws, we = shifted(t0, t1)
+            words.append(dict(text="".join(buf), start=round(ws, 3),
+                              end=round(we, 3)))
         offset += render.duration_of(mp3, "a")
+        if cut_at is not None:
+            offset += hook_pause
         # Пауза после главы — как в voice_full / marks.json.
         pause_mp3 = vdir / f"pause_{i:02d}.mp3"
         if i < n_blocks:
