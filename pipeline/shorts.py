@@ -48,6 +48,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import assets
 import render
+import timing
 from editorial import beats as beats_mod
 
 SW, SH, SFPS = 1080, 1920, 30
@@ -208,109 +209,10 @@ def run(cmd):
 
 
 # ─────────────────────── ПОСЛОВНЫЕ ТАЙМ-КОДЫ ───────────────────────
-
-def _chapter_pause(job, block_i: int) -> float:
-    """
-    Та же пауза между главами, что в assets.build_voice. Без неё
-    пословные тайм-коды после первой главы уезжают вперёд звука.
-    """
-    n_blocks = len(job["script_blocks"])
-    if block_i >= n_blocks:
-        return 0.0
-    seed = abs(hash(job.get("id", "x"))) % 1000
-    pause = 2.0 + ((seed + block_i * 7) % 11) / 10.0
-    block = job["script_blocks"][block_i - 1]
-    tail = block.rstrip()[-120:].lower()
-    if ("?" in tail or tail.endswith("...")
-            or re.search(r"\b(we don.?t know|nobody knows|"
-                         r"still looking|hang on|listen)\b", tail)):
-        pause = min(3.0, pause + 0.4)
-    return pause
-
-
-def words_from_alignment(job, vdir: Path):
-    """Слова с временами из посимвольных тайм-кодов ElevenLabs + паузы."""
-    words, offset = [], 0.0
-    n_blocks = len(job["script_blocks"])
-    # ПАУЗА ПОД КАРТОЧКУ НАЗВАНИЯ (2.1.2, assets.build_voice, hook_pause).
-    # block_01.mp3 на диске НЕ меняется — build_voice режет его копию на
-    # a/pause/b только для voice_full.m4a, alignment остаётся целым и
-    # непрерывным. Без поправки здесь слова после первой фразы обгоняли
-    # бы настоящий звук на hook_pause секунд ровно там, где шортс режет
-    # свой хук, — то самое место, где рассинхрон виднее всего.
-    hook_pause = max(0.0, min(
-        assets.HOOK_PAUSE_MAX,
-        float(job.get("hook_pause", assets.HOOK_PAUSE_DEFAULT))))
-    for i in range(1, n_blocks + 1):
-        mp3 = vdir / f"block_{i:02d}.mp3"
-        aljson = vdir / f"block_{i:02d}.json"
-        if not (mp3.exists() and aljson.exists()):
-            return None
-        al = json.loads(aljson.read_text())
-        chars = al.get("chars") or []
-        starts = al.get("starts") or []
-        ends = al.get("ends") or []
-        if not chars:
-            return None
-        cut_at = None
-        if i == 1 and hook_pause > 0:
-            fm = assets.sentence_marks(job["script_blocks"][0], al, 0.0)
-            if len(fm) >= 2:
-                cut_at = fm[0]["end"]
-
-        def shifted(t0, t1):
-            if cut_at is not None and t0 >= cut_at - 1e-6:
-                return t0 + offset + hook_pause, t1 + offset + hook_pause
-            return t0 + offset, t1 + offset
-
-        buf, t0, t1 = [], None, None
-        for ch, s, e in zip(chars, starts, ends):
-            if ch.isspace():
-                if buf:
-                    ws, we = shifted(t0, t1)
-                    words.append(dict(text="".join(buf),
-                                      start=round(ws, 3), end=round(we, 3)))
-                    buf, t0 = [], None
-                continue
-            if t0 is None:
-                t0 = s
-            t1 = e
-            buf.append(ch)
-        if buf:
-            ws, we = shifted(t0, t1)
-            words.append(dict(text="".join(buf), start=round(ws, 3),
-                              end=round(we, 3)))
-        offset += render.duration_of(mp3, "a")
-        if cut_at is not None:
-            offset += hook_pause
-        # Пауза после главы — как в voice_full / marks.json.
-        pause_mp3 = vdir / f"pause_{i:02d}.mp3"
-        if i < n_blocks:
-            if pause_mp3.exists():
-                offset += render.duration_of(pause_mp3, "a")
-            else:
-                offset += _chapter_pause(job, i)
-    return words or None
-
-
-def words_from_marks(marks):
-    """Запасной путь без посимвольных тайм-кодов (синтетика / mock)."""
-    words = []
-    for m in marks:
-        toks = [t for t in m["text"].split() if t]
-        if not toks:
-            continue
-        span = m["end"] - m["start"]
-        weights = [len(t) + 1 for t in toks]
-        wsum = sum(weights)
-        t = m["start"]
-        for tok, w in zip(toks, weights):
-            d = span * w / wsum
-            words.append(dict(text=tok, start=round(t, 3),
-                              end=round(t + d, 3)))
-            t += d
-    return words
-
+#
+# words_from_alignment / words_from_marks — в timing.py (5.7): та же
+# логика раньше жила здесь копией, синхронной с assets.build_voice
+# только пока кто-то об этом помнил.
 
 # ─────────────────────── ВЫБОР ДВУХ ОКОН ───────────────────────
 
@@ -1205,12 +1107,12 @@ def main(job_path):
     story = beats_mod.analyze(marks, job["script_blocks"], total)
     # Слова нужны и подбору кадров, и субтитрам (3.3.4 — смысловые куски
     # по 3-5 слов из посимвольных тайм-кодов, не целые предложения).
-    words = words_from_alignment(job, assets / "voice")
+    words = timing.words_from_alignment(job, assets / "voice")
     if words:
         log(f"слова: {len(words)} по посимвольным тайм-кодам ElevenLabs "
             f"(для подбора кадров и субтитров)")
     else:
-        words = words_from_marks(marks)
+        words = timing.words_from_marks(marks)
         log(f"слова: {len(words)} раскиданы по длине (посимвольных "
             f"тайм-кодов нет — синтетика?)")
 

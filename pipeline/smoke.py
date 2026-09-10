@@ -409,8 +409,9 @@ def main(job_path):
     import random
     import tempfile
     import shorts as shorts_mod
-    words = (shorts_mod.words_from_alignment(job, work / "voice")
-             or shorts_mod.words_from_marks(marks))
+    import timing
+    words = (timing.words_from_alignment(job, work / "voice")
+             or timing.words_from_marks(marks))
     story = getattr(st, "beats", None) or []
     wins = shorts_mod.pick_segments(story, marks, total)
     if not wins:

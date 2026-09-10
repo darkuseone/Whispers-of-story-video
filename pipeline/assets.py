@@ -36,6 +36,7 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).parent))
 import magnific
+import timing
 import vet
 
 UA = {"User-Agent": "sleep-docs-pipeline/1.0 (educational video project)"}
@@ -269,15 +270,9 @@ BLOCK_CHARS_WARN_V3 = 4500
 # job может перебить полем voice_model / voice_settings.model_id.
 DEFAULT_VOICE_MODEL = "eleven_v3"
 
-# НАСТОЯЩАЯ ПАУЗА ПОД КАРТОЧКУ НАЗВАНИЯ. Заказано «после хука пауза 2-3 с,
-# синхронно с карточкой, потом диктор продолжает» — а паузы там не было:
-# pause_NN.mp3 конвейер вставляет только МЕЖДУ БЛОКАМИ сценария, а внутри
-# блока 1 диктор говорит непрерывно, и карточка выезжала поверх продолжающейся
-# речи. HOOK_PAUSE — тишина, вставляемая ПОСЛЕ первой фразы блока 1, столько
-# же материально, как pause_NN между главами. Поле job "hook_pause" перебивает
-# умолчание, 0 выключает эффект целиком (для роликов без крючка-паузы).
-HOOK_PAUSE_DEFAULT = 2.4
-HOOK_PAUSE_MAX = 4.0
+# Пауза под карточку названия (HOOK_PAUSE_DEFAULT/MAX) — в timing.py
+# (5.7): нужна и здесь, и words_from_alignment в timing.py, а два места
+# с одной и той же константой рано или поздно разойдутся.
 
 
 def tts_block(text, out_mp3: Path, voice_id, api_key, stability=0.50,
@@ -388,45 +383,6 @@ def available_voices(api_key, limit=25):
         return f"(список голосов получить не вышло: {e})"
 
 
-def sentence_marks(text, align, offset):
-    """
-    Превращает посимвольные тайм-коды в границы предложений.
-    Это и есть точки, где робот будет менять кадр.
-
-    Точка перед пробелом сама по себе границу не держит: у инициального
-    сокращения из БУКВЫ-ТОЧКИ-БУКВЫ-ТОЧКИ (R.C., U.S.) последняя точка
-    тоже стоит перед пробелом и неотличима от конца предложения. На
-    georgia-guidestones-01 «R.C. Christian» встречается тринадцать раз, и
-    без этой проверки почти каждое упоминание рвало реплику пополам —
-    "R." отдельной репликой, "C. Christian was…" следующей — а дальше по
-    этому же месту не находил себя youtube.chapters (та же граница у
-    youtube.first_sentence). Все точки внутри такого сокращения, включая
-    последнюю, из кандидатов на разрыв исключены.
-    """
-    chars, starts, ends = align["chars"], align["starts"], align["ends"]
-    if not chars:
-        return []
-    joined = "".join(chars)
-    abbrev_end = {m.end() - 1
-                  for m in re.finditer(r"\b(?:[A-Z]\.){2,}", joined)}
-    marks, buf, buf_start = [], [], None
-    for i, ch in enumerate(chars):
-        if buf_start is None:
-            buf_start = starts[i]
-        buf.append(ch)
-        if ch in ".!?" and i + 1 < len(chars) and chars[i + 1] in " \n" \
-                and i not in abbrev_end:
-            marks.append({"text": "".join(buf).strip(),
-                          "start": round(buf_start + offset, 3),
-                          "end": round(ends[i] + offset, 3)})
-            buf, buf_start = [], None
-    if buf:
-        marks.append({"text": "".join(buf).strip(),
-                      "start": round((buf_start or 0) + offset, 3),
-                      "end": round(ends[-1] + offset, 3)})
-    return marks
-
-
 def _silence_mp3(path: Path, seconds: float):
     """Тишина для драматической паузы между главами."""
     import subprocess
@@ -511,12 +467,14 @@ def build_voice(job, work: Path):
                   else BLOCK_CHARS_WARN)
 
     # Паузы 2–3 с между главами: интрига/выдох, не мёртвая тишина на минуту.
-    # Длина детерминирована от id ролика, чтобы пересборка не плясала.
-    seed = abs(hash(job.get("id", "x"))) % 1000
+    # Формула — timing.chapter_pause_seconds (5.7): та же, что использует
+    # words_from_alignment для пословных тайм-кодов, разойдись они —
+    # тайм-коды после первой же главы уедут вперёд настоящего звука.
     n_blocks = len(job["script_blocks"])
 
-    hook_pause = max(0.0, min(HOOK_PAUSE_MAX,
-                              float(job.get("hook_pause", HOOK_PAUSE_DEFAULT))))
+    hook_pause = max(0.0, min(timing.HOOK_PAUSE_MAX,
+                              float(job.get("hook_pause",
+                                            timing.HOOK_PAUSE_DEFAULT))))
 
     parts, marks, offset = [], [], 0.0
     for i, block in enumerate(job["script_blocks"], 1):
@@ -534,7 +492,7 @@ def build_voice(job, work: Path):
                            model_id=model_id)
             (adir / f"block_{i:02d}.json").write_text(json.dumps(al))
         al = json.loads((adir / f"block_{i:02d}.json").read_text())
-        block_marks = sentence_marks(block, al, offset)
+        block_marks = timing.sentence_marks(block, al, offset)
 
         # ПАУЗА ПОД КАРТОЧКУ НАЗВАНИЯ. Только у блока 1 и только если в нём
         # реально больше одной фразы — иначе резать нечего. Блок уже оплачен
@@ -581,14 +539,7 @@ def build_voice(job, work: Path):
         # Драматическая пауза после главы (кроме последней). Не каждый
         # стык одинаков: часть чуть короче, часть ближе к трём секундам.
         if i < n_blocks:
-            pause = 2.0 + ((seed + i * 7) % 11) / 10.0   # 2.0 … 3.0
-            # На особо «крючковых» концах главы — ближе к верхней границе:
-            # вопрос, многоточие, короткое ударное предложение.
-            tail = block.rstrip()[-120:].lower()
-            if ("?" in tail or tail.endswith("...")
-                    or re.search(r"\b(we don.?t know|nobody knows|"
-                                 r"still looking|hang on|listen)\b", tail)):
-                pause = min(3.0, pause + 0.4)
+            pause = timing.chapter_pause_seconds(job, i)
             sil = adir / f"pause_{i:02d}.mp3"
             if not sil.exists() or abs(_duration(sil) - pause) > 0.15:
                 _silence_mp3(sil, pause)
