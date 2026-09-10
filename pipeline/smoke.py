@@ -402,6 +402,99 @@ def main(job_path):
         print(f"   треков {len(beds)}, смены на "
               + ", ".join(f"{p/60:.1f} мин" for p in switches))
 
+    # 3.3.8 — шортсы раньше не проверял никто, а дефектов оформления там
+    # больше всего: они не в коде, а в вопросе, шрифте, замере ширины.
+    # Всё здесь считается по marks.json и тексту, без рендера.
+    print("── шортсы")
+    import random
+    import tempfile
+    import shorts as shorts_mod
+    words = (shorts_mod.words_from_alignment(job, work / "voice")
+             or shorts_mod.words_from_marks(marks))
+    story = getattr(st, "beats", None) or []
+    wins = shorts_mod.pick_windows(story, marks, total)
+    if not wins:
+        raise SystemExit("шортсы: pick_windows не дал ни одного окна")
+    min_len = shorts_mod.MIN_LEN_SOFT if total < 180 else shorts_mod.MIN_LEN
+    for w in wins:
+        if w["t1"] - w["t0"] < min_len - 0.5:
+            raise SystemExit(
+                f"шортсы: окно «{w['role']}» короче {min_len:.0f} с")
+    for a, b in zip(wins, wins[1:]):
+        if a["t1"] > b["t0"] + 0.01:
+            raise SystemExit(
+                f"шортсы: окна «{a['role']}» и «{b['role']}» пересекаются")
+
+    job_qs = list((job.get("youtube") or {}).get("shorts_questions") or [])
+    fonts_needed = ("ArchivoBlack-Regular.ttf", "Montserrat-ExtraBold.ttf")
+    for fname in fonts_needed:
+        if not (shorts_mod.FONT_DIR / fname).exists():
+            raise SystemExit(
+                f"шортсы: нет шрифта {fname} в {shorts_mod.FONT_DIR}")
+
+    for n, w in enumerate(wins, 1):
+        # question_for сам роняет смоук, если shorts_questions не задан
+        # или не кончается на «?» — see 3.3.5, не выдумывать вопрос.
+        q = shorts_mod.question_for(job_qs, n)
+        wrapped = shorts_mod.wrap_question(q)
+        n_lines = wrapped.count("\n") + 1
+        if n_lines > shorts_mod.QUESTION_MAX_LINES:
+            raise SystemExit(
+                f"шортс {n}: вопрос «{q}» не влезает в "
+                f"{shorts_mod.QUESTION_MAX_LINES} строки")
+        scale = shorts_mod.hook_scale(q)
+        if not (100 <= scale <= shorts_mod.HOOK_SCALE_MAX):
+            raise SystemExit(
+                f"шортс {n}: hook_scale {scale} вне 100-"
+                f"{shorts_mod.HOOK_SCALE_MAX} — замер ширины хука сломан "
+                f"(та самая грабля с \\N в question_box)")
+
+        t0, t1 = w["t0"], w["t1"]
+        dur = round(t1 - t0, 3)
+        # СУБТИТРЫ НЕ НАЕЗЖАЮТ НА CTA — проверяется по ГОТОВОМУ .ass, а не
+        # по сырому captions_from_words: тот отдаёт естественный конец
+        # фразы, а write_ass сам обрезает его до cta_from - 0.10 при
+        # рендере. Проверка по сырым концам ловила фантомные пересечения
+        # ровно там, где реальный рендер уже подрезан и ничего не
+        # накладывается — так и поймано при первом прогоне этой проверки.
+        ass_tmp = Path(tempfile.mkstemp(suffix=".ass")[1])
+        try:
+            shorts_mod.write_ass(words, t0, dur, ass_tmp, q)
+            ass_text = ass_tmp.read_text(encoding="utf-8")
+        finally:
+            ass_tmp.unlink(missing_ok=True)
+        cta_start = None
+        cap_ends = []
+        for line in ass_text.splitlines():
+            if not line.startswith("Dialogue:"):
+                continue
+            parts = line.split(",", 9)
+            style, end_s = parts[3], parts[2]
+            end_sec = sum(float(x) * m for x, m in
+                         zip(reversed(end_s.split(":")), (1, 60, 3600)))
+            if style == "Cta":
+                cta_start_s = parts[1]
+                cta_start = sum(float(x) * m for x, m in
+                               zip(reversed(cta_start_s.split(":")), (1, 60, 3600)))
+            elif style == "Caption":
+                cap_ends.append(end_sec)
+        if cta_start is not None and any(e > cta_start + 0.01 for e in cap_ends):
+            raise SystemExit(
+                f"шортс {n}: в готовом .ass есть субтитр, кончающийся "
+                f"позже начала призыва ({cta_start:.2f} с) — write_ass "
+                f"больше не обрезает Caption под cta_from")
+
+        rng = random.Random(f"{job['id']}-short-{n}")
+        cuts = shorts_mod.cut_plan(shots, t0, t1, rng, words=words,
+                                   cutter=build.ClipCutter())
+        cut_sum = round(sum(c["dur"] for c in cuts), 3)
+        if abs(cut_sum - dur) > 0.05:
+            raise SystemExit(
+                f"шортс {n}: сумма кусков {cut_sum:.2f} с при окне "
+                f"{dur:.2f} с — разошлось")
+    print(f"   {len(wins)} окна, вопросы/шрифты/замер ширины на месте, "
+          f"субтитры не наезжают на CTA, куски сходятся с длиной окна")
+
     print("\nСМОУК-ПРОГОН ПРОЙДЕН")
 
 

@@ -52,6 +52,14 @@ from editorial import beats as beats_mod
 
 SW, SH, SFPS = 1080, 1920, 30
 
+# 3.3.3: видео занимало 32% высоты кадра (fit по ширине горизонтального
+# стока) — блюр-подложка защищала от тряски, но ценой двух третей экрана
+# впустую. CLIP_VISIBLE_H поднимает видимую часть до ~58% высоты
+# (кроп по бокам вместо fit по ширине): тряска усиливается, но не
+# втрое, как при жёстком кропе в 9:16 целиком, а вернувшийся вокруг
+# кадр остаётся местом под хук/субтитры, а не пустой рамкой.
+CLIP_VISIBLE_H = 1114
+
 N_SHORTS = 2
 
 # Длина: 30 с … 1.5 мин. Цель — успеть задать вопрос и дать ответ.
@@ -61,8 +69,20 @@ MIN_LEN = 28.0
 MIN_LEN_SOFT = 12.0       # тестовые короткие ролики (mock)
 
 # Кадр шортса. Без дополнительного движения поверх — только нарезка.
-CUT_RANGE = (2.8, 4.8)
-CUT_MERGED_MAX = 7.0
+#
+# 3.3.1: было 2.8-4.8 с — вдвое медленнее, чем нужно формату. 60-секундный
+# шортс на таком шаге даёт 13-20 склеек, а живёт Shorts на 1.2-2.2 с.
+# CUT_RANGE — середина окна; края (первые CUT_FAST_HEAD и последние
+# CUT_FAST_TAIL секунд) идут быстрее, CUT_FAST_RANGE: хук должен
+# ощущаться быстрым, а к развязке идёт разгон.
+CUT_RANGE = (1.8, 2.4)
+CUT_FAST_RANGE = (1.2, 1.8)
+CUT_FAST_HEAD = 8.0
+CUT_FAST_TAIL = 10.0
+# Было 7.0 — на новом шаге это дало бы кадр почти в четыре обычных куска
+# слитый в один, то есть ту же медленную картинку, только замаскированную
+# под «много склеек» в логе.
+CUT_MERGED_MAX = 3.2
 
 # ─────────────── ФИРМЕННАЯ ТИПОГРАФИКА КАНАЛА ───────────────
 #
@@ -154,11 +174,22 @@ HOOK_BIG_Y = 860                 # центр крупного вопроса
 # текст за краями кадра, то половину пустой ширины.
 HOOK_FILL = 0.94                 # какую долю ширины занимает хук
 HOOK_SCALE_MAX = 210             # потолок для очень коротких вопросов
-HOOK_HOLD = 0.85                 # сколько секунд держим крупным
-HOOK_SHRINK = 0.65               # за сколько уменьшается и уезжает
+# 3.3.5: было 0.85 — меньше, чем зритель успевает прочитать три строки
+# крупного текста. Норма для Shorts — держать хук 1.5-2.0 с.
+HOOK_HOLD = 1.7                  # сколько секунд держим крупным
+HOOK_SHRINK = 0.5                # за сколько уменьшается и уезжает
 
 CTA_TEXT = "FULL STORY ON THE CHANNEL"
 CTA_SECONDS = 2.4
+
+# 3.3.5: open loop без кликбейта — ответ в шортсе ДЕЙСТВИТЕЛЬНО есть,
+# формулировка не обещает того, чего нет (в отличие от «WAIT FOR IT»,
+# он в BANNED_HOOKS и правильно). Мелкой строкой один раз, под уже
+# осевшим хуком — не спорит с ним за внимание.
+PROMISE_TEXT = "THE ANSWER IS AT THE END"
+PROMISE_SIZE = 30
+PROMISE_AT = 3.0
+PROMISE_HOLD = 2.5
 
 # Вопрос: до 3 строк × ~26 символов. Раньше QUESTION_MAX=52 одной
 # строкой на 54pt — текст уезжал за края кадра.
@@ -392,28 +423,30 @@ def wrap_question(text: str) -> str:
     return "\n".join(lines)
 
 
-def question_for(win, marks, job_questions, n):
+def question_for(job_questions, n):
     """
-    Вопрос-хук на всю длину шортса. Сначала — youtube.shorts_questions,
-    иначе первое предложение окна, ужатое в вопрос.
+    Вопрос-хук на всю длину шортса — ТОЛЬКО из youtube.shorts_questions.
+
+    3.3.5: раньше при пустом shorts_questions вопрос собирался из
+    первого предложения окна отрезанием по запятой и приклеиванием
+    «?» — давало мусор вроде «I had watched the footage more times
+    than I can count?», то есть не вопрос, а обрубленное утверждение.
+    Сценарист знает, что в тексте ударное и что действительно спросить,
+    робот — нет. Два вопроса на ролик, это одна строка в спецификации:
+    падать явно лучше, чем выдумывать.
     """
-    if n - 1 < len(job_questions) and str(job_questions[n - 1]).strip():
-        raw = str(job_questions[n - 1]).strip()
-    else:
-        idx = win.get("mark_idx", 0)
-        raw = (marks[idx]["text"] if 0 <= idx < len(marks) else "").strip()
-        raw = " ".join(raw.split())
-        if not raw:
-            raw = "What really happened?"
-        elif not raw.endswith("?"):
-            cut = raw
-            for sep in (", ", " — ", " - ", "; "):
-                if sep in cut and len(cut.split(sep)[0]) >= 18:
-                    cut = cut.split(sep)[0]
-                    break
-            cut = cut.rstrip(".!")
-            raw = (cut + "?") if cut else "What really happened?"
-    # убираем лишнюю длину до переноса
+    if n - 1 >= len(job_questions) or not str(job_questions[n - 1]).strip():
+        raise SystemExit(
+            f"youtube.shorts_questions[{n - 1}] не задан — вопрос для "
+            f"шортса {n} взять неоткуда. Впиши в спецификацию два "
+            f"настоящих вопроса (youtube.shorts_questions), сценарист "
+            f"знает текст лучше отрезания по запятой.")
+    raw = str(job_questions[n - 1]).strip()
+    if not raw.endswith("?"):
+        raise SystemExit(
+            f"youtube.shorts_questions[{n - 1}] = «{raw}» не кончается "
+            f"на «?» — это не вопрос. Перепиши как вопрос или добавь "
+            f"знак, если смысл уже вопросительный.")
     flat = " ".join(raw.split())
     if len(flat) > QUESTION_MAX:
         flat = flat[: QUESTION_MAX - 1].rsplit(" ", 1)[0]
@@ -464,17 +497,37 @@ def _shot_blob(sh: dict) -> str:
     ]))
 
 
-def cut_plan(shots, t0, t1, rng, words=None):
+def cut_plan(shots, t0, t1, rng, words=None, cutter=None):
     """
-    Перерезка окна: 2.8–4.8 с на кадр + семантический выбор исходника.
+    Перерезка окна: 1.4–2.4 с на кадр (короче на краях) + семантический
+    выбор исходника.
 
     Без Ken Burns / sweep поверх: движение только то, что уже есть
     в исходном клипе. Фото остаётся статичным кадром.
+
+    ТЕМП НЕ ПОСТОЯННЫЙ. Первые CUT_FAST_HEAD и последние CUT_FAST_TAIL
+    секунд окна режутся короче (CUT_FAST_RANGE) — хук обязан
+    ощущаться быстрым, а к развязке (концу окна) идёт разгон.
+    Середина держит обычный шаг CUT_RANGE.
+
+    cutter — build.ClipCutter, один на весь шортс (и на оба окна, если
+    вызывающий передаёт тот же объект дважды). Пул кадров в 60-секундном
+    окне — это 5-8 разных файлов на ~30 кусков, то есть один и тот же
+    файл неизбежно выбирается семантическим подбором не один раз. Первое
+    появление файла берёт src_start из плана ДЛИННОГО ролика (та же
+    привязка кадра к месту в рассказе, что видел зритель большого
+    видео), а повторные — РАЗНЫЙ кусок того же файла через cutter, а не
+    тот же самый (или пересекающийся) отрезок ещё раз.
     """
     cuts, t = [], t0
+    seen_files = set()
 
     while t < t1 - 0.05:
-        dur = min(rng.uniform(*CUT_RANGE), t1 - t)
+        elapsed, remaining = t - t0, t1 - t
+        rng_pair = (CUT_FAST_RANGE
+                    if elapsed < CUT_FAST_HEAD or remaining < CUT_FAST_TAIL
+                    else CUT_RANGE)
+        dur = min(rng.uniform(*rng_pair), t1 - t)
         mid = t + dur / 2
         said = ""
         if words:
@@ -502,8 +555,13 @@ def cut_plan(shots, t0, t1, rng, words=None):
                 and cuts[-1]["dur"] + dur <= CUT_MERGED_MAX:
             cuts[-1]["dur"] = round(cuts[-1]["dur"] + dur, 3)
         else:
-            src_off = float(sh.get("src_start", 0.0)) + max(
-                0.0, t - sh["start"])
+            if (sh["kind"] == "clip" and cutter is not None
+                    and sh["file"] in seen_files):
+                src_off = cutter.take_start(Path(sh["file"]), dur)
+            else:
+                src_off = float(sh.get("src_start", 0.0)) + max(
+                    0.0, t - sh["start"])
+            seen_files.add(sh["file"])
             cuts.append(dict(file=sh["file"], kind=sh["kind"],
                              src_start=src_off, dur=round(dur, 3)))
         t += dur
@@ -520,30 +578,29 @@ def render_cut(c, out: Path, canvas_cache, tmp: Path):
 
     Фото: статичный кадр на всю длительность куска.
 
-    Клип: БЛЮР-ПОДЛОЖКА ПЛЮС ВПИСАННЫЙ ПЕРЕДНИЙ ПЛАН, а не жёсткий кроп
-    в 9:16. Жёсткий кроп казался решением («никакого зума сверху — только
-    то, что уже снято»), но у канала весь сток горизонтальный (1920x1080,
-    см. render.W/H), и scale=increase + crop=SW:SH для такого источника
-    оставляет ровно 31.6% ширины кадра — это математика формата, а не
-    промах кодирования: 1080/1920 * 1080/1080 упирается в множитель
-    1080/1920 недостаточно, а 1920/1080 достаточно, поэтому берётся он, и
-    после увеличения кадр обрезается до трети своей ширины. Любое
-    движение камеры в исходнике — ручное дрожание, лёгкий панорамный увод
-    — при таком кропе увеличивается почти втрое. Это и есть тряска: не
-    добавленная, а УСИЛЕННАЯ operatorским кропом.
+    Клип: БЛЮР-ПОДЛОЖКА ПЛЮС ПЕРЕДНИЙ ПЛАН НА ~58% ВЫСОТЫ (3.3.3), а не
+    жёсткий кроп в 9:16 целиком. Жёсткий кроп казался решением («никакого
+    зума сверху — только то, что уже снято»), но у канала весь сток
+    горизонтальный (1920x1080, см. render.W/H), и scale=increase +
+    crop=SW:SH для такого источника — это уже кроп ДО 9:16, что и есть
+    сам «жёсткий кроп»: тряска усиливается почти втрое.
 
-    Передний план здесь вписывается ЦЕЛИКОМ по ширине (fit, не crop) —
-    движение исходника остаётся тем же самым, что было снято, один в
-    один. Пустые поля сверху и снизу заполняет размытая и затемнённая
-    копия того же кадра, растянутая на весь холст: подложке лишний зум
-    не вредит, потому что смотреть на неё резко никто не будет.
+    Раньше передний план вписывался ЦЕЛИКОМ по ширине (fit) — ноль тряски,
+    но и ноль экрана: 1080x608px, 32% высоты, две трети кадра съедала
+    подложка. Middle ground — фиксированная высота CLIP_VISIBLE_H
+    (~58%) с кропом по бокам: тряска растёт, но не втрое, а верхнее и
+    нижнее поле остаются местом под хук и субтитры, а не пустой рамкой.
+
+    Пустые поля сверху и снизу заполняет размытая и затемнённая копия
+    того же кадра, растянутая на весь холст: подложке лишний зум не
+    вредит, потому что смотреть на неё резко никто не будет.
     """
     src = Path(c["file"])
     if c["kind"] == "clip":
         vf = (f"split=2[bg][fg];"
               f"[bg]scale={SW}:{SH}:force_original_aspect_ratio=increase,"
               f"crop={SW}:{SH},gblur=sigma=42,eq=brightness=-0.12[bgb];"
-              f"[fg]scale={SW}:-2:force_original_aspect_ratio=decrease[fgs];"
+              f"[fg]scale=-2:{CLIP_VISIBLE_H},crop={SW}:{CLIP_VISIBLE_H}[fgs];"
               f"[bgb][fgs]overlay=(W-w)/2:(H-h)/2,setsar=1,fps={SFPS}")
         run(f"ffmpeg -y -stream_loop -1 -ss {float(c['src_start']):.2f} "
             f"-i {shlex.quote(str(src))} -filter_complex {shlex.quote(vf)} "
@@ -565,7 +622,17 @@ def render_cut(c, out: Path, canvas_cache, tmp: Path):
 # ─────────────────────── КАПШЕНЫ ───────────────────────
 
 CAPTION_LINE = 26          # символов в строке обычного субтитра
-CAPTION_MAX_LINES = 4
+# 3.3.4: было 4 — блок из 3-4 строк, висящий 5-6 секунд, это темп
+# документалки, а не Shorts. Формат читает 1-2 строки, меняющиеся с
+# дыханием диктора, не с концом предложения.
+CAPTION_MAX_LINES = 2
+# Смысловой кусок субтитра — 3-5 слов. Меньше — рвано, больше — уже не
+# читается на ходу.
+CAPTION_WORDS_MIN = 3
+CAPTION_WORDS_MAX = 5
+# Пауза длиннее этого — разделитель фразы ВАЖНЕЕ числа слов: она
+# совпадает с тем местом, где диктор реально сделал вдох.
+CAPTION_PAUSE_SPLIT = 0.35
 
 
 def _ass_t(sec: float) -> str:
@@ -609,29 +676,40 @@ def wrap_caption(text: str, line: int = CAPTION_LINE,
     return "\n".join(lines)
 
 
-def captions_from_marks(marks, t0, dur):
+def captions_from_words(words, t0, dur):
     """
-    Обычные субтитры: целые предложения из marks.json, время относительно
-    начала шортса (= тот же таймлайн, с которого режется звук из final.mp4).
+    Обычные субтитры: смысловые куски по 3–5 слов, нарезанные из
+    ПОСЛОВНЫХ тайм-кодов (words_from_alignment — точные, до миллисекунды,
+    с учётом пауз между главами; words_from_marks — запасной путь).
 
-    Раньше резали по 2–3 слова из пословных тайм-кодов — на телефоне это
-    выглядело как караоке, и после пауз между главами слова уезжали от
-    начитки. Предложения из marks совпадают с SRT длинного ролика.
+    3.3.4: было целыми предложениями из marks.json — на телефоне это
+    блок из 3-4 строк, висящий 5-6 секунд, темп документалки, а не
+    Shorts. Слова копятся, пока не наберётся CAPTION_WORDS_MAX или не
+    встретится пауза длиннее CAPTION_PAUSE_SPLIT (не раньше
+    CAPTION_WORDS_MIN — иначе резало бы на каждом коротком слове):
+    пауза как разделитель важнее счёта слов, она совпадает с дыханием
+    диктора, а не с концом предложения по грамматике.
     """
     t1 = t0 + dur
+    win = [w for w in words if w["end"] > t0 + 0.02 and w["start"] < t1 - 0.02]
     caps = []
-    for m in marks:
-        ms, me = float(m["start"]), float(m["end"])
-        if me <= t0 + 0.05 or ms >= t1 - 0.05:
+    buf = []
+    for i, w in enumerate(win):
+        buf.append(w)
+        is_last = i + 1 == len(win)
+        gap = 0.0 if is_last else win[i + 1]["start"] - w["end"]
+        close = (is_last or len(buf) >= CAPTION_WORDS_MAX
+                 or (len(buf) >= CAPTION_WORDS_MIN and gap > CAPTION_PAUSE_SPLIT))
+        if not close:
             continue
-        text = wrap_caption(" ".join(str(m.get("text") or "").split()))
-        if not text:
-            continue
-        start = max(0.0, ms - t0)
-        end = min(dur, me - t0)
-        if end - start < 0.20:
-            continue
-        caps.append(dict(text=text, start=round(start, 3), end=round(end, 3)))
+        text = wrap_caption(" ".join(x["text"] for x in buf))
+        if text:
+            start = max(0.0, buf[0]["start"] - t0)
+            end = min(dur, buf[-1]["end"] - t0)
+            if end - start >= 0.20:
+                caps.append(dict(text=text, start=round(start, 3),
+                                 end=round(end, 3)))
+        buf = []
     for i, p in enumerate(caps):
         if i + 1 < len(caps):
             p["end"] = min(p["end"], caps[i + 1]["start"] - 0.04)
@@ -695,7 +773,7 @@ def hook_scale(question: str) -> int:
     return int(min(HOOK_SCALE_MAX, SW * HOOK_FILL / widest * 100))
 
 
-def write_ass(marks, t0, dur, out: Path, question: str):
+def write_ass(words, t0, dur, out: Path, question: str):
     """
     Три слоя, и место у каждого своё на всю длину шортса.
 
@@ -730,12 +808,22 @@ def write_ass(marks, t0, dur, out: Path, question: str):
         f"Style: Caption,{FONT_CAPTION},{CAPSIZE},{C_CAPTION},{C_CAPTION},"
         f"{OUTLINE_CAPTION},&HA0000000,0,0,0,0,100,100,0,0,1,6,3,2,70,70,0,1\n"
         f"Style: Cta,{FONT_CAPTION},{CTASIZE},{C_CTA},{C_CTA},"
-        f"{OUTLINE_CAPTION},&HA0000000,0,0,0,0,100,100,1,0,1,6,3,2,70,70,0,1\n\n"
+        f"{OUTLINE_CAPTION},&HA0000000,0,0,0,0,100,100,1,0,1,6,3,2,70,70,0,1\n"
+        # Обещание ответа — тем же капшен-шрифтом, мельче субтитра, без
+        # подложки: не должно читаться как ещё один заголовок.
+        f"Style: Promise,{FONT_CAPTION},{PROMISE_SIZE},{C_CAPTION},"
+        f"{C_CAPTION},{OUTLINE_CAPTION},&HA0000000,0,0,0,0,100,100,0,0,1,"
+        f"4,2,5,70,70,0,1\n\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR,"
         " MarginV, Effect, Text\n")
 
     rows = []
+    # Субтитры и призыв: призыв встаёт в конце, субтитры гаснут раньше
+    # него — место у них одно, и наложить их друг на друга значило бы
+    # получить кашу в последние две секунды. Считается ДО хука: строка
+    # обещания ответа ниже тоже не должна долетать до призыва.
+    cta_from = max(dur - CTA_SECONDS, 0.0)
     q = _ass_esc(question.strip())
     if q:
         # Куда приезжает вопрос. Привязка у него по ЦЕНТРУ блока (\an5) —
@@ -781,10 +869,22 @@ def write_ass(marks, t0, dur, out: Path, question: str):
             f"\\fs{int(QSIZE * k)}"
             f"\\t({t1},{t2},\\fs{QSIZE})\\q2\\fad(160,0)}}{q}")
 
-    # Субтитры гаснут раньше призыва: место у них одно, и наложить их
-    # друг на друга значило бы получить кашу в последние две секунды.
-    cta_from = max(dur - CTA_SECONDS, 0.0)
-    phrases = captions_from_marks(marks, t0, dur)
+        # ОБЕЩАНИЕ ОТВЕТА (3.3.5) — один раз, под уже осевшим хуком.
+        # Не кликбейт: ответ в шортсе действительно есть, это open loop,
+        # а не пустое «wait for it». Появляется не раньше, чем хук осел
+        # (PROMISE_AT ждёт HOOK_HOLD+HOOK_SHRINK), и гаснет, не долетая
+        # до призыва — иначе на коротких окнах он наложился бы на CTA.
+        promise_at = max(PROMISE_AT, HOOK_HOLD + HOOK_SHRINK + 0.15)
+        promise_end = min(promise_at + PROMISE_HOLD, cta_from - 0.2)
+        block_bottom = QUESTION_TOP_Y + lines * QSIZE * 1.25
+        promise_y = block_bottom + 34
+        if promise_end - promise_at >= 0.6:
+            rows.append(
+                f"Dialogue: 1,{_ass_t(promise_at)},{_ass_t(promise_end)},"
+                f"Promise,,0,0,0,,{{\\an5\\pos(540,{promise_y:.0f})"
+                f"\\fad(250,250)}}{_ass_esc(PROMISE_TEXT)}")
+
+    phrases = captions_from_words(words, t0, dur)
     shown = 0
     for p in phrases:
         txt = _ass_esc(p["text"].strip())
@@ -808,7 +908,7 @@ def write_ass(marks, t0, dur, out: Path, question: str):
 
 # ─────────────────────── СБОРКА ОДНОГО ШОРТСА ───────────────────────
 
-def render_short(n, win, shots, words, marks, final: Path, sdir: Path,
+def render_short(n, win, shots, words, final: Path, sdir: Path,
                  seed: str, question: str):
     rng = random.Random(f"{seed}-short-{n}")
     t0, t1 = win["t0"], win["t1"]
@@ -818,7 +918,8 @@ def render_short(n, win, shots, words, marks, final: Path, sdir: Path,
         shutil.rmtree(tmp, ignore_errors=True)
     tmp.mkdir(parents=True, exist_ok=True)
 
-    cuts = cut_plan(shots, t0, t1, rng, words=words)
+    import build
+    cuts = cut_plan(shots, t0, t1, rng, words=words, cutter=build.ClipCutter())
     canvas_cache = {}
     segs = []
     for ci, c in enumerate(cuts):
@@ -832,7 +933,7 @@ def render_short(n, win, shots, words, marks, final: Path, sdir: Path,
         f"-c copy {shlex.quote(str(body))}")
 
     ass = tmp / "captions.ass"
-    n_phrases = write_ass(marks, t0, dur, ass, question)
+    n_phrases = write_ass(words, t0, dur, ass, question)
 
     out = sdir / f"short_{n}.mp4"
     fade_st = max(dur - 0.40, 0.0)
@@ -966,8 +1067,8 @@ def main(job_path):
     log(f"── шортсы: {len(wins)} окна")
     meta = []
     for n, win in enumerate(wins, 1):
-        q = question_for(win, marks, job_qs, n)
-        meta.append(render_short(n, win, shots, words, marks, final, sdir,
+        q = question_for(job_qs, n)
+        meta.append(render_short(n, win, shots, words, final, sdir,
                                  job["id"], q))
 
     (sdir / "shorts.json").write_text(json.dumps(dict(
