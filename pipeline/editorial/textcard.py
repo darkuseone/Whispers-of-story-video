@@ -56,14 +56,27 @@ FONT_CANDIDATES = [
 # тонкое геометрическое начертание с широкой разрядкой: так набирают
 # заставки документальных фильмов, и именно этот вид заказан.
 #
-# Montserrat Light лежит В РЕПОЗИТОРИИ, а не берётся из системы. На
-# раннере GitHub Actions стоит только DejaVu, и титр, набранный ею,
-# выглядел бы обычным жирным текстом — то есть ровно тем, чего здесь
-# избегаем. Тот же приём уже применён к шрифтам шортсов.
-# Regular, а не Light: заказано «тот же шрифт, но чуть пожирнее».
-# Light повторяет референс один в один и на ярком дневном кадре местами
-# теряется — Regular держит тот же геометрический рисунок и разрядку, но
-# уверенно читается. Light лежит рядом на случай возврата.
+# Montserrat Light и Montserrat Regular лежат В РЕПОЗИТОРИИ, а не берутся
+# из системы. На раннере GitHub Actions стоит только DejaVu, и титр,
+# набранный ею, выглядел бы обычным жирным текстом — то есть ровно тем,
+# чего здесь избегаем. Тот же приём уже применён к шрифтам шортсов.
+#
+# ДВА НАЧЕРТАНИЯ НА ДВЕ РОЛИ, и это не оговорка, а различие по замыслу.
+# Название ролика — самый заметный титр семейства, и обязано доминировать
+# в кадре с первого взгляда; титул главы обязан визуально отличаться от
+# него, а не быть тем же блоком помельче (см. CLAUDE.md, «Титры»). Раньше
+# оба титра делили один и тот же TITLE_FONT_CANDIDATES, и Regular был
+# выбран для ОБОИХ разом — Light повторяет референс один в один, но на
+# ярком дневном кадре местами теряется. Компромисс на двоих читался как
+# «тот же шрифт, чуть пожирнее» и различия между заставкой и главой не
+# давал вовсе.
+#
+# Теперь у названия ролика (opening_title) — свой список,
+# OPENING_FONT_CANDIDATES, Light первым: он крупнее (OPENING_SIZE) и
+# держится на экране дольше, запас на лёгкую потерю контраста есть, а
+# усиленная тень в _one() (style="title") компенсирует остальное. Титул
+# главы и THE END остаются на TITLE_FONT_CANDIDATES (Regular) — тот же
+# выбор, что уже проверен на «уверенно читается», трогать незачем.
 TITLE_FONT_CANDIDATES = [
     str(Path(__file__).parent.parent.parent
         / "assets" / "fonts" / "Montserrat-Regular.ttf"),
@@ -72,6 +85,10 @@ TITLE_FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
 ]
+OPENING_FONT_CANDIDATES = [
+    str(Path(__file__).parent.parent.parent
+        / "assets" / "fonts" / "Montserrat-Light.ttf"),
+] + TITLE_FONT_CANDIDATES
 
 # Стили анимации. Каждый — своя механика появления, а не своя длительность
 # одного и того же выезда.
@@ -213,8 +230,22 @@ def font_path():
 
 
 def title_font_path():
-    """Шрифт титров. Нет ни одного — титры молча выключаются."""
+    """Шрифт титров (титул главы, THE END). Нет ни одного — молча выключаются."""
     for p in TITLE_FONT_CANDIDATES:
+        if Path(p).exists():
+            return p
+    return None
+
+
+def opening_font_path():
+    """
+    Шрифт названия ролика — свой, Light первым (см. OPENING_FONT_CANDIDATES).
+
+    Нет Light на диске — тихо падает на то же, чем набран титул главы
+    (Regular), а не остаётся вовсе без заставки: лучше более жирный
+    титр, чем никакого.
+    """
+    for p in OPENING_FONT_CANDIDATES:
         if Path(p).exists():
             return p
     return None
@@ -496,10 +527,12 @@ def interrupts(beats, marks, rng, total: float):
 #
 # Кадр 1920 шириной; титр не должен подходить к краям ближе чем на 7%.
 FRAME_W = 1920
-# 0.80, а не 0.86: на замере длинное название почти упиралось в края, а
-# титру нужен воздух — он висит несколько секунд, и тесная строка читается
-# как ошибка вёрстки.
-TITLE_FILL = 0.80
+# Было 0.80: на замере длинное название почти упиралось в края, а титру
+# нужен воздух — он висит несколько секунд, и тесная строка читается как
+# ошибка вёрстки. Поднято до 0.84 вместе с OPENING_SIZE (см. ниже) —
+# больший кегль сам по себе не даёт воздуха, если потолок ширины не
+# сдвинуть тоже.
+TITLE_FILL = 0.84
 
 # Название ролика. Появляется не в нулевую секунду, а когда открытие уже
 # показало пару кадров: титр поверх первого же кадра читается как заставка
@@ -518,8 +551,20 @@ OPENING_GAP = 0.35        # столько после последнего сл�
 OPENING_MIN = 1.8         # раньше — титр наезжает на самое начало кадра
 OPENING_MAX = 16.0        # позже — зритель уже не свяжет титр с роликом
 OPENING_HOLD = 5.6
-OPENING_SIZE = 92
+# Было 92. Название ролика — самый крупный титр семейства, и на замере
+# рядом с титулом главы (52) разница читалась слабее, чем должна: то,
+# ради чего зритель остаётся, обязано доминировать в кадре с первого
+# взгляда, а не быть «просто чуть крупнее».
+OPENING_SIZE = 108
 OPENING_TEXT_MAX = 46
+# Пол ужимания — СВОЙ, крупнее общего (22 у _fit_size по умолчанию).
+# При старте с 92 запас на ужимание был не нужен: длинные названия и так
+# садились в кадр с приличным кеглем. При 108 длинное название («A
+# COMPASS CUT IN STONE») может уйти в ужимание глубже — без своего пола
+# оно способно съехать к общему полу в 22, и КРУПНЕЙШИЙ титр ролика
+# внезапно окажется МЕЛЬЧЕ титула главы (52). Раньше проверять было не
+# на чем — сюда попадёт ffmpeg-рендер реального кадра.
+OPENING_SIZE_FLOOR = 56
 
 # Титул главы держится дольше плашки-числа: его читают не как факт, а как
 # ориентир, и он не должен исчезнуть раньше, чем зритель поднял глаза.
@@ -543,7 +588,7 @@ THE_END_HOLD = 4.0
 THE_END_SIZE = int(OPENING_SIZE * 0.5)
 
 
-def _fit_size(text: str, want: int, floor: int = 22) -> int:
+def _fit_size(text: str, want: int, floor: int = 22, font_path=None) -> int:
     """
     Размер, при котором РАЗРЯЖЕННЫЙ текст влезает в кадр по ширине.
 
@@ -555,12 +600,20 @@ def _fit_size(text: str, want: int, floor: int = 22) -> int:
 
     Меряется настоящими метриками шрифта; если PIL недоступен, работает
     грубая оценка по средней ширине знака.
+
+    font_path — ЧЕМ ИМЕННО БУДЕТ НАБРАН ЭТОТ титр. По умолчанию
+    title_font_path() (Regular), но название ролика набирается другим
+    начертанием (см. opening_font_path) — и мерить его ширину шрифтом,
+    которым оно не рисуется, значит мерить не то. Разница между Light и
+    Regular на одном кегле не огромная, но она есть, и без этого
+    параметра длинное название либо ужималось чуть сильнее нужного, либо
+    едва цепляло край кадра.
     """
     spaced = _spaced(text)
     if not spaced:
         return want
     limit = FRAME_W * TITLE_FILL
-    path = title_font_path()
+    path = font_path or title_font_path()
     width_at_want = None
     if path:
         try:
@@ -579,12 +632,22 @@ def _fit_size(text: str, want: int, floor: int = 22) -> int:
     return max(floor, int(want * limit / width_at_want))
 
 
-def _card(t, text, size, hold, place, fade_in, fade_out):
-    """Одна карточка семейства «титр»."""
+def _card(t, text, size, hold, place, fade_in, fade_out, font=None, floor=22):
+    """
+    Одна карточка семейства «титр».
+
+    font  — по умолчанию title_font_path() (Regular: титул главы,
+            THE END). opening_title передаёт свой, opening_font_path()
+            (Light) — см. комментарий там же.
+    floor — свой пол ужимания у названия ролика (OPENING_SIZE_FLOOR):
+            крупнейший титр ролика не должен ужаться мельче титула главы.
+    """
+    font = font or title_font_path()
     return dict(t=round(float(t), 3), text=text, style="title",
-                place=place, size=_fit_size(text, size),
+                place=place, size=_fit_size(text, size, floor=floor,
+                                            font_path=font),
                 hold=round(float(hold), 2),
-                font=title_font_path(),
+                font=font,
                 fade_in=fade_in, fade_out=fade_out)
 
 
@@ -644,10 +707,12 @@ def opening_title(job, marks=None):
     Но увидеть он должен ПОСЛЕ крючка, а не поверх него: см. opening_at.
     """
     text = short_title(job)
-    if not text or not title_font_path():
+    font = opening_font_path()
+    if not text or not font:
         return []
     return [_card(opening_at(marks), text, OPENING_SIZE, OPENING_HOLD,
-                  "center_high", fade_in=1.1, fade_out=1.3)]
+                  "center_high", fade_in=1.1, fade_out=1.3,
+                  font=font, floor=OPENING_SIZE_FLOOR)]
 
 
 def chapter_titles(names, edges, rng):
@@ -812,9 +877,16 @@ def _one(it, t0, t1, place, font, size):
         #     бьёт по глазам, а ролик смотрят перед сном.
         tfont = it.get("font") or font
         spaced = _esc(_spaced(it["text"]))
+        # Тень чуть плотнее прежней (0.55 -> 0.68, shadowy 3 -> 4,
+        # добавлен shadowx=1): название ролика теперь набирается Light
+        # (см. opening_font_path) — на ярком архивном кадре его тонкие
+        # штрихи держались хуже, чем у Regular, и прежняя тень их не
+        # спасала. Титул главы и THE END остаются на Regular и от более
+        # плотной тени только выигрывают — она их не утяжеляет, штрихи
+        # там и так толще.
         body = (f"fontfile={tfont}:text='{spaced}':fontcolor=0xF2EFE9:"
                 f"fontsize={size}:borderw=0:"
-                f"shadowx=0:shadowy=3:shadowcolor=black@0.55:"
+                f"shadowx=1:shadowy=4:shadowcolor=black@0.68:"
                 f"expansion=none:enable='{en}'")
         return f"drawtext={body}:x={x}:y='{y}':alpha='{alpha}'"
 
