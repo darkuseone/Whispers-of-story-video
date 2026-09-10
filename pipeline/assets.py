@@ -269,6 +269,16 @@ BLOCK_CHARS_WARN_V3 = 4500
 # job может перебить полем voice_model / voice_settings.model_id.
 DEFAULT_VOICE_MODEL = "eleven_v3"
 
+# НАСТОЯЩАЯ ПАУЗА ПОД КАРТОЧКУ НАЗВАНИЯ. Заказано «после хука пауза 2-3 с,
+# синхронно с карточкой, потом диктор продолжает» — а паузы там не было:
+# pause_NN.mp3 конвейер вставляет только МЕЖДУ БЛОКАМИ сценария, а внутри
+# блока 1 диктор говорит непрерывно, и карточка выезжала поверх продолжающейся
+# речи. HOOK_PAUSE — тишина, вставляемая ПОСЛЕ первой фразы блока 1, столько
+# же материально, как pause_NN между главами. Поле job "hook_pause" перебивает
+# умолчание, 0 выключает эффект целиком (для роликов без крючка-паузы).
+HOOK_PAUSE_DEFAULT = 2.4
+HOOK_PAUSE_MAX = 4.0
+
 
 def tts_block(text, out_mp3: Path, voice_id, api_key, stability=0.50,
               similarity=0.80, style=0.20, speed=None,
@@ -427,6 +437,23 @@ def _silence_mp3(path: Path, seconds: float):
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def _cut_mp3(src: Path, dst: Path, start: float, end: float | None):
+    """
+    Кусок mp3 потоковым копированием — без переозвучки, без потери качества.
+
+    Для паузы под карточку названия: блок 1 уже оплачен и лежит на диске,
+    резать его дешевле и честнее, чем просить ElevenLabs заново. end=None
+    режет до конца файла.
+    """
+    import subprocess
+    args = ["ffmpeg", "-y", "-i", str(src), "-ss", f"{max(start, 0.0):.3f}"]
+    if end is not None:
+        args += ["-to", f"{end:.3f}"]
+    args += ["-c", "copy", str(dst)]
+    subprocess.run(args, check=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
 def _voice_wanted(job, model_id: str) -> dict:
     vs = job.get("voice_settings") or {}
     sim = vs.get("similarity", vs.get("similarity_boost", 0.80))
@@ -488,6 +515,9 @@ def build_voice(job, work: Path):
     seed = abs(hash(job.get("id", "x"))) % 1000
     n_blocks = len(job["script_blocks"])
 
+    hook_pause = max(0.0, min(HOOK_PAUSE_MAX,
+                              float(job.get("hook_pause", HOOK_PAUSE_DEFAULT))))
+
     parts, marks, offset = [], [], 0.0
     for i, block in enumerate(job["script_blocks"], 1):
         mp3 = adir / f"block_{i:02d}.mp3"
@@ -504,10 +534,49 @@ def build_voice(job, work: Path):
                            model_id=model_id)
             (adir / f"block_{i:02d}.json").write_text(json.dumps(al))
         al = json.loads((adir / f"block_{i:02d}.json").read_text())
-        marks += sentence_marks(block, al, offset)
-        dur = _duration(mp3)
-        offset += dur
-        parts.append(mp3)
+        block_marks = sentence_marks(block, al, offset)
+
+        # ПАУЗА ПОД КАРТОЧКУ НАЗВАНИЯ. Только у блока 1 и только если в нём
+        # реально больше одной фразы — иначе резать нечего. Блок уже оплачен
+        # и лежит на диске (mp3 целиком), режем его потоковым копированием:
+        # это секунды, а не новый запрос к ElevenLabs.
+        if i == 1 and hook_pause > 0 and len(block_marks) >= 2:
+            a_path = adir / "block_01_a.mp3"
+            b_path = adir / "block_01_b.mp3"
+            pause_path = adir / "hook_pause.mp3"
+            cut_at = block_marks[0]["end"]
+            if not a_path.exists() or not b_path.exists():
+                _cut_mp3(mp3, a_path, 0.0, cut_at)
+                _cut_mp3(mp3, b_path, cut_at, None)
+                if _duration(a_path) < 0.1 or _duration(b_path) < 0.1:
+                    raise SystemExit(
+                        f"нарезка блока 1 под паузу дала пустой кусок "
+                        f"(a={_duration(a_path):.2f} с, "
+                        f"b={_duration(b_path):.2f} с) — cut_at={cut_at:.2f} "
+                        f"с при длине блока {_duration(mp3):.2f} с. "
+                        f"Проверь границу первой фразы (sentence_marks) или "
+                        f"удали {a_path.name}/{b_path.name} и пересобери.")
+            if not pause_path.exists() \
+                    or abs(_duration(pause_path) - hook_pause) > 0.05:
+                _silence_mp3(pause_path, hook_pause)
+            # Реальная длина отрезанного куска может на кадр-другой mp3
+            # (~26 мс) разойтись с alignment — берём то, что физически легло
+            # на диск, иначе титул и монтаж будут спорить о доле секунды.
+            real_cut = _duration(a_path)
+            block_marks[0]["end"] = round(real_cut, 3)
+            for m in block_marks[1:]:
+                m["start"] = round(m["start"] + hook_pause, 3)
+                m["end"] = round(m["end"] + hook_pause, 3)
+            marks += block_marks
+            offset += real_cut + hook_pause + _duration(b_path)
+            parts += [a_path, pause_path, b_path]
+            log(f"  пауза под карточку названия после первой фразы блока 1: "
+                f"{hook_pause:.1f} с")
+        else:
+            marks += block_marks
+            dur = _duration(mp3)
+            offset += dur
+            parts.append(mp3)
 
         # Драматическая пауза после главы (кроме последней). Не каждый
         # стык одинаков: часть чуть короче, часть ближе к трём секундам.

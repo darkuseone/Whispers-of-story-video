@@ -547,7 +547,10 @@ TITLE_FILL = 0.84
 # ним. OPENING_AT остаётся запасным значением на случай, когда тайм-кодов
 # нет вовсе (смоук, синтетика).
 OPENING_AT = 1.8
-OPENING_GAP = 0.35        # столько после последнего слова первой фразы
+# 0.25, а не по старому 0.35 — карточка садится в НАЧАЛО настоящей паузы
+# (assets.build_voice, hook_pause), а не в условный зазор после слова:
+# зазор больше нужен на «успеть среагировать» глазом, чем на честную тишину.
+OPENING_GAP = 0.25
 OPENING_MIN = 1.8         # раньше — титр наезжает на самое начало кадра
 OPENING_MAX = 16.0        # позже — зритель уже не свяжет титр с роликом
 OPENING_HOLD = 5.6
@@ -698,6 +701,36 @@ def opening_at(marks) -> float:
     return round(min(OPENING_MAX, max(OPENING_MIN, end + OPENING_GAP)), 3)
 
 
+def opening_hold(marks) -> float:
+    """
+    Сколько держать заставку — весь OPENING_HOLD, если мерить нечем, но не
+    дольше настоящей паузы после первой фразы (assets.build_voice, поле
+    hook_pause).
+
+    marks[1]["start"] — начало ВТОРОЙ фразы, а промежуток до него —
+    настоящая длина паузы (hook_pause, обычно 2.0-2.8 с). Без потолка
+    титр держался бы все OPENING_HOLD = 5.6 с и досиживал бы поверх уже
+    звучащей второй фразы — то самое «карточка выезжает поверх
+    продолжающейся речи», ради чего пауза и заводилась. Разрыв меньше
+    секунды — это обычный стык фраз БЕЗ вставленной паузы (hook_pause=0
+    в спецификации, или тайм-коды синтетические): тогда держим как раньше,
+    старым поведением, а не рвём титр на пустом месте.
+    """
+    if not marks or len(marks) < 2:
+        return OPENING_HOLD
+    try:
+        gap = float(marks[1]["start"]) - float(marks[0]["end"])
+    except (KeyError, TypeError, ValueError):
+        return OPENING_HOLD
+    if gap < 1.0:
+        return OPENING_HOLD
+    # Пол 0.3 — чистая защита от вырожденного нуля на границе gap=1.0
+    # (fade_in+fade_out=2.4 у opening_title при этом не помещается
+    # целиком, но перекрытия со второй фразой всё равно не будет: это
+    # честная цена короткого hook_pause, а не повод его нарушить).
+    return round(min(OPENING_HOLD, max(0.3, gap - OPENING_GAP - 0.2)), 2)
+
+
 def opening_title(job, marks=None):
     """
     Название ролика поверх открывающей нарезки, в паузу после первой фразы.
@@ -705,12 +738,13 @@ def opening_title(job, marks=None):
     Зритель включает ролик и должен увидеть, ПРО ЧТО он, не читая
     описание, — это же и есть первое обещание, ради которого он остаётся.
     Но увидеть он должен ПОСЛЕ крючка, а не поверх него: см. opening_at.
+    Держится тоже не дольше самой паузы — см. opening_hold.
     """
     text = short_title(job)
     font = opening_font_path()
     if not text or not font:
         return []
-    return [_card(opening_at(marks), text, OPENING_SIZE, OPENING_HOLD,
+    return [_card(opening_at(marks), text, OPENING_SIZE, opening_hold(marks),
                   "center_high", fade_in=1.1, fade_out=1.3,
                   font=font, floor=OPENING_SIZE_FLOOR)]
 

@@ -46,7 +46,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 TOP_LEVEL_KEYS = {
     "id", "script_blocks",
     # озвучка
-    "voice_id", "voice_model", "voice_settings",
+    "voice_id", "voice_model", "voice_settings", "hook_pause",
     # генерация изображений/видео
     "image_model", "image_prompts", "video_prompts",
     # поисковые запросы материала и источники

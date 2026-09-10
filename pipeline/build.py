@@ -2498,8 +2498,9 @@ def main(job_path):
     if opening:
         first_end = marks[0]["end"] if marks else 0.0
         log(f"── заставка: «{opening[0]['text']}» "
-            f"с {opening[0]['t']:.1f} с (первая фраза кончается "
-            f"на {first_end:.1f} с), кегль {opening[0]['size']}")
+            f"с {opening[0]['t']:.1f} с на {opening[0]['hold']:.1f} с "
+            f"(первая фраза кончается на {first_end:.1f} с), "
+            f"кегль {opening[0]['size']}")
     else:
         log("── заставка: нет шрифта титров либо пустой заголовок")
     # THE END отсчитывается от КОНЦА НАЧИТКИ: чёрный хвост начинается
