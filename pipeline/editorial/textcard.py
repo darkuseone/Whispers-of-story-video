@@ -251,7 +251,7 @@ def opening_font_path():
     return None
 
 
-def _spaced(text: str) -> str:
+def _spaced(text: str, dense: bool = False) -> str:
     """
     Разрядка ПО СЛОВАМ, а не по всей строке подряд.
 
@@ -260,8 +260,25 @@ def _spaced(text: str) -> str:
     даёт «Т Е К С Т   И   Е Щ Ё» с одинаковыми промежутками везде — слова
     сливаются в одну ленту и фраза перестаёт читаться. Поэтому буквы
     внутри слова разводятся одним пробелом, а слова между собой — тремя.
+
+    dense=True (2.2.2, титул главы против названия ролика) — трекинг
+    ВДВОЕ УЖЕ. Целого пробела вполовину не бывает (у drawtext нет дробной
+    ширины символа), поэтому половинная плотность — это пробел ЧЕРЕЗ
+    БУКВУ, а не через каждую: «T H E» при dense становится «TH E» —
+    в среднем ровно половина от пробелов в «T H E» на букву. Между
+    словами разрядка тоже уже (два пробела вместо трёх), но не исчезает
+    совсем: словам всё ещё нужно быть различимо разделёнными.
     """
-    return "   ".join(" ".join(w) for w in (text or "").split())
+    if not dense:
+        return "   ".join(" ".join(w) for w in (text or "").split())
+    def half(w):
+        out = []
+        for i, ch in enumerate(w):
+            out.append(ch)
+            if i % 2 == 0 and i < len(w) - 1:
+                out.append(" ")
+        return "".join(out)
+    return "  ".join(half(w) for w in (text or "").split())
 
 
 # ─────────────────────── ГДЕ СТАВИТЬ ───────────────────────
@@ -573,7 +590,15 @@ OPENING_SIZE_FLOOR = 56
 # ориентир, и он не должен исчезнуть раньше, чем зритель поднял глаза.
 CHAPTER_HOLD = (4.6, 5.6)
 CHAPTER_TEXT_MAX = 40
-CHAPTER_SIZE = 52
+# 54, а не 52: разница с названием ролика (108) и так десятикратная по
+# отношению — не про то, а про читаемость ЗАГЛАВНЫМИ на общем плане; 52 и
+# 54 неотличимы глазом, число просто держит связку с 2.2.2 дословно.
+CHAPTER_SIZE = 54
+# Номер главы («CHAPTER 4 OF 13») — 2.2.3, дешёвая ориентация на длинном
+# ролике: данные (номер блока, общее число глав) уже есть у chapter_titles,
+# зритель на сороковой минуте не знает, «сколько ещё».
+CHAPTER_NUM_SIZE = 26
+CHAPTER_NUM_GAP = 14      # px между низом номера и верхом титула
 
 # НА СКОЛЬКО ТИТУЛ ОПЕРЕЖАЕТ ПЕРВОЕ СЛОВО ГЛАВЫ.
 #
@@ -584,14 +609,22 @@ CHAPTER_SIZE = 52
 # иначе на коротком стыке титул наползал бы на конец предыдущей главы.
 CHAPTER_LEAD = 1.9
 
-# Финальный титр на чёрном.
+# Финальный титр — гибридный финал (2.3): садится на СТЫК заморозки и
+# чёрного, а не в начало чистого чёрного. Отсчёт от конца ПОСЛЕДНЕГО
+# РЕАЛЬНОГО кадра (build.join, t=0 там же, где заканчивается начитка);
+# кадр темнеет build.TAIL_FADE_SECONDS (6.0) секунд — THE_END_AT держит
+# титр ровно посередине этого затемнения (6.0 - HOLD/2), чтобы половина
+# HOLD пришлась на угасающий кадр, половина на уже чёрный. Оба числа
+# обязаны остаться в связке: поменяли TAIL_FADE_SECONDS в build.py —
+# пересчитать и здесь.
 THE_END_TEXT = "THE END"
-THE_END_AT = 1.2          # через сколько после начала чёрного кадра
 THE_END_HOLD = 4.0
+THE_END_AT = 6.0 - THE_END_HOLD / 2   # = 4.0 при нынешних числах
 THE_END_SIZE = int(OPENING_SIZE * 0.5)
 
 
-def _fit_size(text: str, want: int, floor: int = 22, font_path=None) -> int:
+def _fit_size(text: str, want: int, floor: int = 22, font_path=None,
+              dense: bool = False) -> int:
     """
     Размер, при котором РАЗРЯЖЕННЫЙ текст влезает в кадр по ширине.
 
@@ -611,8 +644,13 @@ def _fit_size(text: str, want: int, floor: int = 22, font_path=None) -> int:
     Regular на одном кегле не огромная, но она есть, и без этого
     параметра длинное название либо ужималось чуть сильнее нужного, либо
     едва цепляло край кадра.
+
+    dense — мерить строку тем же трекингом, каким она реально будет
+    набрана (титул главы, 2.2.2): мерить широким _spaced() текст, который
+    выйдет узким dense-трекингом, значит ужимать кегль там, где ужимать
+    не нужно было вовсе.
     """
-    spaced = _spaced(text)
+    spaced = _spaced(text, dense=dense)
     if not spaced:
         return want
     limit = FRAME_W * TITLE_FILL
@@ -635,7 +673,28 @@ def _fit_size(text: str, want: int, floor: int = 22, font_path=None) -> int:
     return max(floor, int(want * limit / width_at_want))
 
 
-def _card(t, text, size, hold, place, fade_in, fade_out, font=None, floor=22):
+def _text_metrics_px(text: str, size: int, font_path=None):
+    """
+    Ширина и высота готовой (уже разряженной) строки в пикселях — та же
+    PIL-мерка, что у _fit_size. Нужна там, где ffmpeg-переменные text_w/
+    text_h недоступны: они существуют только ВНУТРИ своего drawtext,
+    соседний drawbox (линия под титулом главы, 2.2.2) их не видит и падал
+    бы с "Undefined constant", попроси он их напрямую.
+    """
+    path = font_path or title_font_path()
+    if path:
+        try:
+            from PIL import ImageFont
+            f = ImageFont.truetype(path, size)
+            box = f.getbbox(text)
+            return box[2] - box[0], box[3] - box[1]
+        except Exception:
+            pass
+    return int(len(text) * size * 0.42), int(size * 0.9)
+
+
+def _card(t, text, size, hold, place, fade_in, fade_out, font=None, floor=22,
+         dense=False, underline=False, y_shift=0, dim=False):
     """
     Одна карточка семейства «титр».
 
@@ -644,14 +703,18 @@ def _card(t, text, size, hold, place, fade_in, fade_out, font=None, floor=22):
             (Light) — см. комментарий там же.
     floor — свой пол ужимания у названия ролика (OPENING_SIZE_FLOOR):
             крупнейший титр ролика не должен ужаться мельче титула главы.
+    dense, underline, y_shift, dim — 2.2.2/2.2.3, различие титула главы
+            (уже трекинг, линия под текстом) от названия ролика и номера
+            главы (сдвиг над титулом, приглушённый цвет).
     """
     font = font or title_font_path()
     return dict(t=round(float(t), 3), text=text, style="title",
                 place=place, size=_fit_size(text, size, floor=floor,
-                                            font_path=font),
+                                            font_path=font, dense=dense),
                 hold=round(float(hold), 2),
                 font=font,
-                fade_in=fade_in, fade_out=fade_out)
+                fade_in=fade_in, fade_out=fade_out,
+                dense=dense, underline=underline, y_shift=y_shift, dim=dim)
 
 
 def short_title(job) -> str:
@@ -762,6 +825,20 @@ def chapter_titles(names, edges, rng):
     names — названия глав из спецификации, edges — [(секунда, номер
     блока)] из плана кадров. Первая глава титула не получает: её место
     занимает название ролика, и два титра подряд спорили бы друг с другом.
+
+    2.2.2 — титул главы отличается от названия ролика по ТРЁМ осям сразу
+    (кегль, вес шрифта уже даёт opening_font_path у названия, разрядка),
+    а не только кеглем и положением, как было: dense=True — трекинг
+    вдвое уже, underline=True — тонкая линия под текстом.
+
+    2.2.3 — над титулом мелко «CHAPTER N OF M»: дешёвая ориентация на
+    длинном ролике, зритель на сороковой минуте не знает «сколько ещё».
+    Второй карточкой, а не частью первой строки — у drawtext один кегль
+    на вызов, а номер набран мельче названия. y_shift считается от
+    ФАКТИЧЕСКОГО кегля главного титула (main["size"] — _fit_size мог его
+    ужать под длинное название), а не от номинального CHAPTER_SIZE:
+    иначе на длинных названиях номер наезжал бы на титул или улетал
+    слишком высоко.
     """
     if not names or not edges or not title_font_path():
         return []
@@ -772,21 +849,36 @@ def chapter_titles(names, edges, rng):
         text = str(names[block]).strip().upper()[:CHAPTER_TEXT_MAX]
         if not text:
             continue
-        out.append(_card(max(0.0, t - CHAPTER_LEAD), text,
-                         CHAPTER_SIZE, rng.uniform(*CHAPTER_HOLD),
-                         "center", fade_in=1.0, fade_out=1.2))
+        at = max(0.0, t - CHAPTER_LEAD)
+        hold = rng.uniform(*CHAPTER_HOLD)
+        main = _card(at, text, CHAPTER_SIZE, hold, "center",
+                    fade_in=1.0, fade_out=1.2, dense=True, underline=True)
+        out.append(main)
+        _, main_h = _text_metrics_px(_spaced(text, dense=True),
+                                     main["size"], main["font"])
+        num_text = f"CHAPTER {block + 1} OF {len(names)}"
+        _, num_h = _text_metrics_px(_spaced(num_text, dense=True),
+                                    CHAPTER_NUM_SIZE, main["font"])
+        y_shift = -(main_h / 2 + num_h / 2 + CHAPTER_NUM_GAP)
+        out.append(_card(at, num_text, CHAPTER_NUM_SIZE, hold, "center",
+                         fade_in=1.0, fade_out=1.2, dense=True, dim=True,
+                         y_shift=y_shift))
     return out
 
 
 def the_end(tail_start: float):
     """
-    THE END на чёрном хвосте.
+    THE END на стыке заморозки и чёрного — гибридный финал (2.3).
 
-    Ставится не в конец картинки, а в НАЧАЛО тишины: после последнего
-    слова кадр уже погас, и несколько секунд чёрного — часть формата (см.
-    build.TAIL_HOLD_SECONDS). Титр занимает первую половину этого
-    времени, вторая остаётся настоящей тишиной без единого знака на
-    экране — именно она и есть послевкусие, ради которого хвост заведён.
+    Раньше картинка гасла в чёрное ДО конца реального кадра, и THE END
+    ставился в начало уже чистой тишины. Теперь последний кадр сначала
+    замирает и темнеет САМ (build.TAIL_FADE_SECONDS секунд заморозки,
+    join()), и только потом идёт чистый чёрный хвост (build.TAIL_HOLD_
+    SECONDS). THE_END_AT садится на середину этого затемнения — половина
+    HOLD ложится на угасающий стоп-кадр, половина уже на чёрное: «зритель
+    как будто уснул», а не «экран мигнул текстом в пустоте». За чёрным
+    остаётся хвост настоящей тишины без единого знака на экране — именно
+    она и есть послевкусие, ради которого весь хвост заведён.
 
     ВРЕМЯ У ЭТОГО ТИТРА ОСОБОЕ — anchor="tail". Все остальные карточки
     пересчитываются из абсолютной секунды в локальную вычитанием начала
@@ -865,6 +957,11 @@ def _one(it, t0, t1, place, font, size):
     style = it.get("style", "stamp")
     txt = _esc(it["text"])
     x, y = place["x"], place["y"]
+    # y_shift (2.2.3) — сдвиг по вертикали от места по умолчанию: номер
+    # главы садится НАД титулом тем же place="center", просто с поправкой.
+    y_shift = it.get("y_shift", 0)
+    if y_shift:
+        y = f"({y})+({y_shift})"
     # общая обёртка: плашка живёт только в своём окне
     en = f"between(t\\,{t0:.3f}\\,{t1:.3f})"
 
@@ -910,7 +1007,9 @@ def _one(it, t0, t1, place, font, size):
         #   - цвет чуть тёплее чистого белого: 0xFFFFFF на ночном кадре
         #     бьёт по глазам, а ролик смотрят перед сном.
         tfont = it.get("font") or font
-        spaced = _esc(_spaced(it["text"]))
+        dense = bool(it.get("dense"))
+        raw_spaced = _spaced(it["text"], dense=dense)
+        spaced = _esc(raw_spaced)
         # Тень чуть плотнее прежней (0.55 -> 0.68, shadowy 3 -> 4,
         # добавлен shadowx=1): название ролика теперь набирается Light
         # (см. opening_font_path) — на ярком архивном кадре его тонкие
@@ -918,11 +1017,41 @@ def _one(it, t0, t1, place, font, size):
         # спасала. Титул главы и THE END остаются на Regular и от более
         # плотной тени только выигрывают — она их не утяжеляет, штрихи
         # там и так толще.
-        body = (f"fontfile={tfont}:text='{spaced}':fontcolor=0xF2EFE9:"
+        #
+        # dim (2.2.3, номер главы) — тот же титр, но приглушённый: цифра
+        # ориентира не должна спорить с названием главы за внимание.
+        color = "0xF2EFE9@0.55" if it.get("dim") else "0xF2EFE9"
+        body = (f"fontfile={tfont}:text='{spaced}':fontcolor={color}:"
                 f"fontsize={size}:borderw=0:"
                 f"shadowx=1:shadowy=4:shadowcolor=black@0.68:"
                 f"expansion=none:enable='{en}'")
-        return f"drawtext={body}:x={x}:y='{y}':alpha='{alpha}'"
+        out = f"drawtext={body}:x={x}:y='{y}':alpha='{alpha}'"
+        if it.get("underline"):
+            # ЛИНИЯ ПОД ТИТУЛОМ ГЛАВЫ (2.2.2) — underline_wipe без анимации,
+            # но БЕЗ его x=bx/y=by трюка: тот читает "text_w"/"text_h" из
+            # соседнего drawtext, а у place="center" именно они и стоят в
+            # x/y titульного текста ((w-text_w)/2, (h-text_h)/2) — drawbox
+            # этих переменных не знает вовсе и упал бы с "Undefined
+            # constant" ровно там, где titул отцентрован по своей ширине
+            # и высоте. Поэтому и ширина, и высота меряются в Python той
+            # же PIL-меркой, что и _fit_size, и в drawbox идёт готовое
+            # число вместо text_w/text_h.
+            #
+            # iw/ih, А НЕ w/h. Та же грабля, что уже описана для W/H у
+            # underline_wipe, только зеркальная: у drawbox строчные w/h —
+            # это ШИРИНА И ВЫСОТА САМОГО БОКСА (самоссылка на w=852:h=3
+            # чуть ниже), а не кадра. Проверено рендером: с w/h в x/y
+            # линия молча не рисуется вовсе — ffmpeg не падает, кода
+            # ошибки нет, просто пиксели не меняются (замерено по кадру:
+            # плоские 36.0 на всех строках вместо ожидаемого скачка до
+            # 163). С iw/ih — та же проверка даёт видимую линию.
+            width_px, height_px = _text_metrics_px(raw_spaced, size, tfont)
+            line_y = f"(ih-{height_px})/2+{height_px}+{int(size * 0.22)}"
+            under = (f"drawbox=x='(iw-{width_px})/2':y='{line_y}':"
+                     f"w={width_px}:h=3:color=0xF2EFE9@0.65:t=fill:"
+                     f"enable='{en}'")
+            out += f",{under}"
+        return out
 
     if style == "carved":
         # ВЫСЕЧЕНО В КАМНЕ. Разрядка между буквами плюс приглушённый цвет
