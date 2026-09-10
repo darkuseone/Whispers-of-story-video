@@ -88,12 +88,20 @@ class Finding:
         return f"[{self.level}] {self.code}: {self.text}"
 
 
-def audit(shots, style_vector=None, beats=None):
+def audit(shots, style_vector=None, beats=None, group_bounds=None):
     """
     Смотрит готовый план и возвращает список замечаний.
 
     Пустой список — план прошёл. Это не гарантия качества, это отсутствие
     известных признаков шаблона.
+
+    group_bounds — границы групп склейки из build.group_bounds(shots), то
+    есть ТЕ ЖЕ, что реально пойдут в рендер. Передаётся явно, а не
+    пересчитывается здесь заново: rails.py не импортирует build (build
+    сам импортирует rails, обратный импорт дал бы цикл), а держать
+    вторую копию той же арифметики — значит рано или поздно развести их
+    и снова проверять не тот путь, который работает в бою. Не передан —
+    проверка группировки просто пропускается.
     """
     out = []
     if not shots:
@@ -108,6 +116,8 @@ def audit(shots, style_vector=None, beats=None):
     out += _check_slideshow(shots)
     if beats:
         out += _check_beat_coverage(shots, beats)
+    if group_bounds:
+        out += _check_chapter_group_boundary(shots, group_bounds)
     return out
 
 
@@ -248,6 +258,35 @@ def _check_transitions(shots):
             f"переход «{top}» стоит в {share*100:.0f}% склеек "
             f"(потолок {MAX_TRANSITION_SHARE*100:.0f}%) — опусти "
             f"transition_focus в векторе стиля")]
+    return []
+
+
+def _check_chapter_group_boundary(shots, group_bounds):
+    """
+    Ни один кадр, закрывающий главу (shot["chapter_close"]), не имеет
+    права оказаться последним кадром своей группы склейки.
+
+    Такой кадр теряет свой переход НАЦЕЛО: последний кадр группы
+    рендерится без запаса на xfade (см. build.set_render_durations), а
+    группы сшиваются concat -c copy, жёстким резом. Для обычного кадра
+    это малозаметно, для границы главы — это единственное место, где
+    план решил уйти в чёрное, и потеря перехода означает потерю
+    затемнения целиком. Чинит это build.group_bounds() ДО рендера; эта
+    проверка — не починка, а сигнализация: если группировка когда-нибудь
+    разойдётся с этим правилом (например, кто-то вернёт наивное деление
+    на SEG_SIZE в одном из двух мест, а не в обоих), она должна быть
+    видна здесь, а не обнаружена глазами на ролике с главой без
+    затемнения.
+    """
+    n = len(shots)
+    bad = [ge - 1 for gs, ge in group_bounds
+          if ge < n and shots[ge - 1].get("chapter_close")]
+    if bad:
+        return [Finding(
+            "стоп", "ГЛАВА_БЕЗ_ЗАТЕМНЕНИЯ",
+            f"{len(bad)} границ главы (кадры {bad}) остались последними "
+            f"в своей группе склейки — их переход в чёрное съест "
+            f"concat -c copy на стыке групп. Смотри build.group_bounds()")]
     return []
 
 
