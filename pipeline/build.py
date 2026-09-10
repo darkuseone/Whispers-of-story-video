@@ -1230,6 +1230,46 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
                 run_len = 1
                 rng_pair = st.intro_photo_duration_range
                 dur = round(st.rng.uniform(*rng_pair), 3)
+            elif idx == 0 and op["first_long"]:
+                # 2.1.1: ДЛИННЫЙ ПЕРВЫЙ ПЛАН РЕЖЕТСЯ НА 2-3 КУСКА ОДНОГО
+                # ФАЙЛА. Раньше starlit/slow_reveal/long_establish ставили
+                # один неподвижный план на 5.5-12 с — треть роликов
+                # открывалась вообще без смены кадра в первые десять
+                # секунд. План остаётся «установочным» (тот же файл, та
+                # же сцена, тот же проезд), но дышит: длиннее восьми
+                # секунд — три куска, короче — два (делить шестисекундный
+                # slow_reveal на три значило бы куски по две секунды, а
+                # это уже quick_cuts, не establishing).
+                #
+                # Куски режутся cutter.take_start НАПРЯМУЮ, в обход
+                # clip_pick.take() — тот уже один раз выбрал ЭТОТ файл
+                # (src), и спрашивать его снова означало бы рисковать
+                # получить другой файл на второй кусок «одного плана».
+                # Из-за этого ShotPicker.used засчитывает файлу только
+                # ОДИН показ, хотя на таймлайне их 2-3, — сознательный
+                # компромисс: это внутренняя нарезка одного непрерывного
+                # плана, а не повторное появление стока в разных местах
+                # ролика, ровно то, от чего защищает MAX_CLIP_REPEATS.
+                n = 3 if dur >= 8.0 else 2
+                piece = round(dur / n, 3)
+                for k in range(n):
+                    p_start, p_stretch, p_total = clip_timing(src, piece)
+                    p_tr, p_trd = (tr, trd) if k == 0 else st.pick_transition(short=True)
+                    shots.append(dict(
+                        kind="clip", file=src, tag="clip",
+                        src_start=p_start, stretch=p_stretch,
+                        src_total=p_total,
+                        move=(repeat_move(clip_pick.last_repeat) if k == 0
+                              else repeat_move(k)),
+                        start=round(t, 3), duration=piece,
+                        transition=p_tr, transition_dur=p_trd,
+                        effect=st.effect(), beat_kind="hook",
+                        why=f"вступление ({st.opening}), план дышит "
+                            f"{k + 1}/{n}"))
+                    mix.charge("clip", piece, phase="intro")
+                    t += piece
+                idx += 1
+                continue
             else:
                 src_start, stretch, src_total = clip_timing(src, dur)
                 shots.append(dict(kind="clip", file=src, tag="clip",

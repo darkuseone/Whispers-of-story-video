@@ -75,6 +75,13 @@ MAX_DURATION_MODE_SHARE = 0.30
 # Аварийный порог: и разброс мёртвый, и движение одно, и вставок нет.
 MONOTONY_HARD = "СЛАЙДШОУ"
 
+# 2.1.1 — сколько смен кадра обязано быть в первые 10 с открытия. Зритель
+# решает, остаться ли, по КАРТИНКЕ в эти секунды, и одна неподвижная
+# установочная панорама на 8-12 с (starlit/slow_reveal/long_establish)
+# держит его без единой склейки дольше половины этого окна.
+OPENING_MIN_CUTS_10S = 3
+OPENING_WINDOW = 10.0
+
 
 class Finding:
     __slots__ = ("level", "code", "text")
@@ -114,6 +121,7 @@ def audit(shots, style_vector=None, beats=None, group_bounds=None):
     out += _check_long_shots(shots)
     out += _check_transitions(shots)
     out += _check_slideshow(shots)
+    out += _check_opening_cuts(shots)
     if beats:
         out += _check_beat_coverage(shots, beats)
     if group_bounds:
@@ -164,6 +172,29 @@ def _check_material_runs(shots):
             f"(потолок {MAX_IMAGE_RUN}) — участок читается как слайдшоу. "
             f"Добери сток этапом material либо опусти clip_rhythm"))
     return out
+
+
+def _check_opening_cuts(shots):
+    """
+    2.1.1 — не меньше OPENING_MIN_CUTS_10S смен кадра в первые
+    OPENING_WINDOW секунд, чем бы ни выпало открытие (opening_plan в
+    build.py). build.py сам режет длинный первый план на 2-3 куска
+    одного файла (starlit/slow_reveal/long_establish) — эта проверка
+    ловит случай, когда материала под нарезку не нашлось и план
+    вернулся к одному неподвижному плану, а также любой будущий тип
+    открытия, который забудет про этот пол.
+    """
+    if not shots:
+        return []
+    t0 = shots[0]["start"]
+    n = sum(1 for s in shots if s["start"] < t0 + OPENING_WINDOW)
+    if n < OPENING_MIN_CUTS_10S:
+        return [Finding(
+            "заметка", "ОТКРЫТИЕ_БЕЗ_ДИНАМИКИ",
+            f"в первые {OPENING_WINDOW:.0f} с открытия {n} кадр(ов) при "
+            f"поле {OPENING_MIN_CUTS_10S} — зритель решает, остаться ли, "
+            f"по картинке, а она не меняется")]
+    return []
 
 
 def _check_moves(shots):
