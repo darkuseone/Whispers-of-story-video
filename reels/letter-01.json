@@ -1,0 +1,228 @@
+{
+ "id": "letter-01",
+ "work": "letter-shorts",
+ "hook": "HE HID THIS FOR 40 YEARS",
+ "music": "bed3.mp3",
+ "cta": "FULL STORY ON THE CHANNEL",
+ "shots": [
+  {
+   "file": "work/letter-shorts/assets/archive/arch_027_openverse.jpg",
+   "kind": "image",
+   "move": "punch_in",
+   "seconds": 2.0
+  },
+  {
+   "file": "work/letter-shorts/assets/archive/arch_061_wikimedia.jpg",
+   "kind": "image",
+   "move": "push_in",
+   "seconds": 1.8
+  },
+  {
+   "file": "work/letter-shorts/assets/archive/arch_081_openverse.jpg",
+   "kind": "image",
+   "move": "pan_right",
+   "seconds": 1.6
+  },
+  {
+   "file": "work/letter-shorts/assets/archive/arch_005_openverse.jpg",
+   "kind": "image",
+   "move": "push_in",
+   "seconds": 1.8
+  },
+  {
+   "file": "work/letter-shorts/assets/archive/arch_007_openverse.jpg",
+   "kind": "image",
+   "move": "punch_in",
+   "seconds": 1.6
+  },
+  {
+   "file": "work/letter-shorts/assets/archive/arch_028_openverse.jpg",
+   "kind": "image",
+   "move": "pan_right",
+   "seconds": 1.7
+  },
+  {
+   "file": "work/letter-shorts/assets/footage/clip_011_archive_org.mp4",
+   "kind": "clip",
+   "at": 1.5,
+   "seconds": 2.0,
+   "inset": 0.06,
+   "drift": 0.09
+  },
+  {
+   "file": "work/letter-shorts/assets/footage/clip_006_archive_org.mp4",
+   "kind": "clip",
+   "at": 3.0,
+   "seconds": 2.1,
+   "inset": 0.07,
+   "drift": 0.11
+  },
+  {
+   "file": "work/letter-shorts/assets/footage/clip_014_archive_org.mp4",
+   "kind": "clip",
+   "at": 2.0,
+   "seconds": 1.8,
+   "inset": 0.07,
+   "drift": 0.09
+  },
+  {
+   "file": "work/letter-shorts/assets/footage/clip_026_archive_org.mp4",
+   "kind": "clip",
+   "at": 4.0,
+   "seconds": 1.9,
+   "inset": 0.06,
+   "drift": 0.08
+  },
+  {
+   "file": "work/letter-shorts/assets/footage/clip_025_archive_org.mp4",
+   "kind": "clip",
+   "at": 2.0,
+   "seconds": 1.8,
+   "inset": 0.06,
+   "drift": 0.07
+  },
+  {
+   "file": "work/letter-shorts/assets/footage/clip_008_archive_org.mp4",
+   "kind": "clip",
+   "at": 2.0,
+   "seconds": 1.9,
+   "inset": 0.07,
+   "drift": 0.09
+  },
+  {
+   "file": "work/letter-shorts/assets/archive/arch_033_loc.jpg",
+   "kind": "image",
+   "move": "pan_right",
+   "seconds": 1.8
+  },
+  {
+   "file": "work/letter-shorts/assets/footage/clip_009_archive_org.mp4",
+   "kind": "clip",
+   "at": 2.0,
+   "seconds": 1.6,
+   "inset": 0.06,
+   "drift": 0.1
+  },
+  {
+   "file": "work/letter-shorts/assets/archive/arch_020_openverse.jpg",
+   "kind": "image",
+   "move": "push_in",
+   "seconds": 1.8
+  },
+  {
+   "file": "work/letter-shorts/assets/footage/clip_000_archive_org.mp4",
+   "kind": "clip",
+   "at": 2.5,
+   "seconds": 1.7,
+   "inset": 0.16,
+   "drift": 0.1
+  },
+  {
+   "file": "work/letter-shorts/assets/archive/arch_044_openverse.jpg",
+   "kind": "image",
+   "move": "push_in",
+   "seconds": 2.3
+  }
+ ],
+ "lines": [
+  {
+   "t0": 2.2,
+   "t1": 4.0,
+   "text": "I found a letter in a box of his things",
+   "key": [
+    "letter"
+   ]
+  },
+  {
+   "t0": 4.1,
+   "t1": 5.6,
+   "text": "Tucked behind a stack of unpaid bills",
+   "key": []
+  },
+  {
+   "t0": 5.7,
+   "t1": 7.4,
+   "text": "Dated 1961",
+   "key": [
+    "1961"
+   ]
+  },
+  {
+   "t0": 7.5,
+   "t1": 9.0,
+   "text": "Addressed to a name nobody in my family knew",
+   "key": []
+  },
+  {
+   "t0": 9.1,
+   "t1": 10.6,
+   "text": "Signed with a single initial",
+   "key": [
+    "initial"
+   ]
+  },
+  {
+   "t0": 10.8,
+   "t1": 12.6,
+   "text": "Three days I could not put it down",
+   "key": []
+  },
+  {
+   "t0": 12.8,
+   "t1": 14.7,
+   "text": "Forty years of Sunday dinners",
+   "key": [
+    "forty"
+   ]
+  },
+  {
+   "t0": 14.9,
+   "t1": 16.6,
+   "text": "He never said a word",
+   "key": [
+    "never"
+   ]
+  },
+  {
+   "t0": 16.8,
+   "t1": 18.5,
+   "text": "So I started asking",
+   "key": []
+  },
+  {
+   "t0": 18.7,
+   "t1": 20.4,
+   "text": "Nobody would answer me",
+   "key": [
+    "nobody"
+   ]
+  },
+  {
+   "t0": 20.6,
+   "t1": 22.3,
+   "text": "The more they changed the subject",
+   "key": []
+  },
+  {
+   "t0": 22.5,
+   "t1": 24.2,
+   "text": "The more certain I became",
+   "key": []
+  },
+  {
+   "t0": 24.4,
+   "t1": 26.2,
+   "text": "That letter was not a mistake",
+   "key": []
+  },
+  {
+   "t0": 26.4,
+   "t1": 28.4,
+   "text": "It was the loose end he left behind",
+   "key": [
+    "loose",
+    "end"
+   ]
+  }
+ ]
+}
