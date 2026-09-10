@@ -792,12 +792,17 @@ def images_batch(items, out: Path, model, key, poll=120, max_wait=5400):
 
 # ────────── РАСПРЕДЕЛЕНИЕ КАРТИНОК МЕЖДУ ПОСТАВЩИКАМИ ──────────
 
-# Доля кадров, которую рисует Magnific. Остальное — xAI, как на соседнем
-# канале. Заказано прямо: 70 на 30.
-MAGNIFIC_SHARE = 0.70
+# Доля кадров, которую рисует Magnific, ЕСЛИ ОН ВКЛЮЧЁН (MAGNIFIC_ENABLED=1
+# в magnific.py) — заказано прямо: 70 на 30. Имя намеренно с суффиксом
+# _IF_ENABLED (5.10): «MAGNIFIC_SHARE = 0.70» рядом с выключенным каналом
+# читается как «сейчас так и делится», хотя build_images ниже обнуляет
+# share до 0.0, когда magnific.available() пуст — вся генерация уезжает
+# xAI. Число менять НЕЛЬЗЯ бездумно в 0: это сломает документированное
+# поведение при возврате MAGNIFIC_ENABLED=1 (CLAUDE.md), а не текущее.
+MAGNIFIC_SHARE_IF_ENABLED = 0.70
 
 
-def split_providers(prompts, share=MAGNIFIC_SHARE, seed=0):
+def split_providers(prompts, share=MAGNIFIC_SHARE_IF_ENABLED, seed=0):
     """
     Делит промпты между Magnific и xAI. Возвращает (magnific, xai) —
     списки пар (номер, промпт), нумерация сквозная от единицы.
@@ -836,7 +841,7 @@ def build_images(job, prompts, out: Path, xai_model, xai_key):
     Возвращает число готовых файлов.
     """
     out.mkdir(parents=True, exist_ok=True)
-    share = float(job.get("magnific_share", MAGNIFIC_SHARE))
+    share = float(job.get("magnific_share", MAGNIFIC_SHARE_IF_ENABLED))
     mag_key = magnific.available()
     if not mag_key:
         # Отключён выключателем или ключа нет — причины разные, и в логе
