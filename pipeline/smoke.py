@@ -412,18 +412,31 @@ def main(job_path):
     words = (shorts_mod.words_from_alignment(job, work / "voice")
              or shorts_mod.words_from_marks(marks))
     story = getattr(st, "beats", None) or []
-    wins = shorts_mod.pick_windows(story, marks, total)
+    wins = shorts_mod.pick_segments(story, marks, total)
     if not wins:
-        raise SystemExit("шортсы: pick_windows не дал ни одного окна")
+        raise SystemExit("шортсы: pick_segments не дал ни одного окна")
     min_len = shorts_mod.MIN_LEN_SOFT if total < 180 else shorts_mod.MIN_LEN
     for w in wins:
-        if w["t1"] - w["t0"] < min_len - 0.5:
+        seg_dur = sum(t1 - t0 for t0, t1 in w["segs"])
+        if seg_dur < min_len - 0.5:
             raise SystemExit(
-                f"шортсы: окно «{w['role']}» короче {min_len:.0f} с")
-    for a, b in zip(wins, wins[1:]):
-        if a["t1"] > b["t0"] + 0.01:
-            raise SystemExit(
-                f"шортсы: окна «{a['role']}» и «{b['role']}» пересекаются")
+                f"шортсы: окно «{w['role']}» короче {min_len:.0f} с "
+                f"({len(w['segs'])} кусков, {seg_dur:.1f} с)")
+        for t0, t1 in w["segs"]:
+            if t1 <= t0:
+                raise SystemExit(
+                    f"шортсы: окно «{w['role']}» несёт кусок с "
+                    f"нулевой/отрицательной длиной ({t0:.2f}-{t1:.2f})")
+    # КУСКИ ОДНОГО ШОРТСА НЕ ПЕРЕСЕКАЮТСЯ. 3.3.6 монтирует шортс из 2-3
+    # кусков РАЗНЫХ мест ролика (хук/обещание/развязка и т.п.) — они не
+    # обязаны идти по возрастанию времени как единое окно, но один и тот
+    # же отрезок видео не может звучать в шортсе дважды.
+    for w in wins:
+        segs = sorted(w["segs"])
+        for a, b in zip(segs, segs[1:]):
+            if a[1] > b[0] + 0.01:
+                raise SystemExit(
+                    f"шортс «{w['role']}»: куски {a} и {b} пересекаются")
 
     job_qs = list((job.get("youtube") or {}).get("shorts_questions") or [])
     fonts_needed = ("ArchivoBlack-Regular.ttf", "Montserrat-ExtraBold.ttf")
@@ -449,8 +462,8 @@ def main(job_path):
                 f"{shorts_mod.HOOK_SCALE_MAX} — замер ширины хука сломан "
                 f"(та самая грабля с \\N в question_box)")
 
-        t0, t1 = w["t0"], w["t1"]
-        dur = round(t1 - t0, 3)
+        segs = w["segs"]
+        dur = round(sum(t1 - t0 for t0, t1 in segs), 3)
         # СУБТИТРЫ НЕ НАЕЗЖАЮТ НА CTA — проверяется по ГОТОВОМУ .ass, а не
         # по сырому captions_from_words: тот отдаёт естественный конец
         # фразы, а write_ass сам обрезает его до cta_from - 0.10 при
@@ -459,7 +472,7 @@ def main(job_path):
         # накладывается — так и поймано при первом прогоне этой проверки.
         ass_tmp = Path(tempfile.mkstemp(suffix=".ass")[1])
         try:
-            shorts_mod.write_ass(words, t0, dur, ass_tmp, q)
+            shorts_mod.write_ass(words, segs, dur, ass_tmp, q)
             ass_text = ass_tmp.read_text(encoding="utf-8")
         finally:
             ass_tmp.unlink(missing_ok=True)
@@ -485,8 +498,11 @@ def main(job_path):
                 f"больше не обрезает Caption под cta_from")
 
         rng = random.Random(f"{job['id']}-short-{n}")
-        cuts = shorts_mod.cut_plan(shots, t0, t1, rng, words=words,
-                                   cutter=build.ClipCutter())
+        cutter = build.ClipCutter()
+        cuts = []
+        for t0, t1 in segs:
+            cuts += shorts_mod.cut_plan(shots, t0, t1, rng, words=words,
+                                        cutter=cutter)
         cut_sum = round(sum(c["dur"] for c in cuts), 3)
         if abs(cut_sum - dur) > 0.05:
             raise SystemExit(

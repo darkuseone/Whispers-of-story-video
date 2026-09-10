@@ -391,6 +391,105 @@ def pick_windows(story, marks, total):
     return wins[:N_SHORTS]
 
 
+# ─────────────────────── 3.3.6: МОНТАЖ ИЗ КУСКОВ ───────────────────────
+
+# Пауза для деклика на стыке звуковых кусков (afade вместо acrossfade —
+# фейды не отнимают время у дорожки, а acrossfade отнял бы, и звук
+# разошёлся бы с видео, которое просто конкатенируется встык).
+AUDIO_DECLICK = 0.08
+
+
+def _strong_beat(story, kind, feat):
+    """Самая сильная доля вида kind по признаку feat (см. beats.py), либо
+    None — та же логика, что уже отбирает окно в pick_windows."""
+    pool = [b for b in story if b.kind == kind]
+    if not pool:
+        return None
+    return max(pool, key=lambda b: b.features.get(feat, 0.0))
+
+
+def _hook_segments(marks, total, revelation):
+    """
+    Хук из трёх кусков: крючок (первые фразы) → обещание (сильная
+    строка развязки, БЕЗ ответа) → развязка обещания (продолжение
+    вступления). Порядок в задании ровно такой; любой из кусков не
+    набрал длины или пришёл раньше предыдущего по времени ролика —
+    структура не строится, вызывающий сам уходит на одно окно.
+    """
+    seg1 = window_from(marks, 0, total, target=6.0, hard=9.0)
+    if seg1[1] - seg1[0] < 2.0:
+        return None
+    # Обещание не должно быть РАНЬШЕ крючка по видео — иначе это уже не
+    # «забегание вперёд», а кусок того же вступления.
+    if revelation.start < seg1[1] + 5.0:
+        return None
+    seg2 = window_from(marks, revelation.first_mark, total,
+                       target=8.0, hard=11.0)
+    if seg2[1] - seg2[0] < 3.0:
+        return None
+    starts = [m["start"] for m in marks]
+    idx3 = bisect_left(starts, seg1[1])
+    if idx3 >= len(marks):
+        return None
+    seg3 = window_from(marks, idx3, total, target=41.0, hard=48.0)
+    if seg3[1] - seg3[0] < 10.0:
+        return None
+    return [seg1, seg2, seg3]
+
+
+def _revelation_segments(marks, total, revelation, escalation):
+    """
+    Развязка из двух кусков: вопрос из нагнетания (постановка) → вся
+    доля-развязка целиком (ответ). Нагнетание обязано идти РАНЬШЕ
+    развязки по видео — иначе «вопрос» на самом деле уже после ответа.
+    """
+    if escalation.start >= revelation.start - 5.0:
+        return None
+    seg1 = window_from(marks, escalation.first_mark, total,
+                       target=5.0, hard=8.0)
+    if seg1[1] - seg1[0] < 2.0:
+        return None
+    t0r, t1r = revelation.start, min(revelation.end, revelation.start + 50.0)
+    t1r = min(t1r, total - 0.1)
+    if t1r - t0r < 8.0:
+        return None
+    return [seg1, (round(t0r, 3), round(t1r, 3))]
+
+
+def pick_segments(story, marks, total):
+    """
+    Каждый шортс — монтаж из 2-3 кусков РАЗНЫХ мест ролика, а не вырезка
+    одним окном (см. docstring _hook_segments/_revelation_segments для
+    структуры). Возвращает то же, что pick_windows, плюс поле "segs" —
+    список (t0, t1) в АБСОЛЮТНОМ времени длинного ролика; render_short
+    и смоук работают только через него, не через t0/t1 верхнего уровня.
+
+    На коротком/синтетическом видео (total < 180 с — mock, тестовые
+    job) или когда в сюжете не нашлось нужных долей структура
+    вырождается в ОДИН сегмент — то же окно, что вернул бы pick_windows.
+    Монтаж не может собраться из долей, которых в сюжете нет; вырезка
+    одним куском тут не деградация, а единственно честный результат.
+    """
+    wins = pick_windows(story, marks, total)
+    if total < 180:
+        for w in wins:
+            w["segs"] = [(w["t0"], w["t1"])]
+        return wins
+
+    revelation = _strong_beat(story, "revelation", "num")
+    escalation = _strong_beat(story, "escalation", "turn")
+
+    for w in wins:
+        segs = None
+        if w["role"] == "hook" and revelation is not None:
+            segs = _hook_segments(marks, total, revelation)
+        elif w["role"] == "revelation" and revelation is not None \
+                and escalation is not None:
+            segs = _revelation_segments(marks, total, revelation, escalation)
+        w["segs"] = segs if segs else [(w["t0"], w["t1"])]
+    return wins
+
+
 def wrap_question(text: str) -> str:
     """
     Перенос вопроса на 2–3 строки по словам. Раньше одна длинная строка
@@ -717,6 +816,25 @@ def captions_from_words(words, t0, dur):
     return caps
 
 
+def captions_from_segments(words, segs):
+    """
+    Субтитры для НЕСКОЛЬКИХ кусков разных мест ролика (3.3.6). Каждый
+    кусок даёт капшены в СВОЁМ абсолютном времени (captions_from_words
+    от его собственного t0), а здесь они сдвигаются в общий локальный
+    таймлайн шортса — кумулятивным смещением по уже пройденным кускам,
+    в том же порядке, в котором куски идут в видео и звуке.
+    """
+    out, offset = [], 0.0
+    for t0, t1 in segs:
+        d = t1 - t0
+        for p in captions_from_words(words, t0, d):
+            out.append(dict(text=p["text"],
+                            start=round(p["start"] + offset, 3),
+                            end=round(p["end"] + offset, 3)))
+        offset += d
+    return out
+
+
 # Поля рамки вокруг вопроса, в пикселях PlayRes.
 QBOX_PAD_X = 34
 QBOX_PAD_Y = 16
@@ -773,7 +891,7 @@ def hook_scale(question: str) -> int:
     return int(min(HOOK_SCALE_MAX, SW * HOOK_FILL / widest * 100))
 
 
-def write_ass(words, t0, dur, out: Path, question: str):
+def write_ass(words, segs, dur, out: Path, question: str):
     """
     Три слоя, и место у каждого своё на всю длину шортса.
 
@@ -884,7 +1002,7 @@ def write_ass(words, t0, dur, out: Path, question: str):
                 f"Promise,,0,0,0,,{{\\an5\\pos(540,{promise_y:.0f})"
                 f"\\fad(250,250)}}{_ass_esc(PROMISE_TEXT)}")
 
-    phrases = captions_from_words(words, t0, dur)
+    phrases = captions_from_segments(words, segs)
     shown = 0
     for p in phrases:
         txt = _ass_esc(p["text"].strip())
@@ -908,32 +1026,74 @@ def write_ass(words, t0, dur, out: Path, question: str):
 
 # ─────────────────────── СБОРКА ОДНОГО ШОРТСА ───────────────────────
 
+def extract_audio_segments(final: Path, segs, tmp: Path) -> Path:
+    """
+    Звук нескольких кусков final.mp4, встык — БЕЗ acrossfade: тот
+    отнимает время у дорожки (перекрывает хвост одного куска с началом
+    следующего), а видео рядом просто конкатенируется встык без потери
+    длины — с acrossfade звук и видео разошлись бы на (n-1)*d секунд.
+
+    Вместо этого — деклик afade: у каждого куска, кроме первого, вход
+    гасится AUDIO_DECLICK с нуля, у каждого, кроме последнего, — выход
+    гасится в ноль перед самым концом. Щелчок на стыке (два независимо
+    вырезанных отрезка почти никогда не совпадают по фазе) пропадает,
+    длина дорожки не меняется ни на миллисекунду.
+    """
+    parts = []
+    for i, (t0, t1) in enumerate(segs):
+        d = round(t1 - t0, 3)
+        af = []
+        if i > 0:
+            af.append(f"afade=t=in:d={AUDIO_DECLICK}")
+        if i < len(segs) - 1:
+            af.append(f"afade=t=out:st={max(d - AUDIO_DECLICK, 0):.3f}:"
+                      f"d={AUDIO_DECLICK}")
+        p = tmp / f"aseg_{i:02d}.m4a"
+        af_arg = f"-af {shlex.quote(','.join(af))} " if af else ""
+        run(f"ffmpeg -y -ss {t0:.3f} -t {d:.3f} -i {shlex.quote(str(final))} "
+            f"{af_arg}-c:a aac -b:a 192k {shlex.quote(str(p))}")
+        parts.append(p)
+    if len(parts) == 1:
+        return parts[0]
+    lst = tmp / "aconcat.txt"
+    lst.write_text("".join(f"file '{p.resolve()}'\n" for p in parts))
+    out = tmp / "audio_full.m4a"
+    run(f"ffmpeg -y -f concat -safe 0 -i {shlex.quote(str(lst))} "
+        f"-c copy {shlex.quote(str(out))}")
+    return out
+
+
 def render_short(n, win, shots, words, final: Path, sdir: Path,
                  seed: str, question: str):
     rng = random.Random(f"{seed}-short-{n}")
-    t0, t1 = win["t0"], win["t1"]
-    dur = round(t1 - t0, 3)
+    segs = win["segs"]
+    dur = round(sum(t1 - t0 for t0, t1 in segs), 3)
     tmp = sdir / f"tmp_{n}"
     if tmp.exists():
         shutil.rmtree(tmp, ignore_errors=True)
     tmp.mkdir(parents=True, exist_ok=True)
 
     import build
-    cuts = cut_plan(shots, t0, t1, rng, words=words, cutter=build.ClipCutter())
+    cutter = build.ClipCutter()
+    cuts = []
+    for t0, t1 in segs:
+        cuts += cut_plan(shots, t0, t1, rng, words=words, cutter=cutter)
     canvas_cache = {}
-    segs = []
+    cut_files = []
     for ci, c in enumerate(cuts):
-        seg = tmp / f"cut_{ci:03d}.mp4"
-        render_cut(c, seg, canvas_cache, tmp)
-        segs.append(seg)
+        cf = tmp / f"cut_{ci:03d}.mp4"
+        render_cut(c, cf, canvas_cache, tmp)
+        cut_files.append(cf)
     body = tmp / "body.mp4"
     lst = tmp / "concat.txt"
-    lst.write_text("".join(f"file '{s.resolve()}'\n" for s in segs))
+    lst.write_text("".join(f"file '{s.resolve()}'\n" for s in cut_files))
     run(f"ffmpeg -y -f concat -safe 0 -i {shlex.quote(str(lst))} "
         f"-c copy {shlex.quote(str(body))}")
 
+    audio = extract_audio_segments(final, segs, tmp)
+
     ass = tmp / "captions.ass"
-    n_phrases = write_ass(words, t0, dur, ass, question)
+    n_phrases = write_ass(words, segs, dur, ass, question)
 
     out = sdir / f"short_{n}.mp4"
     fade_st = max(dur - 0.40, 0.0)
@@ -945,19 +1105,22 @@ def render_short(n, win, shots, words, final: Path, sdir: Path,
             f"fade=t=in:d=0.12,fade=t=out:st={fade_st:.2f}:d=0.40[v];"
             f"[1:a]afade=t=out:st={fade_st:.2f}:d=0.40[a]")
     run(f"ffmpeg -y -i {shlex.quote(str(body))} "
-        f"-ss {t0:.3f} -t {dur:.3f} -i {shlex.quote(str(final))} "
+        f"-i {shlex.quote(str(audio))} "
         f"-filter_complex {shlex.quote(filt)} "
         f"-map [v] -map [a] -t {dur:.3f} "
         f"-c:v libx264 -crf 20 -preset veryfast -pix_fmt yuv420p "
         f"-c:a aac -b:a 192k -movflags +faststart {shlex.quote(str(out))}")
     shutil.rmtree(tmp, ignore_errors=True)
 
-    log(f"  short_{n}: {win['role']:<10} {t0/60:5.1f}-{t1/60:5.1f} мин, "
-        f"{dur:.0f} с, {len(cuts)} кадров, {n_phrases} субтитров")
+    span = " + ".join(f"{t0/60:.1f}-{t1/60:.1f}" for t0, t1 in segs)
+    log(f"  short_{n}: {win['role']:<10} {span} мин, "
+        f"{dur:.0f} с, {len(cuts)} кадров, {n_phrases} субтитров, "
+        f"{len(segs)} кусков монтажа")
     log(f"           вопрос:\n             "
         + question.replace("\n", "\n             "))
     log(f"           {win['why']}")
-    return dict(file=out.name, role=win["role"], t0=t0, t1=t1,
+    return dict(file=out.name, role=win["role"],
+                segs=[[round(a, 3), round(b, 3)] for a, b in segs],
                 seconds=dur, cuts=len(cuts), phrases=n_phrases,
                 question=question, why=win["why"])
 
@@ -1040,18 +1203,18 @@ def main(job_path):
                           beat_kind=s.get("beat_kind")))
 
     story = beats_mod.analyze(marks, job["script_blocks"], total)
-    # Слова — только для семантического подбора кадров. Субтитры идут
-    # из marks (целые предложения), иначе снова получится караоке.
+    # Слова нужны и подбору кадров, и субтитрам (3.3.4 — смысловые куски
+    # по 3-5 слов из посимвольных тайм-кодов, не целые предложения).
     words = words_from_alignment(job, assets / "voice")
     if words:
         log(f"слова: {len(words)} по посимвольным тайм-кодам ElevenLabs "
-            f"(для подбора кадров)")
+            f"(для подбора кадров и субтитров)")
     else:
         words = words_from_marks(marks)
         log(f"слова: {len(words)} раскиданы по длине (посимвольных "
             f"тайм-кодов нет — синтетика?)")
 
-    wins = pick_windows(story, marks, total)
+    wins = pick_segments(story, marks, total)
     y = job.get("youtube") or {}
     job_qs = list(y.get("shorts_questions") or [])
     sdir = out / "shorts"
