@@ -876,6 +876,7 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     arch_pick = ShotPicker([(p, "arch", kw_of(p)) for p in archive], total, prior)
     clip_pick = ShotPicker([(p, "clip", kw_of(p)) for p in clips], total, prior,
                            caps=clip_caps)
+    total_clip_capacity = sum(clip_caps.values())
     if clips:
         once = sum(1 for v in clip_caps.values() if v <= 1)
         log(f"  сток: {len(clips)} клипов, "
@@ -927,8 +928,19 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
             return None
         return CLIP_REPEAT_MOVES[(times_before - 1) % len(CLIP_REPEAT_MOVES)]
 
-    def clip_available():
-        """Ложь, когда пул стока исчерпан по MAX_CLIP_REPEATS — см. константу."""
+    intro_reserve_hit = [False]
+
+    def clip_available(phase: str = "intro"):
+        """Ложь, когда пул стока исчерпан по MAX_CLIP_REPEATS, или когда
+        вступление выбрало свой резерв и лезет в куски, оставленные телу
+        (см. intro_clip_reserve чуть ниже по функции)."""
+        if phase == "intro" and sum(clip_pick.used.values()) >= intro_clip_reserve:
+            if not intro_reserve_hit[0]:
+                intro_reserve_hit[0] = True
+                log(f"  сток: вступление выбрало свой резерв "
+                    f"({intro_clip_reserve} из {total_clip_capacity} кусков) — "
+                    f"остальное бережётся для тела")
+            return False
         if not clip_pick.exhausted(MAX_CLIP_REPEATS):
             return True
         if not clip_cap_hit[0]:
@@ -1068,6 +1080,38 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     op = opening_plan(st, intro_start, intro_end)
     intro_end = op["end"]
     log(f"  открытие: {st.opening}, вступление до {intro_end:.0f} с")
+
+    # РЕЗЕРВ СТОКА ПОД ТЕЛО.
+    #
+    # Пул кусков один на весь ролик (clip_caps), а вступление идёт ПЕРВЫМ
+    # и жадно забирает видео — его доля 70-80% против 20-30% у тела.
+    # На богатом материале это неважно: вступление организически берёт
+    # меньше кусков, чем вообще есть. Но на бедном (см. CLAUDE.md —
+    # georgia-guidestones-01, отбраковка оставила 13 клипов на 39 слотов)
+    # вступление успевает забрать пул ЦЕЛИКОМ ещё до того, как тело
+    # начнётся: MaterialMix честно считает долю по времени, но считать
+    # уже нечем. Замер до фикса: тело 8.4% видео при заказанных 24%.
+    #
+    # Делим не секунды, а ШТУКИ КУСКОВ: секунды видео фазы, делённые на
+    # средний кусок ЭТОЙ фазы. Кусок — общая единица (грид `typical` в
+    # capacity), но средняя длина куска у фаз разная: вступление режет
+    # по 3-8 с, тело — по границам предложений, то есть кусками порядка
+    # `base_dur` (обычно вдвое длиннее). Делить капасити по одним
+    # секундам без поправки на длину куска — недооценивать аппетит
+    # вступления вдвое: ровно так первая версия фикса урезала вступление
+    # до 36% при заказанных 78%, хотя тело своей доли почти достигло на
+    # меньшем резерве. На богатом материале резерв заведомо больше
+    # органического аппетита вступления и ни на что не влияет; связывает
+    # он только сценарий дефицита, для которого и написан.
+    _intro_avg_piece = sum(st.intro_clip_duration_range) / 2.0
+    _body_avg_piece = max(st.base_dur, 1.0)
+    _intro_pieces = (intro_end * st.intro_clip_share) / _intro_avg_piece
+    _body_pieces = ((max(total - intro_end, 0.0) * st.body_clip_share)
+                     / _body_avg_piece)
+    _pieces_sum = _intro_pieces + _body_pieces
+    intro_clip_reserve = (
+        round(total_clip_capacity * _intro_pieces / _pieces_sum)
+        if _pieces_sum > 0 else total_clip_capacity)
 
     # Докуда хук подбирается под развязку. Дальше двадцатой секунды это
     # уже не «обещание», а спойлер длиной в главу.
@@ -1423,7 +1467,7 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
         gap_needed = 1 if behind else next_gap
         clip_ok = (not is_anchor and since_clip >= gap_needed
                    and beat_ok
-                   and dur <= CLIP_MAX_SECONDS and clip_available())
+                   and dur <= CLIP_MAX_SECONDS and clip_available("body"))
         got = mix.pick((["clip"] if clip_ok else []) + ["gen", "arch"],
                        phase="body")
 
