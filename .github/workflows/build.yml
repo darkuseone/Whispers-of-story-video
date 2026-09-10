@@ -476,9 +476,46 @@ jobs:
           path: work/${{ steps.pick.outputs.id }}/assets
           key: assets-${{ steps.pick.outputs.id }}-v1-${{ github.run_id }}
 
+      # 5.2 — кэш ГРУПП, не кадров. seg_NNN.mp4 — уже сжатый финальный
+      # поток (десятки, не сотни МБ на ролик), в отличие от clip_NNNN.mp4/
+      # prep_NNNN.jpg в tmp/ (те кэшировать нельзя — гигабайты, и стоит
+      # это НОЛЬ вне пересборки). Путь сужен до seg_*.mp4 + seg_*.key
+      # нарочно: остальной tmp/ (кадры, silent.mp4, audio.m4a) кэш не
+      # трогает. Ключ уникален на запуск ради того же, ради чего он такой
+      # у assets — restore-keys подхватывает последнюю запись по префиксу.
+      # Отпечаток group_fingerprint (build.join_group) — вторая, обязательная
+      # линия защиты: план или стиль сменились между прогонами — ключ
+      # кэша всё равно совпадёт по префиксу, а вот отпечаток рядом с
+      # каждым seg — нет, и группа перекладывается заново, а не молча
+      # донашивается со старым планом.
+      - name: Достаём группы склейки из кэша
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'shorts'
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            work/${{ steps.pick.outputs.id }}/tmp/seg_*.mp4
+            work/${{ steps.pick.outputs.id }}/tmp/seg_*.key
+          key: segs-${{ steps.pick.outputs.id }}-v1-${{ github.run_id }}
+          restore-keys: |
+            segs-${{ steps.pick.outputs.id }}-v1-
+
       - name: Этап 2 — монтаж
         if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'shorts'
         run: python pipeline/build.py jobs/${{ steps.pick.outputs.job }}.json
+
+      # always() по тому же доводу, что у ассетов: группа, склеенная в
+      # этом прогоне, стоила реального времени (а не денег, но время на
+      # раннере тоже не бесплатно) — не сохранить её после падения ниже
+      # по конвейеру (звук, финальная сшивка) значит пересобирать её же
+      # заново на следующей попытке.
+      - name: Кладём группы склейки в кэш
+        if: always() && steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'shorts' && hashFiles(format('work/{0}/tmp/seg_*.mp4', steps.pick.outputs.id)) != ''
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            work/${{ steps.pick.outputs.id }}/tmp/seg_*.mp4
+            work/${{ steps.pick.outputs.id }}/tmp/seg_*.key
+          key: segs-${{ steps.pick.outputs.id }}-v1-${{ github.run_id }}
 
       # Описание, главы, две обложки через xAI (крупный жёлтый текст на
       # картинке). Без ключа covers.py уйдёт в запасной PIL-кадр из ролика.

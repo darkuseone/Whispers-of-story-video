@@ -29,6 +29,7 @@ build.py — собирает ролик из готовых материало�
 а не при просмотре.
 """
 
+import hashlib
 import json
 import os
 import subprocess
@@ -2200,6 +2201,27 @@ def join(group, out: Path, st, overlay, first=False, moments=None, last=False):
     else:
         tail = "graded"
 
+    # 5.4 — ЗАМЕРЕНО, РЕШЕНИЕ «НЕ ТРОГАТЬ». Подозрение было на noise как на
+    # самый дорогой фильтр графа после x264. Замер в изоляции (film_look
+    # + один фильтр, 32.8 с реального куска, crf22/veryfast) дал обратное:
+    # +29% у noise, +74% у vignette — виньетка дороже. Но в РЕАЛЬНОМ join()
+    # (та же группа 12 кадров, 76 с итога, полный граф: lut3d на каждый
+    # вход + xfade + этот post + кодирование) noise+vignette вместе стоят
+    # 153.1 с против 127.5 с без них — то есть ~20% времени группы, а не
+    # 74%: изолированный замер завышал долю, не видя decode/lut3d/xfade,
+    # которые в полном графе доминируют. У виньетки с постоянным углом нет
+    # временной изменчивости (eval=init, не «frame») — маску можно было бы
+    # посчитать один раз и накладывать blend'ом вместо покадрового фильтра,
+    # и тривиальная проверка (vignette(white) == сама маска, разница 0)
+    # это подтверждает. Но blend=multiply в текущем графе ffmpeg-цветовых
+    # пространств даёт неверный результат (мультипликация по каналам U/V
+    # вместо RGB тянет картинку в цвет — замерено пиксельным сравнением,
+    # не выведено на глаз), и корректный обход (format=gbrp/rgb24 вокруг
+    # blend) не нашёлся с ходу. Правка на 20% ради этого нужного эффекта
+    # неготова, а половинчатую — с недопроверенной цветопередачей —
+    # в бой не пускаем: если пересматривать, замерять полным join(), а не
+    # изолированным post-фильтром, разница в замерах выше — ровно тот
+    # случай.
     post = []
     if st.grain:
         post.append(f"noise=alls={st.grain}:allf=t+u")
@@ -2275,6 +2297,79 @@ def join(group, out: Path, st, overlay, first=False, moments=None, last=False):
         if tail:
             print(tail)
         raise subprocess.CalledProcessError(r.returncode, cmd, r.stdout, r.stderr)
+
+
+# Поля кадра, от которых зависят ПИКСЕЛИ группы — план решает, что вообще
+# рисуется. Забыть поле здесь — значит доверить кэшу seg, который на
+# самом деле устарел (та же дисциплина, что у group_fingerprint в целом).
+_SHOT_FINGERPRINT_FIELDS = (
+    "file", "kind", "tag", "src_start", "stretch", "move", "effect",
+    "transition", "transition_dur", "duration", "render_dur", "speed",
+    "ease", "framing_name", "chapter_close",
+)
+_MOMENT_FINGERPRINT_FIELDS = (
+    "t", "text", "style", "place", "hold", "size", "dense", "underline",
+    "y_shift", "dim", "font", "frame_kind", "lines", "fade_in", "fade_out",
+)
+
+
+def group_fingerprint(group, st, overlay, moments, first, last) -> str:
+    """
+    Отпечаток ВСЕГО, что попадает в пиксели готовой группы (5.2).
+
+    Кэшируется не кадр, а уже сжатый seg_NNN.mp4 — план кадров группы
+    решает раскладку, цветокор и виньетка/зерно красят её целиком, оверлей
+    ложится тем же файлом, титры/плашки/акценты вписаны в пиксели
+    join()'ом. Совпал отпечаток с сохранённым рядом с seg — можно
+    доверять кэшу и не перекладывать/раскодировать его заново; не совпал —
+    группа считается отсутствующей, будто кэша не было вовсе. Тот же
+    класс проверки, что policy_key у vet.py: забыть одно поле здесь — и
+    получится ролик, собранный из старых групп с новыми титрами (риск,
+    прямо названный в ТЗ 5.2).
+
+    first/last — не только флаги, от них зависит fade-в-чёрное на первой
+    группе (st.opening) и заморозка+хвост на последней (st.tail_hold),
+    поэтому оба входят в отпечаток отдельно от самого плана.
+    """
+    h = hashlib.sha1()
+    for sh in group:
+        for k in _SHOT_FINGERPRINT_FIELDS:
+            h.update(str(sh.get(k, "")).encode("utf-8"))
+            h.update(b"\0")
+    h.update(f"{first}|{last}|{st.crf}|{st.preset}|{st.lut}|"
+            f"{st.archive_lut}|{st.grain}|{st.vignette}|{overlay}|"
+            f"{st.overlay_opacity}|{st.overlay_flip}|{st.opening}|"
+            f"{getattr(st, 'tail_hold', 0.0)}".encode("utf-8"))
+    h.update(b"\0")
+    for m in moments or []:
+        for k in _MOMENT_FINGERPRINT_FIELDS:
+            h.update(str(m.get(k, "")).encode("utf-8"))
+            h.update(b"\0")
+    return h.hexdigest()[:16]
+
+
+def join_group(args):
+    """
+    Обёртка join() под ThreadPoolExecutor.map (5.1) — та же сигнатура по
+    духу, что у render_one: один аргумент-кортеж, детерминированный
+    порядок результатов (map отдаёт их в порядке задач, не завершения).
+
+    5.2 — кэш групп: seg_NNN.mp4 существует и рядом лежит seg_NNN.key с
+    ТЕМ ЖЕ отпечатком (group_fingerprint) — группа не собирается заново.
+    Файл может пережить свой план (restore из кэша Actions между
+    прогонами, где план/стиль сменился) — сверка отпечатка, а не только
+    существования файла, и есть защита от этого; без неё «файл лежит»
+    молча значило бы «файл годится».
+    """
+    gidx, group, seg, first, last, st, overlay, moments = args
+    fp = group_fingerprint(group, st, overlay, moments, first, last)
+    key_path = seg.with_suffix(".key")
+    if (seg.exists() and key_path.exists()
+            and key_path.read_text().strip() == fp):
+        return seg, True
+    join(group, seg, st, overlay, first=first, moments=moments, last=last)
+    key_path.write_text(fp)
+    return seg, False
 
 
 def beds_for(st, job, total: float = 0.0):
@@ -2612,7 +2707,6 @@ def main(job_path):
 
     log("── склейка и цветокор")
     overlay = ensure_overlays(st)
-    segs = []
     # bounds — тот же список, что уже посчитан выше для rails.audit: и
     # проверка, и рендер обязаны смотреть на одни и те же границы групп,
     # иначе какой-то кадр посчитает себя то последним в группе, то нет,
@@ -2623,14 +2717,25 @@ def main(job_path):
     # те же границы, и кэш seg_NNN.mp4 между прогонами stage: render не
     # ломается.
     n_groups = len(bounds)
-    for gidx, (gs, ge) in enumerate(bounds):
-        group = shots[gs:ge]
-        seg = tmp / f"seg_{gidx:03d}.mp4"
-        if not seg.exists():
-            join(group, seg, st, overlay, first=(gs == 0), moments=moments,
-                 last=(ge >= len(shots)))
-        segs.append(seg)
-        log(f"  группа {gidx + 1}/{n_groups} ({ge - gs} кадров)")
+    tasks = [(gidx, shots[gs:ge], tmp / f"seg_{gidx:03d}.mp4", gs == 0,
+             ge >= len(shots), st, overlay, moments)
+            for gidx, (gs, ge) in enumerate(bounds)]
+    # 5.1 — ГРУППЫ НЕЗАВИСИМЫ: каждая пишет свой seg_NNN.mp4, читает
+    # только свои кадры и общие read-only LUT/оверлей, единственная связь
+    # между ними — флаги first/last, посчитанные ДО цикла. render_one уже
+    # гонит рендер кадров пулом потоков (см. выше); склейка групп раньше
+    # шла строго последовательно, хотя x264 в render_one успевал занять
+    # все ядра, а здесь простаивал. max_workers=cores()//2, а не cores():
+    # x264 в самом join() сам многопоточный, и N параллельных процессов
+    # на N ядрах — переподписка. Риск — память (каждый процесс держит
+    # декодеры группы плюс фильтр-граф), поэтому начинаем с половины ядер,
+    # не со всех.
+    with ThreadPoolExecutor(max_workers=max(1, cores() // 2)) as ex:
+        results = list(ex.map(join_group, tasks))
+    segs = [seg for seg, _cached in results]
+    cached = sum(1 for _seg, was_cached in results if was_cached)
+    log(f"  {n_groups} групп"
+       + (f" ({cached} из кэша seg, отпечаток совпал)" if cached else ""))
 
     log("── сшивка")
     silent = tmp / "silent.mp4"
