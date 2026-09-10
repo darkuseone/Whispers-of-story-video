@@ -40,6 +40,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import channel
 import render
+import timing
 import vet
 import style as style_mod
 from render import W, H, FPS
@@ -2568,6 +2569,21 @@ def main(job_path):
     titles = opening + titles + ending
     # дальше все три слоя живут одним списком: join() различает их по стилю
     moments = sorted(cards + moments + titles, key=lambda m: m["t"])
+
+    # СКВОЗНЫЕ ТЕКСТОВЫЕ АКЦЕНТЫ (2.4) — четвёртый слой, самый тихий: не
+    # факт и не событие, а короткая синхронная подпись к уже произнесённому
+    # слову. Считается ПОСЛЕДНИМ — только так видно, где уже стоит титул,
+    # полноэкранная карточка или плашка-число (2.4.2, проверка коллизий).
+    words = (timing.words_from_alignment(job, assets / "voice")
+            or timing.words_from_marks(marks))
+    acc = textcard.accents(job, words, getattr(st, "beats", []), marks,
+                           shots, st.vector, st.rng, total,
+                           existing_moments=moments)
+    if acc:
+        log(f"── акценты: {len(acc)} шт.")
+        for m in acc:
+            log(f"  {m['t']/60:5.1f} мин  {m['text']} ({m['frame_kind']})")
+    moments = sorted(moments + acc, key=lambda m: m["t"])
 
     # Карточка стиля кладётся рядом с роликом: из неё channel.py потом
     # запишет ролик в журнал. Пишется ЗДЕСЬ, а не до плана: в неё входят

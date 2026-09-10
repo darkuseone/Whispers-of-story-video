@@ -63,6 +63,8 @@ TOP_LEVEL_KEYS = {
     # монтаж
     "style_override", "lut", "archive_lut",
     "music", "bed_gain_db", "tail_hold",
+    # сквозные текстовые акценты по ключевым фразам (2.4.1)
+    "accents",
     # разное
     "topic", "youtube", "batch",
     # ручное переопределение памяти канала (CLAUDE.md, channel.py)
@@ -388,6 +390,60 @@ def main(job_path):
         (job.get("youtube") or {}).get("chapters") or [],
         getattr(st, "chapter_edges", []), st.rng)
     print(f"   карточек {len(cards)}, титулов глав {len(titles)}")
+
+    # 2.4 — сквозные текстовые акценты. existing собирает те же три слоя,
+    # что build.main видит к этому моменту (карточки, плашки, титры), иначе
+    # проверка коллизий (2.4.2) смотрела бы не на то, от чего реально
+    # уклоняется accents() в бою.
+    print("── акценты")
+    import timing as timing_mod
+    mm = textcard.moments(getattr(st, "beats", []), marks, st.vector, st.rng,
+                          skip_times=[c["t"] for c in cards])
+    opening = textcard.opening_title(job, marks)
+    ending = textcard.the_end(total)
+    existing = sorted(cards + mm + titles + opening + ending,
+                      key=lambda m: m["t"])
+    words = (timing_mod.words_from_alignment(job, work / "voice")
+            or timing_mod.words_from_marks(marks))
+    acc = textcard.accents(job, words, getattr(st, "beats", []), marks,
+                           shots, st.vector, st.rng, total,
+                           existing_moments=existing)
+    for a in acc:
+        if a["t"] < textcard.ACCENT_LEAD_IN - 1e-6:
+            raise SystemExit(
+                f"акцент на {a['t']:.1f} с раньше "
+                f"{textcard.ACCENT_LEAD_IN:.0f} с — правило «ничего в "
+                "первые 30 секунд» (2.4.1) нарушено")
+        if a["t"] > total - textcard.ACCENT_TAIL_OUT + 1e-6:
+            raise SystemExit(
+                f"акцент на {a['t']:.1f} с в последних "
+                f"{textcard.ACCENT_TAIL_OUT:.0f} с ролика (2.4.1)")
+    for a, b in zip(acc, acc[1:]):
+        if b["t"] - a["t"] < textcard.ACCENT_MIN_GAP - 1e-6:
+            raise SystemExit("акценты ближе "
+                             f"{textcard.ACCENT_MIN_GAP:.0f} с друг к другу")
+    for a in acc:
+        for e in existing:
+            if (e["t"] - textcard.ACCENT_COLLIDE_PAD <= a["t"] <=
+                    e["t"] + float(e.get("hold", 3.0))
+                    + textcard.ACCENT_COLLIDE_PAD):
+                raise SystemExit(
+                    f"акцент на {a['t']:.1f} с наехал на {e['style']} "
+                    f"на {e['t']:.1f} с — проверка коллизий (2.4.2) не "
+                    "сработала")
+    max_allowed = min(textcard.ACCENT_MAX_PER_2400S,
+                      max(1, round(textcard.ACCENT_MAX_PER_2400S
+                                  * total / 2400.0)))
+    if len(acc) > max_allowed:
+        raise SystemExit(f"акцентов {len(acc)} при потолке {max_allowed} "
+                         "на эту длину ролика")
+    for a in acc:
+        if a["frame_kind"] != "clip" and not (1 <= len(a.get("lines") or []) <= 3):
+            raise SystemExit(f"акцент на картинке на {a['t']:.1f} с без "
+                             "разбивки на строки (2.4.2)")
+    n_clip = sum(1 for a in acc if a["frame_kind"] == "clip")
+    print(f"   {len(acc)} шт. (потолок {max_allowed}), "
+         f"клип/картинка {n_clip}/{len(acc) - n_clip}")
 
     print("── подложки")
     beds = build.beds_for(st, job, total)

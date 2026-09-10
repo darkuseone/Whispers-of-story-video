@@ -106,6 +106,10 @@ STYLES = ("carved", "fade_slow", "stamp", "slide_up", "typewriter",
 # он смотрит.
 HOLD = (3.8, 6.0)
 
+# Ширина кадра. Общая на весь модуль (титры, акценты-столбики 2.4.2) —
+# определена здесь, а не в секции титров ниже, ради этого.
+FRAME_W = 1920
+
 # Раскладка. Две позиции, чтобы плашки не выстраивались в столбик у тех
 # роликов, где их несколько.
 PLACES = {
@@ -533,6 +537,224 @@ def interrupts(beats, marks, rng, total: float):
     return picked
 
 
+# ─────────────────────── СКВОЗНЫЕ ТЕКСТОВЫЕ АКЦЕНТЫ (2.4) ───────────────────────
+#
+# Плашка-число (moments) — факт, полноэкранная карточка (interrupts) —
+# событие; акцент — третье, самое тихое: короткая синхронная подпись к
+# произнесённому слову, мелко в углу футажа или столбиком на картинке.
+# Три источника, по убыванию надёжности:
+#
+#   1. явная разметка в спецификации (job["accents"]) — сценарист знает,
+#      что в его тексте ударное, робот нет; включается без жребия;
+#   2. автоподбор — тот же _phrase_at, что у moments(), но по ВСЕМ долям
+#      сценария, а не только развязкам/нагнетаниям, и потому прорежен
+#      жёстче;
+#   3. имена собственные из assets.script_grounded_queries — самый шумный
+#      источник, прорежен жёстче второго.
+#
+# Плотность — обязательное условие: не чаще одного на ACCENT_MIN_GAP,
+# не больше ACCENT_MAX_PER_2400S на сорокаминутный ролик, ничего в первые
+# ACCENT_LEAD_IN и за ACCENT_TAIL_OUT до конца.
+ACCENT_MIN_GAP = 40.0
+ACCENT_LEAD_IN = 30.0
+ACCENT_TAIL_OUT = 60.0
+ACCENT_MAX_PER_2400S = 45
+# Автоподбор и имена собственные тоньше не жеребьёвкой moments() (та уже
+# ограничена развязками/нагнетаниями) — здесь кандидат может прийти с
+# ЛЮБОЙ доли ролика, кандидатов на порядок больше, и множитель на
+# text_density обязан быть жёстче, а не тем же самым.
+ACCENT_AUTO_FACTOR = 0.35
+ACCENT_PROPER_FACTOR = 0.25
+# Раскладки 2.4.2: футаж — мелко и в одну строку, картинка — крупнее и
+# столбиком (перенос по словам, до трёх строк).
+ACCENT_CLIP_SIZE = 34
+ACCENT_IMAGE_SIZE = 52
+ACCENT_IMAGE_MAX_LINES = 3
+ACCENT_IMAGE_MAX_W = int(FRAME_W * 0.34)
+ACCENT_TEXT_MAX = 24
+# Короче плашки-числа (moments.HOLD = 3.8-6.0): акцент не факт для
+# запоминания, а подсветка слова, которое и так уже прозвучало.
+ACCENT_HOLD = (2.4, 3.6)
+# Запас по обе стороны от уже стоящего титула/карточки/плашки — 2.4.2,
+# «акцент не имеет права встать туда, где в эту же секунду стоит титул
+# главы, полноэкранная карточка или плашка-число».
+ACCENT_COLLIDE_PAD = 1.0
+
+_WORD_CLEAN_RE = re.compile(r"[^a-zA-Zа-яА-ЯёЁ0-9\-]")
+
+
+def _norm_word(w: str) -> str:
+    return _WORD_CLEAN_RE.sub("", (w or "")).lower()
+
+
+def _find_phrase(words, phrase: str):
+    """
+    Первое вхождение фразы в словах начитки — секунда начала либо None.
+
+    Сравнение нормализованное (регистр и знаки препинания не в счёт), но
+    НЕ по индексу символа script_blocks (2.4.3): единственная опора —
+    посимвольный alignment ElevenLabs через слова из timing.py, потому что
+    TTS растягивает и сжимает текст неравномерно и «сороковое слово»
+    звучит не на сороковой доле блока.
+    """
+    ptoks = [t for t in (_norm_word(t) for t in (phrase or "").split()) if t]
+    if not ptoks or not words:
+        return None
+    wtoks = [_norm_word(w.get("text", "")) for w in words]
+    n = len(ptoks)
+    for i in range(len(wtoks) - n + 1):
+        if wtoks[i:i + n] == ptoks:
+            return float(words[i]["start"])
+    return None
+
+
+def _shot_kind_at(shots, t: float) -> str:
+    """
+    Кадр, стоящий на экране в секунду t, — выбор раскладки акцента (2.4.2).
+
+    plan_shots уже разложил shots с полем kind, а моменты считаются ПОСЛЕ
+    плана (см. build.main) — искать нечего, только пройти список.
+    """
+    for s in shots or []:
+        try:
+            s0 = float(s["start"])
+            s1 = s0 + float(s["duration"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if s0 <= t < s1:
+            return s.get("kind", "clip")
+    return "clip"
+
+
+def _wrap_lines(text, size, font, max_w, max_lines):
+    """
+    Перенос по словам под ширину max_w — метрика та же PIL, что у _fit_size.
+
+    \\n внутри одного drawtext не работает (см. _one, style=="accent"):
+    каждая строка идёт СВОИМ drawtext, тем же приёмом, что и typewriter.
+    """
+    words = (text or "").split()
+    if not words:
+        return [text]
+    lines, cur = [], []
+    for w in words:
+        trial = " ".join(cur + [w])
+        width_px, _ = _text_metrics_px(trial, size, font)
+        if cur and width_px > max_w:
+            lines.append(" ".join(cur))
+            cur = [w]
+            if len(lines) >= max_lines:
+                break
+        else:
+            cur.append(w)
+    if cur and len(lines) < max_lines:
+        lines.append(" ".join(cur))
+    return lines[:max_lines] or [text]
+
+
+def _explicit_accents(job, words):
+    """Источник 1 — job["accents"]: say ищется в словах начитки, show
+    (или say заглавными, если show не задан) идёт на экран."""
+    out = []
+    for item in job.get("accents") or []:
+        say = str((item or {}).get("say") or "").strip()
+        if not say:
+            continue
+        t = _find_phrase(words, say)
+        if t is None:
+            continue
+        show = str((item or {}).get("show") or "").strip() or say.upper()
+        out.append((t, show[:ACCENT_TEXT_MAX]))
+    return out
+
+
+def accents(job, words, beats, marks, shots, vector, rng, total,
+           existing_moments=None):
+    """
+    Сквозные текстовые акценты (2.4) — где и что ставить.
+
+    words — из timing.words_from_alignment/words_from_marks (пословные
+    тайм-коды). existing_moments — уже собранные карточки-прерывания,
+    плашки и титулы: акцент не имеет права встать туда, где в эту же
+    секунду стоит любая из них (2.4.2).
+    """
+    if not words or not title_font_path():
+        return []
+    density = float(vector.get("text_density", 0.3))
+    existing = list(existing_moments or [])
+
+    auto = []
+    for b in beats or []:
+        for m in marks[b.first_mark:b.last_mark + 1]:
+            phrase = _phrase_at(m.get("text", ""))
+            if phrase and 2 <= len(phrase) <= ACCENT_TEXT_MAX:
+                auto.append((float(m["start"]), phrase))
+
+    proper = []
+    try:
+        import assets
+        names = assets.script_grounded_queries(job, limit=10)
+    except Exception:
+        names = []
+    for name in names:
+        t = _find_phrase(words, name)
+        if t is not None:
+            proper.append((t, name.upper()[:ACCENT_TEXT_MAX]))
+
+    def in_bounds(t):
+        return ACCENT_LEAD_IN <= t <= total - ACCENT_TAIL_OUT
+
+    def not_colliding(t):
+        return not any(
+            e["t"] - ACCENT_COLLIDE_PAD <= t
+            <= e["t"] + float(e.get("hold", 3.0)) + ACCENT_COLLIDE_PAD
+            for e in existing)
+
+    picked_t, out = [], []
+
+    def try_add(t, text, keep_prob):
+        if not in_bounds(t) or not not_colliding(t):
+            return
+        if any(abs(t - p) < ACCENT_MIN_GAP for p in picked_t):
+            return
+        if keep_prob < 1.0 and rng.random() > keep_prob:
+            return
+        kind = _shot_kind_at(shots, t)
+        card = dict(t=round(t, 3), text=text, style="accent",
+                   place="lower_right" if kind == "clip" else "upper_left",
+                   frame_kind=kind,
+                   hold=round(rng.uniform(*ACCENT_HOLD), 2),
+                   size=ACCENT_CLIP_SIZE if kind == "clip"
+                        else ACCENT_IMAGE_SIZE,
+                   fade_in=0.55, fade_out=0.7, font=title_font_path())
+        if kind != "clip":
+            card["lines"] = _wrap_lines(
+                text, card["size"], card["font"],
+                ACCENT_IMAGE_MAX_W, ACCENT_IMAGE_MAX_LINES)
+        out.append(card)
+        picked_t.append(t)
+
+    # явные — приоритет, без жребия по плотности
+    for t, text in sorted(_explicit_accents(job, words)):
+        try_add(t, text, keep_prob=1.0)
+
+    # автоподбор и имена — общий пул, жеребьёвка жёстче, чем у moments()
+    for t, text in sorted(auto):
+        try_add(t, text, keep_prob=density * ACCENT_AUTO_FACTOR)
+    for t, text in sorted(proper):
+        try_add(t, text, keep_prob=density * ACCENT_PROPER_FACTOR)
+
+    out.sort(key=lambda c: c["t"])
+    max_count = min(ACCENT_MAX_PER_2400S,
+                    max(1, round(ACCENT_MAX_PER_2400S * total / 2400.0)))
+    if len(out) > max_count:
+        # срез вперемежку по таймлайну, а не первые N подряд — иначе
+        # акценты соберутся в начале ролика и пропадут к концу
+        step = len(out) / max_count
+        out = [out[int(i * step)] for i in range(max_count)]
+    return out
+
+
 # ─────────────────────── ТИТРЫ ───────────────────────
 #
 # Три титра одного семейства, все набраны одним шрифтом и одним приёмом
@@ -542,8 +764,8 @@ def interrupts(beats, marks, rng, total: float):
 #   chapter_titles — название главы В ПАУЗЕ диктора, вдвое мельче
 #   the_end        — на чёрном хвосте, вдвое мельче названия ролика
 #
-# Кадр 1920 шириной; титр не должен подходить к краям ближе чем на 7%.
-FRAME_W = 1920
+# Кадр 1920 шириной (FRAME_W, см. начало файла); титр не должен подходить
+# к краям ближе чем на 7%.
 # Было 0.80: на замере длинное название почти упиралось в края, а титру
 # нужен воздух — он висит несколько секунд, и тесная строка читается как
 # ошибка вёрстки. Поднято до 0.84 вместе с OPENING_SIZE (см. ниже) —
@@ -622,6 +844,19 @@ THE_END_HOLD = 4.0
 THE_END_AT = 6.0 - THE_END_HOLD / 2   # = 4.0 при нынешних числах
 THE_END_SIZE = int(OPENING_SIZE * 0.5)
 
+# ПОСЛОВНАЯ СБОРКА ТИТРОВ (2.5 п.1) — «мягкий въезд без scale».
+#
+# Референс (kinetic-center-build) собирает слова с scale+blur вторым
+# alpha-слоем — дорогой приём (~31× realtime, см. ТЗ), и заведён он
+# только для заставки названия ролика, отдельным путём. Здесь — дешёвая
+# версия для ВСЕХ существующих титров (заставка, титул главы, номер
+# главы, THE END): тот же typewriter-приём из _one, только слоями по
+# СЛОВАМ, а не по символам, с альфой и лёгким въездом у каждого слова
+# своими. 80% ощущения референса за 0% его цены.
+KINETIC_STEP = 0.12       # шаг появления слов
+KINETIC_WORD_FADE = 0.35  # своё проявление у каждого слова
+KINETIC_RISE = 14         # px въезда снизу, середина заявленных 12-18
+
 
 def _fit_size(text: str, want: int, floor: int = 22, font_path=None,
               dense: bool = False) -> int:
@@ -691,6 +926,67 @@ def _text_metrics_px(text: str, size: int, font_path=None):
         except Exception:
             pass
     return int(len(text) * size * 0.42), int(size * 0.9)
+
+
+def _text_advance_px(text: str, size: int, font_path=None) -> float:
+    """
+    Продвижение курсора, а не чернильный bbox (2.5 п.1, раскладка слов).
+
+    У пробела свой ADVANCE и нулевые чернила — getbbox (см. _text_metrics_px
+    выше) его не видит и вернул бы для разрыва между словами ноль. С ним
+    межсловный разрыв (три пробела разрядки, "   ") схлопнулся бы до нуля
+    и слова легли бы друг на друга.
+    """
+    path = font_path or title_font_path()
+    if path:
+        try:
+            from PIL import ImageFont
+            f = ImageFont.truetype(path, size)
+            return float(f.getlength(text))
+        except Exception:
+            pass
+    return len(text) * size * 0.42
+
+
+def _title_words(raw_text, size, font, dense, x, y, t0, en, alpha, color):
+    """
+    Пословная сборка титра (2.5 п.1) — каждое слово своим drawtext на
+    СВОЕЙ фиксированной позиции (не растущая подстрока, как у typewriter:
+    там центровка "едет" при каждом новом символе, здесь уже показанные
+    слова обязаны остаться на месте). Позиции считаются в Python той же
+    PIL-меркой, что доверена под пиксель в _fit_size, только по ADVANCE
+    (_text_advance_px), а не чернильному bbox.
+
+    x — исходная формула места ("(w-text_w)/2" у center/center_high,
+    "W*0.070" у прочих). "text_w" в ней — ширина ВСЕГО титра, не одного
+    слова, поэтому заменяется на готовое число ДО того, как к ней
+    прибавляется собственное смещение слова; формулы без text_w (все
+    места, кроме center*) эта замена не трогает.
+    """
+    words = (raw_text or "").split()
+    if not words:
+        return ""
+    gap = "  " if dense else "   "
+    spaced_words = [_spaced(w, dense=dense) for w in words]
+    gap_w = _text_advance_px(gap, size, font)
+    word_ws = [_text_advance_px(sw, size, font) for sw in spaced_words]
+    total_w = sum(word_ws) + gap_w * (len(words) - 1)
+    x_base = x.replace("text_w", str(int(round(total_w))))
+    layers, offset = [], 0.0
+    for k, (sw, ww) in enumerate(zip(spaced_words, word_ws)):
+        wt0 = t0 + KINETIC_STEP * k
+        entrance = f"min(1\\,max(0\\,(t-{wt0:.3f})/{KINETIC_WORD_FADE}))"
+        a = f"min(({alpha})\\,{entrance})"
+        rise = (f"({y})+{KINETIC_RISE}*max(0\\,"
+                f"1-(t-{wt0:.3f})/{KINETIC_WORD_FADE})")
+        wx = f"({x_base})+{int(round(offset))}"
+        body = (f"fontfile={font}:text='{_esc(sw)}':fontcolor={color}:"
+                f"fontsize={size}:borderw=0:"
+                f"shadowx=1:shadowy=4:shadowcolor=black@0.68:"
+                f"expansion=none:enable='{en}'")
+        layers.append(f"drawtext={body}:x={wx}:y='{rise}':alpha='{a}'")
+        offset += ww + gap_w
+    return ",".join(layers)
 
 
 def _card(t, text, size, hold, place, fade_in, fade_out, font=None, floor=22,
@@ -1008,8 +1304,9 @@ def _one(it, t0, t1, place, font, size):
         #     бьёт по глазам, а ролик смотрят перед сном.
         tfont = it.get("font") or font
         dense = bool(it.get("dense"))
+        # raw_spaced нужен целиком только подчёркиванию (ширина/высота всей
+        # строки); сам текст рисуется словами — см. _title_words ниже.
         raw_spaced = _spaced(it["text"], dense=dense)
-        spaced = _esc(raw_spaced)
         # Тень чуть плотнее прежней (0.55 -> 0.68, shadowy 3 -> 4,
         # добавлен shadowx=1): название ролика теперь набирается Light
         # (см. opening_font_path) — на ярком архивном кадре его тонкие
@@ -1021,11 +1318,13 @@ def _one(it, t0, t1, place, font, size):
         # dim (2.2.3, номер главы) — тот же титр, но приглушённый: цифра
         # ориентира не должна спорить с названием главы за внимание.
         color = "0xF2EFE9@0.55" if it.get("dim") else "0xF2EFE9"
-        body = (f"fontfile={tfont}:text='{spaced}':fontcolor={color}:"
-                f"fontsize={size}:borderw=0:"
-                f"shadowx=1:shadowy=4:shadowcolor=black@0.68:"
-                f"expansion=none:enable='{en}'")
-        out = f"drawtext={body}:x={x}:y='{y}':alpha='{alpha}'"
+        # Пословная сборка (2.5 п.1) — слова появляются по одному, а не
+        # весь титр разом; дёшево, тот же typewriter-приём слоями по
+        # словам. Раскладка слов уже посчитана в Python (_title_words),
+        # x/y здесь передаются ИСХОДНЫМИ формулами места — text_w в них
+        # подменяется на готовую общую ширину внутри самой функции.
+        out = _title_words(it["text"], size, tfont, dense, x, y, t0, en,
+                           alpha, color)
         if it.get("underline"):
             # ЛИНИЯ ПОД ТИТУЛОМ ГЛАВЫ (2.2.2) — underline_wipe без анимации,
             # но БЕЗ его x=bx/y=by трюка: тот читает "text_w"/"text_h" из
@@ -1052,6 +1351,32 @@ def _one(it, t0, t1, place, font, size):
                      f"enable='{en}'")
             out += f",{under}"
         return out
+
+    if style == "accent":
+        # СКВОЗНОЙ ТЕКСТОВЫЙ АКЦЕНТ (2.4.2). Мельче и тише титра: не факт
+        # на экран, а лёгкая синхронная подпись к уже произнесённому слову.
+        # Раскладка решена ДО сюда, в accents() (по kind кадра под ней):
+        # клип — мелко в углу одной строкой, картинка — крупнее и до трёх
+        # строк столбиком (it["lines"]). \n внутри одного drawtext не
+        # работает — каждая строка рисуется своим drawtext, тем же приёмом,
+        # что и typewriter.
+        tfont = it.get("font") or font
+        lines = it.get("lines") or [it["text"]]
+        line_h = int(size * 1.18)
+        parts = []
+        for li, line in enumerate(lines):
+            ltxt = _esc(line)
+            base_y = f"({y})" if li == 0 else f"({y})+{li * line_h}"
+            # Микро-въезд (2.5 п.1) — та же механика, что у slide_up, но
+            # амплитудой втрое меньше: там 52px сделаны под удар, здесь —
+            # под подачу, не заметную глазу.
+            rise = f"{base_y}+12*max(0\\,1-(t-{t0:.3f})/0.5)"
+            body = (f"fontfile={tfont}:text='{ltxt}':fontcolor=0xF2EFE9@0.80:"
+                    f"fontsize={size}:borderw=0:"
+                    f"shadowx=1:shadowy=2:shadowcolor=black@0.55:"
+                    f"expansion=none:enable='{en}'")
+            parts.append(f"drawtext={body}:x={x}:y='{rise}':alpha='{alpha}'")
+        return ",".join(parts)
 
     if style == "carved":
         # ВЫСЕЧЕНО В КАМНЕ. Разрядка между буквами плюс приглушённый цвет
