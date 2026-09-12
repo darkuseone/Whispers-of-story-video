@@ -1,0 +1,233 @@
+{
+  "_": "Запрос автора: 25-минутный ролик про то, что было на территории Америки до США и какие сведения об этом сохранились. Угол НЕ Кахокия (уже есть cahokia-01) и не листикл цивилизаций. Форма: расследование по ТИПАМ сохранившихся источников — следы (White Sands), инженерия (Hopewell/Chaco/Hohokam), испанские хроники де Сото, дипломатия Хауденосауни, зимние счёты и вампум, европейские архивы, shatter zone, миф о Mound Builders одним абзацем со ссылкой на уже вышедший выпуск, живые собрания и ящики музеев. Авторский тезис: пустой континент — это аргумент на бумаге, а не описание; записи никогда не пропадали, их разложили по чужим каталогам.",
+  "_проверить": [
+    "White Sands: 21–23 тыс. лет, Bennett et al. Science 2021; подтверждение Pigati et al. Science 2023 (пыльца + OSL). В сценарии прямо сказано, что датировка вызывала спор из-за hard-water effect у Ruppia, и что вопрос первого заселения Северной Америки всё ещё открыт. Не формулировать как 'доказано, что люди пришли 23 000 лет назад единственной волной'.",
+    "Clovis ~13 000 — учебниковая рамка, не 'опровергнута целиком'; в тексте 'no longer the whole story'.",
+    "Hohokam: имя археологическое; в сценарии оговорено, что потомки O'odham/Hopi/Zuni используют свои имена. 'Крупнейшая доисторическая ирригация на территории нынешних США' — по HAER AZ-89 / Pueblo Grande. Не ставить цифру '1000 миль сразу', это сумма разновременных каналов.",
+    "Hopewell Ceremonial Earthworks — UNESCO World Heritage, сентябрь 2023. Проверить перед выкладкой, не изменился статус.",
+    "Де Сото: четыре основных нарратива (Elvas, Biedma, Rangel, Garcilaso). Lady of Cofitachequi — имя в источниках не сохранилось; в сценарии она не названа по личному имени. Mabila — точное место не установлено; так и сказано.",
+    "Great Law of Peace / Two Row Wampum: нет оригинальной рукописи XVI века; в тексте это прямо оговорено, provenance части поясов спорный.",
+    "Great Peace of Montreal — 1701, не путать с другими договорами.",
+    "Pueblo Revolt — 1680, испанцы вернулись в 1692; 'twelve years' в сценарии округление 1680–1692.",
+    "Смертность от эпидемий: никаких конкретных процентов. Shatter zone — термин Ethridge; это модель, не единственное объяснение.",
+    "Cyrus Thomas, Report on the Mound Explorations of the Bureau of Ethnology, 1894 (часто цитируют 1890s). Не называть конкретные современные племена 'прямыми потомками' конкретных доколумбовых культур, кроме общепринятых связей Southwest (Hopi/Zuni/O'odham) как descendant communities в широком смысле.",
+    "Не дублировать цифры Кахокии (население, Monks Mound, Woodhenge, Mitchell Log) — в этом выпуске город только упомянут как уже разобранный на канале.",
+    "Acoma / Oraibi как 'одни из древнейших непрерывно обитаемых поселений Северной Америки' — традиционная формулировка; точные даты основания спорны, в сценарии без конкретной цифры года."
+  ],
+  "_структура": "Расследование по типам сохранившихся источников, не хронология одной цивилизации и не flash-forward (этим отличается от cahokia-01 и georgia-guidestones-01): открывается канцелярским жестом Джефферсона (пустая карта), дальше пять родов улик (след, земля, хроника вторжения, дипломатия без небоскрёба, не-книжный архив, европейская картотека), затем два вида стирания (эпидемия/shatter zone и бумажный миф), каталог того, что лежит в ящиках, кольцо на пустую карту с авторским выводом 'США — поздняя глава'. Не листикл племён.",
+  "_длительность": "25 минут озвучки по прямому запросу автора (не стандартные 30–40). Ориентир ~3600–3900 слов по script_blocks при ~140–155 слов/мин и speed 0.91 → примерно 24–27 минут. Тема: историческое расследование / до-USA Северная Америка.",
+  "id": "before-usa-01",
+  "voice_settings": {
+    "stability": 0.65,
+    "similarity": 0.85,
+    "speed": 0.91,
+    "style": 0
+  },
+  "bed_gain_db": -27,
+  "batch": false,
+  "magnific_share": 0.7,
+  "vet_vision": true,
+  "material_overshoot": 1.7,
+  "fill_limit": 27,
+  "photo_sources": [
+    "wikimedia",
+    "loc",
+    "openverse",
+    "met",
+    "cleveland"
+  ],
+  "video_sources": [
+    "pexels",
+    "pixabay",
+    "archive_org",
+    "wikimedia_video"
+  ],
+  "lut": "temple_ash",
+  "archive_lut": "archive_stone",
+  "topic": {
+    "slug": "america-before-the-united-states",
+    "keywords": [
+      "pre-Columbian North America",
+      "before the United States",
+      "White Sands footprints",
+      "Hopewell earthworks",
+      "Chaco Canyon",
+      "Hohokam canals",
+      "de Soto chronicles",
+      "Haudenosaunee Confederacy",
+      "winter counts",
+      "Jesuit Relations",
+      "Mound Builder myth",
+      "Indigenous history USA"
+    ]
+  },
+  "script_blocks": [
+    "In 1803, Thomas Jefferson sat down and tried to describe the interior of the continent he had just bought. He had maps. He had reports from traders. He had the kind of confidence that comes from owning a library. And still, most of what sat west of the Mississippi was, on paper, a blank.\n\nA year later he sent two captains, Lewis and Clark, to fill it in. I keep coming back to that assignment, because it tells you almost everything about how this country learned to talk about itself. The official story of the United States starts as if the land were waiting: purchased, surveyed, named, settled. A continent treated like an empty page.\n\nExcept it was not empty. Lewis and Clark did not walk into wilderness. They walked into other people's countries. They hired interpreters who already spoke three and four languages. They sat in council with leaders who had their own diplomacy, their own trade routes, their own histories stretching back further than any English colony on the Atlantic. They were given maps — not European maps, Native maps, drawn from memory and from travel — of rivers the captains had never seen.\n\nI think that is the part most documentaries skip, because it is less cinematic than a wagon train and more complicated than a single lost city. The question is not \"were there people here before the United States?\" Of course there were. The question that actually keeps me up is different: what did those worlds leave behind that we can still hold, read, or stand on — and why did so much of it become invisible to the country that was built on top of it?\n\nTonight I want to walk the evidence. Not a list of tribes. Not a lecture. The paper, the earth, the oral records, the Spanish letters, the winter counts, the canals still under Phoenix. What was on this land before 1776, and what of it actually survived.",
+    "Here is where I think most people get this wrong. They imagine pre-United States America as a forest with a few scattered camps. That picture did not happen by accident. It was useful.\n\nEnglish colonists in New England had a legal idea they called vacuum domicilium — empty dwelling. If land was not fenced, plowed, and titled the way an English court recognized, it could be treated as unused. I want to be careful here. I am not a lawyer, and I am not going to pretend this is a courtroom. I am a person who has sat with the documents, and the documents are blunt. The emptiness was an argument, not a description.\n\nBy the time the United States declared independence in 1776, the Atlantic seaboard was a patchwork of British, Spanish, and French claims drawn over nations that had never signed those claims. The Haudenosaunee — the Iroquois Confederacy — were still a diplomatic power the British and the Americans both had to negotiate with. The interior was not a blank. It was a map of sovereignties. Spanish New Mexico had been a colony since 1598. St. Augustine in Florida was older than Jamestown. The French had been on the Mississippi for generations. Russian traders were already working the North Pacific coast.\n\nAnd underneath all of that colonial overlay, older still. Cities that had already risen and fallen. Canal systems. Road networks. Agricultural landscapes so thoroughly shaped that early settlers later mistook them for untouched nature.\n\nThe United States did not inherit an empty continent. It inherited a palimpsest — a page written on, scraped, written on again. My job tonight is to read what is still legible.",
+    "Start with the oldest thing we can actually stand in.\n\nIn White Sands National Park, New Mexico, there are human footprints pressed into what used to be the muddy edge of a Pleistocene lake. In 2021 a research team dated them to between twenty-one and twenty-three thousand years ago. That number caused a fight, as it should have. The seeds they used for radiocarbon can pick up old carbon from groundwater, which would make the dates look older than they are. I do not blame anyone for wanting a second clock.\n\nIn 2023 the same team came back with two independent methods: pollen from land plants in the same layers, and luminescence dates on the quartz in the sediment. Both landed in the same range. The U.S. Geological Survey now treats the trackway as evidence that people were in southern North America during the Last Glacial Maximum, when ice still covered a huge part of the north.\n\nI want to flag this honestly. \"The first Americans\" is still an open research problem. Routes, timing, how many pulses of migration — those are active arguments, and they will move again as new sites are excavated. White Sands does not close the book. It rips a hole in the old one. The old textbook version said people arrived around thirteen thousand years ago, with Clovis spear points, chasing mammoths down an ice-free corridor. That story is not dead, but it is no longer the whole story.\n\nA child and an adult walking the edge of a lake, twenty millennia before the United States, before agriculture, before any city on this continent we can name. That is not a legend. That is a trackway you can still photograph. The land was already someone's path.",
+    "If the footprints tell you people were here early, the earthworks tell you they did not stay small.\n\nI am not going to spend this hour on Cahokia. We have already walked that city on this channel — the mounds outside St. Louis, the solar calendar, the nineteenth-century lie that said Native people could not have built it. I mention it only so I can look away from it, because the rest of the continent was doing the same work in different materials.\n\nIn the Ohio Valley, two thousand years ago, Hopewell communities cut enormous geometric earthworks — octagons, circles, alignments precise enough that surveyors still argue over the astronomy — and ran a trade web that moved obsidian from the Rockies, copper from the Great Lakes, shells from the Gulf. Some of those earthworks are still in the ground at places like Newark, Ohio. You can walk the geometry. In 2023 the Hopewell Ceremonial Earthworks were inscribed as a UNESCO World Heritage site, which is a polite way of saying the rest of the world noticed what Ohio had been driving past.\n\nIn the Southwest, Chaco Canyon in what is now New Mexico: great houses of dressed sandstone, some rising several stories, tied together by a network of roads that still show up on aerial photographs, running straight across desert that has no patience for a wandering path. The timber in those buildings was hauled from mountain forests tens of miles away. We know that from the wood itself.\n\nAnd then Phoenix. This one still surprises people, including me, every time I say it out loud. A thousand years ago ancestral Sonoran Desert farmers — archaeologists used the name Hohokam; O'odham, Hopi, and Zuni descendants have their own names for those ancestors — dug the largest prehistoric irrigation system in what is now the United States. Main canals in the Salt River Valley ran for miles. Some were tens of feet across. At their peak they could water a farming landscape on a scale that later American engineers, building Phoenix's modern canals, sometimes followed the same alignments because the grade was already right.\n\nThat is not a village with a ditch. That is civil engineering, in a desert, without metal shovels, and pieces of it are still under the city.",
+    "The first European inland accounts of the Southeast were not surveys. They were invasions that happened to take notes.\n\nBetween 1539 and 1543, Hernando de Soto's expedition cut through what is now Florida, Georgia, the Carolinas, Tennessee, Alabama, Mississippi, Arkansas. Four surviving narratives — a gentleman of Elvas, the king's agent Biedma, the secretary Rangel, and a later account associated with Garcilaso de la Vega — describe towns with palisades, storehouses of corn, mound-top temples, and leaders who could summon armies.\n\nIn May 1540 they reached a polity the chroniclers called Cofitachequi, in present-day South Carolina. It was ruled by a woman. She crossed the river in a canoe under an awning, with a retinue, and received them the way a head of state receives unwelcome guests she has decided, for the moment, to feed. They were housed in half the town. They looted a mortuary temple and found pearls, and also European beads and metal axes — wreckage from an earlier failed Spanish landing on the coast. This was not an untouched world. It was a political landscape that had already been dealing with the Atlantic for a generation.\n\nDe Soto repaid the hospitality by taking the lady hostage. She escaped into the woods. The expedition stumbled on, hungry, violent, lost more than once. At a palisaded town called Mabila, in what is now Alabama, a leader named Tascalusa led them into a fight that wrecked the Spanish army even though the town itself burned. The exact site has never been securely found. I find that detail almost too neat: one of the most documented battles in sixteenth-century North America, and the ground is still missing.\n\nHere is the part that matters for our question. The chronicles are biased, self-serving, sometimes contradictory. They are also the closest thing we have to a snapshot of the Mississippian world while it was still standing. A century later, many of those towns were gone. The records of what was there are, in no small part, the paperwork of the people who helped knock it down.",
+    "Not every society on this land was a mound city. Some of the most durable political structures left almost no skyline.\n\nThe Haudenosaunee — often called the Iroquois Confederacy — bound together five nations, later six, across what is now New York and the surrounding country: Mohawk, Oneida, Onondaga, Cayuga, Seneca, and then the Tuscarora. The Great Law of Peace, passed down orally and later written down in several versions, describes a council, a process for burying weapons, a constitution in all but the European sense of the word.\n\nI want to stay honest about the surviving evidence. We do not have a single original sixteenth-century manuscript of the Great Law. What we have is a living oral tradition, later transcriptions, colonial records of councils, and a material archive: wampum belts, shell beads woven into patterns that functioned as both record and contract. The Two Row Wampum — Kaswentha — is remembered as an agreement of two parallel paths, two vessels traveling the same river without steering each other. The physical belts that exist today, and the colonial paper that refers to them, are argued over by historians. Some belts in museums have disputed provenance. That does not make the diplomatic tradition disappear. It means we should say \"this is how the record survives\" instead of \"here is the original signed copy.\"\n\nBy the 1600s and 1700s, French, Dutch, and English officials were sitting in councils they did not control. The 1701 Great Peace of Montreal brought dozens of First Nations and the French into a negotiated settlement after decades of war. That is not a folk memory. That is a diplomatic event with names, dates, and a paper trail — evidence of a political world the United States had not yet been born into.\n\nWhen American schoolbooks start in 1776, they start in the middle of someone else's century.",
+    "I used to assume that \"no writing\" meant \"no history.\" That is a European habit, and it is a bad one.\n\nOn the Plains, several nations kept winter counts — year-by-year pictorial chronicles painted on hide. Each image stands for a year, usually named for one event: a meteor, a smallpox year, a treaty, a hunt. The Lakota winter counts, some of which survive in the Smithsonian and other collections, can be read as calendars stretching through the eighteenth and nineteenth centuries. They are not decorative. They are archives. You can line a winter count up against a smallpox year in a trader's journal and watch two record-keeping systems remember the same disaster.\n\nIn the Southwest, Pueblo oral histories of migration, of specific mesas, of drought and return, have been compared — carefully, not naively — with archaeology. Sometimes they line up. Sometimes they do not, and the honest move is to say so. Oral tradition is not a lesser document. It is a different one, with different rules of transmission, and it has outlived a lot of paper.\n\nPetroglyphs and pictographs from the Great Basin to the Ohio Valley are still on the rock. Most cannot be read like a sentence. A few, in the Southwest, sit inside living cultural knowledge that descendant communities still hold, and which they are under no obligation to hand to a camera.\n\nAnd then there is the simple, stubborn evidence of language. Place names. Crop names. The words for maize, for canoe, for the animals and the rivers. English in America is full of other people's geography. That is a record too, hiding in plain speech.\n\nIf you only look for books, you will conclude there were no books, and then you will stop looking. That is how a continent's memory gets misfiled.",
+    "The irony is that some of the best written evidence of pre-United States America does not live in America.\n\nSpain ran an empire on paperwork. The Archive of the Indies in Seville holds letters, censuses, legal complaints, expedition diaries from La Florida and New Mexico. Coronado's 1540 push onto the Plains, looking for cities of gold that were never there, still left a trail of named peoples and named rivers. The 1598 colonial project in New Mexico produced a paper mountain: land grants, mission reports, testimony after the 1680 Pueblo Revolt, when Pueblo nations coordinated a war that drove the Spanish out for twelve years. That revolt is one of the most successful Indigenous military campaigns in North American history, and it is documented on both sides.\n\nThe Jesuit Relations — annual reports French missionaries sent back from the St. Lawrence and the Great Lakes in the 1600s — are biased, pastoral, sometimes lurid. They are also dense with who lived where, who was at war with whom, how diplomacy was conducted, what a feast looked like. Historians have been mining them for two centuries.\n\nAnd the maps. Early maps of North America are not empty. They are crowded with names. Indigenous nations labeled as if they were countries, because to the mapmakers they were. Look at a late-seventeenth-century French map of the Great Lakes, or a Spanish map of the Southeast, and the interior is not white space. The white space comes later, on American maps, as those names are replaced by counties and territories.\n\nI think this is the quiet scandal of the sources. The records were never missing. They were filed in other languages, in other empires, under other catalog numbers. A lot of what we \"discovered\" in the twentieth century was sitting in a European archive the whole time.",
+    "So if the towns were there in 1540, why does the same country look so different in 1700?\n\nThis is the part of the story that is easy to turn into a sermon, and I do not want to. The evidence is grim enough without being leaned on.\n\nDisease moved faster than armies. Smallpox, measles, influenza — illnesses that had no long history in these populations — tore through the Southeast, the Mississippi Valley, New England, the Southwest, at different times, in waves. Mortality estimates vary wildly, and I will not pretend there is one clean percentage. Some regions were hit catastrophically. Some were not, or not yet. Archaeology shows abandoned towns, sudden ends in ceramic sequences, cemeteries that change. Colonial letters describe empty villages and fields going back to forest.\n\nOn top of disease came slaving, displacement, and war. Historians of the South talk about a \"Mississippian shatter zone\" in the 1600s: the old chiefdoms fracturing under the pressure of the English colonial slave trade, firearms, and the collapse of the old political order. New confederacies formed out of the wreckage — Creek, Catawba, and others — which is itself a kind of historical evidence: people rebuilding governments after the ones de Soto had walked through were gone.\n\nWhen later English and American settlers moved inland, they often found earthworks in forest and prairie and assumed the land had always looked like that. In a lot of places they were walking through a recently emptied landscape, not a never-occupied one. Forest can hide a city in a century. That is not mystery. That is ecology plus catastrophe.\n\nThe silence that settlers heard was not original silence. It was the sound after the fact.",
+    "Then the United States did something I still find difficult to watch in the documents.\n\nNineteenth-century surveyors, farmers, and amateur archaeologists kept tripping over mounds — from the Ohio Valley to the Southeast to the Mississippi. The structures were too big, too geometric, too clearly made. Instead of asking the people still living on that land, a whole literature grew up to explain the mounds as the work of a lost race: Israelites, Welsh princes, someone, anyone, except the ancestors of the Native nations who were being removed west while this literature was being printed.\n\nThe Smithsonian eventually killed the theory as science. Cyrus Thomas's report in the 1890s, based on excavation after excavation, said the obvious: the mounds were built by the ancestors of Native Americans. But the myth had already done its political work. It is easier to take land from people if you have first written them out of their own archaeology.\n\nI am not going to relitigate that whole case here. We did that with Cahokia. I bring it up because it is a second kind of erasure, different from disease and war. This one happened on paper, in English, in the libraries of the new country. It is one of the reasons a person can grow up in Ohio, or Georgia, or Illinois, drive past an earthwork every day, and never be taught a name for it.\n\nThe evidence was in the ground. The story sitting on top of the evidence was the problem.",
+    "So what, specifically, is still here?\n\nIn museums and tribal collections: winter counts, wampum belts, Mississippian pottery, Hohokam canal cross-sections, Chaco beams with their tree rings still readable, copper plates, shell gorgets, Spanish colonial documents on microfilm, the Jesuit Relations in print. In the ground: thousands of sites, some protected, a staggering number not. LiDAR keeps finding earthworks that were under forest canopy, hiding in the topography.\n\nIn living communities: languages, ceremonies, clan systems, oral histories, and political bodies that never actually ended. The Haudenosaunee Grand Council still meets. Pueblo nations still occupy some of the oldest continuously inhabited settlements in North America — Acoma, Oraibi, and others, with their own dating traditions and their own privacy. The United States did not replace those worlds so much as it was built around and against them.\n\nAnd in unexpected places: Phoenix's canal grid. Ohio's preserved earthworks. Chaco is a national park, and also a still-contested sacred landscape. White Sands is a national park with a trackway you have to be lucky and careful to see, because footprints in gypsum do not last if too many people walk them.\n\nI do not want to make this sound like a tidy museum tour. A huge amount is gone. Looted. Plowed. Flooded by reservoirs. Classified as \"not significant\" and paved. The record that survives is a sample, and samples lie if you forget that.\n\nBut a sample is not nothing. It is enough to bury the empty-continent story for good, if we actually read it.",
+    "I started with Jefferson's blank map, and I want to end with a different kind of blank.\n\nEvery country tells itself a beginning. The United States picked 1776, and then it picked a landscape to match: wilderness, destiny, a page with no prior handwriting. That story is not just incomplete. It is, in the documentary sense, false. The prior handwriting is everywhere — in Seville, in the Smithsonian drawers, in a canal under a Phoenix street, in a hide painted with years, in a footprint in New Mexico that is older than agriculture.\n\nWhat I keep coming back to is not guilt, and it is not romance. It is a more ordinary feeling. I was taught a version of this continent that made the first twelve thousand years, at least, sound like a prelude. It was not a prelude. It was the main text. The United States is a late chapter.\n\nI think the reason this is hard to hold onto is that the evidence is scattered on purpose, or at least by habit. Archaeology in one building. Colonial archives in another. Oral history treated as folklore. Maps treated as decoration. If you put them on the same table, the empty page disappears.\n\nSo here is my own conclusion, as someone who has now sat with those sources long enough to be suspicious of tidy endings. What was on the territory of America before the United States was not a mystery waiting in a jungle. It was a set of civilizations, confederacies, farms, roads, and records. Some of those records were written on hide and in memory. Some were written in Spanish and French. Some were packed into the ground as earthworks and canals. Enough of them survived that we do not get to say we were not told.\n\nWe were told. We filed it under someone else's name.\n\nIf you have stayed with me this far, you already know what I am going to ask. Not \"were there people here.\" That is settled. The live question is: which of these records have you actually seen with your own eyes, and which ones were sitting in a drawer with the lights off, waiting?"
+  ],
+  "image_prompts": [
+    "wide cinematic 16:9 view of an unfinished early-1800s parchment map of the North American interior spread on a dark wooden desk, candlelight, large blank regions west of the Mississippi, no people facing camera, no text, photoreal",
+    "cinematic 16:9 night forest edge meeting a cleared field, cold moonlight, a faint geometric earthwork under grass, no people facing camera, no text, photoreal",
+    "extreme close photoreal 16:9 of fossil human footprints in white gypsum lakebed, White Sands, raking low sun, deep shadows in the prints, no people facing camera, no text",
+    "aerial cinematic 16:9 of a circular and octagonal Hopewell earthwork cut into Ohio woodland at dusk, cool teal mist, no people facing camera, no text, photoreal",
+    "wide cinematic 16:9 reconstruction mood of a palisaded Mississippian town on a southern river at dawn, thatched roofs, platform mound, river mist, figures only as distant silhouettes with backs turned, no faces, no text, photoreal",
+    "close cinematic 16:9 of a wampum belt of white and purple shell beads on dark cloth, museum raking light, no people facing camera, no text, photoreal",
+    "photoreal 16:9 of a Lakota winter count buffalo hide unrolled, pictorial year-glyphs in ochre and black, dark navy void around it, no people facing camera, no text",
+    "cinematic 16:9 of a vast archive hall with stacked colonial bound volumes and map drawers, Seville mood, dust in a single shaft of cold light, no people facing camera, no text, photoreal",
+    "wide cinematic 16:9 of an abandoned earthen mound overtaken by young forest, autumn, empty plaza suggestion, no people facing camera, no text, photoreal",
+    "photoreal 16:9 of a 19th-century engraved book plate of American mounds on a library table, sepia, one oil lamp, no people facing camera, no text",
+    "cinematic 16:9 of museum drawers pulled open showing shell gorgets, copper plates, catalog tags, cool archival light, no people facing camera, no text, photoreal",
+    "wide cinematic 16:9 split-mood landscape: a living irrigated desert canal at dusk on the left feeling, empty modern Phoenix-scale canal concrete on the right feeling, no people facing camera, no text, photoreal, 16:9"
+  ],
+  "footage_queries": [
+    "White Sands National Park gypsum dunes aerial",
+    "Mississippi River floodplain slow aerial",
+    "Ohio forest earthworks aerial drone",
+    "Chaco Canyon great house sandstone ruins",
+    "Pueblo Bonito aerial Chaco Culture",
+    "Phoenix canal irrigation desert aerial",
+    "Sonoran desert irrigation canal dusk",
+    "New Mexico white gypsum lakebed footprints landscape",
+    "St Augustine Castillo stone fort exterior",
+    "Santa Fe adobe church dusk",
+    "Great Lakes shoreline aerial forest",
+    "Appalachian river valley mist morning",
+    "South Carolina Wateree river forest",
+    "Alabama river palisade landscape mist",
+    "New York Finger Lakes forest aerial",
+    "Onondaga lake shoreline autumn",
+    "Library of Congress map reading room interior",
+    "archive shelves bound volumes dust light",
+    "museum display case Native American artifacts",
+    "petroglyph rock art Southwest close",
+    "buffalo hide texture close raking light",
+    "shell wampum beads macro",
+    "Hopewell earthwork Newark Ohio aerial",
+    "Pueblo mesa village New Mexico distance",
+    "Lewis Clark river expedition landscape Missouri",
+    "empty American prairie mound silhouette dusk",
+    "Spanish colonial archive documents close",
+    "night sky stars desert southwest timelapse"
+  ],
+  "archive_queries": [
+    "White Sands fossil human footprints photograph USGS",
+    "Hopewell earthworks Newark octagon historic photograph",
+    "Chaco Canyon Pueblo Bonito historic photograph",
+    "Hohokam canal Pueblo Grande Phoenix excavation",
+    "Mississippian shell gorget Smithsonian",
+    "Mississippian copper plate artifact museum",
+    "Lakota winter count hide Smithsonian",
+    "wampum belt Iroquois museum collection",
+    "de Soto expedition 16th century engraving",
+    "Cofitachequi Lady historical illustration",
+    "Jesuit Relations title page 17th century",
+    "Great Peace of Montreal 1701 print",
+    "Coronado expedition map 1540",
+    "Archive of the Indies Seville map La Florida",
+    "Lewis and Clark map 1814 interior",
+    "Cyrus Thomas mound explorations report 1894 plate",
+    "Mound Builder myth 19th century engraving",
+    "Pueblo Revolt 1680 historical document",
+    "Ancestral Pueblo great house masonry close",
+    "Clovis point artifact museum photograph",
+    "Library of Congress indigenous nations map 18th century",
+    "Acoma Pueblo historic photograph"
+  ],
+  "video_prompts": [
+    "slow drift over White Sands gypsum dunes at low sun, no people, no text, photoreal, 16:9",
+    "gentle aerial along a geometric earthwork in Ohio woodland at dusk, no people, no text, photoreal, 16:9",
+    "slow push across Chaco Canyon sandstone walls, raking light, no people, no text, photoreal, 16:9",
+    "camera glides along a desert irrigation canal at dusk, no people, no text, photoreal, 16:9",
+    "slow pan across an open archive table of maps and bound volumes, dust in light, no people, no text, photoreal, 16:9",
+    "close drift over a painted winter count hide, museum light, no people, no text, photoreal, 16:9",
+    "mist moving across a river and palisade-like treeline at dawn, no people, no text, photoreal, 16:9",
+    "aerial of an empty grass mound in forest, slow orbit, no people, no text, photoreal, 16:9"
+  ],
+  "reject": {
+    "clip": [],
+    "arch": []
+  },
+  "style_override": {
+    "crf": 22,
+    "fps": 30
+  },
+  "vet_context": "ACCEPT if the frame serves THIS episode: the land that became the United States before 1776, and the records of that land that still survive. This is a North American historical investigation spanning Ice Age trackways, pre-Columbian engineering, sixteenth- and seventeenth-century colonial encounters, and present-day museums and sites. It is NOT a Mediterranean antiquity episode.\n\nACCEPT:\n1. DEEP TIME AND FIRST PEOPLES: White Sands gypsum dunes and fossil trackways, Clovis and other stone points in museum light, Pleistocene lakebeds, megafauna bones only if clearly archaeological context, night sky over desert.\n2. PRE-COLUMBIAN NORTH AMERICA (the land of the future USA, not Mesoamerican capitals): Hopewell and other geometric earthworks, Chaco Canyon and Ancestral Pueblo great houses, Hohokam/Sonoran desert canals and platform mounds, Mississippian towns and palisades as atmosphere (do not fill the frame with Monks Mound as if this were the Cahokia episode), wampum belts, winter count hides, petroglyphs, shell gorgets, copper plates, pottery.\n3. COLONIAL 1500s–1700s: Spanish expeditions, palisaded towns, rivers of the Southeast, New Mexico missions and adobe, St. Augustine stone, French Great Lakes, council settings, wampum diplomacy, period maps crowded with Indigenous nation names, archive interiors in Seville-style halls, Jesuit-era printed pages, parchment and quills.\n4. NINETEENTH CENTURY PAPER: sepia mound surveys, engraved book plates, Smithsonian-style reports, reading rooms. Wanted, not anachronistic — this episode is partly about how the new country misfiled its own archaeology.\n5. THE PRESENT: archaeologists excavating, LiDAR and aerial topography, museum drawers and display cases, visitors at earthworks and desert ruins, Phoenix canals today, Pueblo mesas, White Sands as it looks now, Library of Congress maps. Modern clothing and museum-goers are FINE.\n\nATMOSPHERE IS FINE: rivers, floodplains, desert, eastern woodland, prairie mounds, storm light, night sky, dust in archives.\n\nREJECT only these:\n- NOTHING TO DO WITH THE EPISODE. Seagulls, alpine ski trains, sports cars, tropical beaches, stained glass, classrooms, protest banners, generic corporate stock. If you cannot say in one sentence how the frame relates to pre-USA North America or its records, reject it.\n- WRONG CIVILISATION AS THE SUBJECT: Egyptian pyramids, Greek or Roman columns, hieroglyphs, cuneiform, medieval European castles, Machu Picchu, Teotihuacan, Chichen Itza, Maya stelae filling the frame. The script may compare in words; a frame of a foreign monument tells the viewer the episode is about that monument.\n- CAHOKIA / MONKS MOUND as the hero of the shot. A generic Midwestern mound is fine. A recognizable St. Louis + Monks Mound postcard is the previous episode.\n\nJudge by RELEVANCE, not by period purity. Museum visitors and living descendant communities in frame are not a problem.",
+  "youtube": {
+    "title": "The America That Was Already There — What Survived Before the United States",
+    "title_alternatives": [
+      "Before 1776: The Records of a Continent That Was Never Empty",
+      "What Was Here Before the USA — And the Proof That Still Exists"
+    ],
+    "description_intro": "Long before 1776, the land that became the United States was already mapped, farmed, governed, and remembered — just not in the kind of book most of us were handed in school. This is a slow walk through the records that actually survived: Ice Age footprints in New Mexico, canals under Phoenix, Spanish letters from towns that later vanished, winter counts painted on hide, and maps that were crowded with nations until someone filed them under someone else's name.",
+    "chapters": [
+      "Jefferson's Blank Map",
+      "The Useful Myth of Empty Land",
+      "Footprints in a Dry Lake",
+      "A Continent That Was Engineered",
+      "The Towns the Spanish Walked Through",
+      "Governments With No Skyline",
+      "History That Was Never a Book",
+      "The Paper That Lives in Europe",
+      "When the Towns Went Quiet",
+      "The Lost Race That Never Was",
+      "What Is Still in the Drawers",
+      "A Late Chapter"
+    ],
+    "description_notes": "A general-interest historical documentary. Dates, population figures, and first-peopling timelines are given as they are currently understood; where scholars disagree, the narration says so. This is not legal, political, or medical advice, and it does not speak for any nation.",
+    "hashtags": [
+      "#AncientHistory",
+      "#Archaeology",
+      "#AmericanHistory",
+      "#Documentary",
+      "#PreColumbian"
+    ],
+    "tags": [
+      "pre-Columbian America",
+      "before the United States",
+      "White Sands footprints",
+      "Hopewell earthworks",
+      "Chaco Canyon history",
+      "Hohokam canals Phoenix",
+      "de Soto expedition",
+      "Haudenosaunee Confederacy",
+      "Indigenous history documentary",
+      "winter counts",
+      "Mound Builder myth",
+      "sleep documentary history",
+      "ancient North America",
+      "Jesuit Relations",
+      "American archaeology"
+    ],
+    "thumbnail_at": 720.0,
+    "cover_texts": [
+      "NEVER EMPTY",
+      "THE MAPS KNEW"
+    ],
+    "cover_patterns": [
+      "object",
+      "split"
+    ],
+    "cover_scenes": [
+      "a Lakota winter-count buffalo hide filling the frame, ochre year-glyphs, gold rim light, dark navy void",
+      "50/50 then/now of the same southern river valley — a palisaded 1540 town at dawn versus an empty wooded bend of the river today"
+    ],
+    "cover_prompts": [
+      "YouTube thumbnail 16:9. PATTERN object: extreme close-up of a Lakota winter-count buffalo hide filling the frame, ochre and black year-glyphs, gold rim light, dark navy void. High contrast. Empty negative space in the upper third for type. Bottom-right clear for duration badge. No faces, no extra text. ONLY text \"{text}\" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, readable at 120px wide.",
+      "YouTube thumbnail 16:9. PATTERN split: 50/50 then/now of the same southern river valley — left a living palisaded Mississippian town at dawn, right the same bend empty and wooded today. No arrows. High contrast, dark base. Empty negative space for type. Bottom-right clear for duration badge. No faces. ONLY text \"{text}\" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, huge, phone-readable at 120px wide."
+    ],
+    "shorts_questions": [
+      "Was North America empty before the United States?",
+      "What proof of pre-USA America still survives?"
+    ]
+  }
+}
