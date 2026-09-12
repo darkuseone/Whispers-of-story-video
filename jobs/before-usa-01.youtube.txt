@@ -1,0 +1,100 @@
+========================================
+ANCIENT WHISPERS — YOUTUBE PACK
+id: before-usa-01
+date: 2026-09-12
+========================================
+
+## TITLE
+The America That Was Already There — What Survived Before the United States
+
+## TITLE ALTERNATIVES
+1. Before 1776: The Records of a Continent That Was Never Empty
+2. What Was Here Before the USA — And the Proof That Still Exists
+
+## DESCRIPTION
+Long before 1776, the land that became the United States was already mapped, farmed, governed, and remembered — just not in the kind of book most of us were handed in school. This is a slow walk through the records that actually survived: Ice Age footprints in New Mexico, canals under Phoenix, Spanish letters from towns that later vanished, winter counts painted on hide, and maps that were crowded with nations until someone filed them under someone else's name. Settle in — this one is built to be listened to with the lights low.
+
+Chapters
+00:00  Jefferson's Blank Map
+...    The Useful Myth of Empty Land
+...    Footprints in a Dry Lake
+...    A Continent That Was Engineered
+...    The Towns the Spanish Walked Through
+...    Governments With No Skyline
+...    History That Was Never a Book
+...    The Paper That Lives in Europe
+...    When the Towns Went Quiet
+...    The Lost Race That Never Was
+...    What Is Still in the Drawers
+...    A Late Chapter
+(точные секунды подставит конвейер после сборки из субтитров; порядок и названия глав здесь
+ обязаны совпасть с youtube.chapters в JSON)
+
+Sources
+- Bennett, M.R. et al. "Evidence of humans in North America during the Last Glacial Maximum." Science (2021) — White Sands trackway, 21,000–23,000 years
+- Pigati, J.S. et al. "Independent age estimates resolve the controversy of ancient human footprints in White Sands." Science 382 (2023) — pollen + OSL confirmation
+- U.S. Geological Survey, "Study confirms age of oldest fossil human footprints in North America" (2023) and Fact Sheet 2025–3046 (May 2026)
+- Historic American Engineering Record, "Hohokam Irrigation Canals," HAER No. AZ-89 — largest prehistoric irrigation system in the United States
+- UNESCO World Heritage, Hopewell Ceremonial Earthworks (inscribed 2023)
+- Clayton, Lawrence A., Vernon James Knight Jr., and Edward C. Moore, eds. "The De Soto Chronicles: The Expedition of Hernando de Soto to North America, 1539–1543." University of Alabama Press (1993)
+- Ethridge, Robbie. "Mapping the Mississippian Shatter Zone." University of Nebraska Press (2009)
+- Thwaites, Reuben Gold, ed. "The Jesuit Relations and Allied Documents" (1896–1901)
+- Thomas, Cyrus. "Report on the Mound Explorations of the Bureau of Ethnology" (1894)
+- Havard, Gilles. "The Great Peace of Montreal of 1701." McGill-Queen's University Press
+- Smithsonian National Museum of Natural History / National Museum of the American Indian — Lakota winter counts; wampum collections
+- Archivo General de Indias, Seville — La Florida and New Mexico colonial papers
+- National Park Service, Chaco Culture National Historical Park; White Sands National Park
+- Library of Congress — 17th–18th century maps of Indigenous nations in the North American interior
+
+Notes
+A note on sources: the White Sands dates were disputed after 2021 because aquatic seeds can take up old carbon; the 2023 study added terrestrial pollen and luminescence ages in the same range, which is how the trackway is treated here — as strong, still-discussed evidence, not as a closed origin story for every people on the continent. Wampum belts and the Great Law of Peace survive as living tradition plus later transcriptions, not as a single 16th-century signed manuscript. Disease mortality is described without a single percentage because published estimates disagree. This episode is not a survey of every nation, and it does not speak for any nation.
+
+## TAGS (10-15)
+pre-Columbian America, before the United States, White Sands footprints, Hopewell earthworks, Chaco Canyon history, Hohokam canals Phoenix, de Soto expedition, Haudenosaunee Confederacy, Indigenous history documentary, winter counts, Mound Builder myth, sleep documentary history, ancient North America, Jesuit Relations, American archaeology
+
+## HASHTAGS
+#AncientHistory #Archaeology #AmericanHistory #Documentary #PreColumbian
+
+## COVER PROMPT (xAI / image model)
+1. YouTube thumbnail 16:9. PATTERN object: extreme close-up of a Lakota winter-count buffalo hide filling the frame, ochre and black year-glyphs, gold rim light, dark navy void. High contrast. Empty negative space in the upper third for type. Bottom-right clear for duration badge. No faces, no extra text. ONLY text "NEVER EMPTY" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, readable at 120px wide.
+2. YouTube thumbnail 16:9. PATTERN split: 50/50 then/now of the same southern river valley — left a living palisaded Mississippian town at dawn, right the same bend empty and wooded today. No arrows. High contrast, dark base. Empty negative space for type. Bottom-right clear for duration badge. No faces. ONLY text "THE MAPS KNEW" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, huge, phone-readable at 120px wide.
+
+## COVER TEXT OPTIONS
+1. NEVER EMPTY
+2. THE MAPS KNEW
+
+## YOUTUBE COMMUNITY POST
+Jefferson bought a continent and then sent two captains to fill in the blank parts of the map. The blank parts were not blank. Tonight's episode is about the records that survived from the America that was already there before the United States — footprints in New Mexico older than agriculture, canals still under Phoenix, Spanish letters from towns that later vanished, and maps that were crowded with nations until the names got filed somewhere else. Slow, evidence-first, built for a quiet evening.
+
+## COMMUNITY IMAGE PROMPTS
+1. Photoreal cinematic square image of an 18th-century map of the North American interior crowded with Indigenous nation names, warm lamp light at the edges, no text overlay, no people, 1:1
+2. Cinematic photoreal square image of a winter-count hide partially unrolled on dark cloth, ochre glyphs, museum rim light, no text, no people, 1:1
+
+## SHORTS
+### Short 1 — Hook
+Title: Jefferson's Map Was Blank. The Land Was Not.
+Question on screen: Was North America empty before the United States?
+Pitch: Opens on Jefferson's empty interior and Lewis and Clark walking into other people's countries — curiosity hook in under 10 seconds, answers in the full video.
+
+### Short 2 — Revelation
+Title: The Canals Under Phoenix Were Already There
+Question on screen: What proof of pre-USA America still survives?
+Pitch: Uses the Hohokam canal / Phoenix alignment payoff — a physical record you can still stand on — to pull viewers into the full evidence walk.
+
+## PINNED COMMENT (first comment under the video)
+If you are listening to this one at night — thank you for letting this channel be part of the quiet.
+
+Quick question before you drift off: which surviving record surprised you more, the White Sands footprints, or the canals still sitting under Phoenix?
+
+Every date, name and source is listed in the description if you want to dig further yourself. This episode is about the paper, the earth, and the memory that never actually went missing — it just got filed under someone else's name.
+
+If you want more slow, evidence-first history like this, subscribing and turning on notifications is the best way to catch the next one.
+
+## POSTING CHECKLIST
+- [x] JSON лежит в jobs/before-usa-01.json
+- [ ] Заголовок / описание / теги скопированы
+- [ ] Первый комментарий закреплён (PINNED COMMENT)
+- [ ] Две обложки cover_1 / cover_2 после сборки
+- [ ] Два шортса short_1 / short_2 после сборки
+- [ ] Sources указаны в описании
+- [ ] Не конфликтует с последними темами channel/log.json (aired пуст; cahokia-01 — другой угол: один город, не типы источников)
