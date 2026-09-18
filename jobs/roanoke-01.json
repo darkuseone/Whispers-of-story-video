@@ -398,7 +398,7 @@
     "body_clip_share": 0.28,
     "intro_clip_share": 0.78,
     "intro_footage_seconds": 200,
-    "overlay_kind": "mist",
+    "overlay_kind": "motes",
     "overlay_opacity": 0.22,
     "crf": 22,
     "fps": 30
