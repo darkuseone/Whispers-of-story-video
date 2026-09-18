@@ -97,6 +97,21 @@
     "overcast Hatteras Island shoreline, sea oats, empty beach receding into mist, no people, photoreal cinematic 16:9",
     "wide aerial-style view of a barrier island chain at last light, one inlet, dark water, no people, no text, photoreal cinematic 16:9"
   ],
+  "fill_prompts": [
+    "Elizabethan palisade on a Carolina barrier island, cool moonlight, deep shadows, photoreal cinematic 16:9, no text, no people facing camera",
+    "weathered capital letters cut into stripped oak bark, raking sidelight, dark void, photoreal macro 16:9, no extra overlay text",
+    "square-rigged 1580s English ship off a low sandy island at dusk, marsh grass, photoreal cinematic 16:9, no readable flags",
+    "Algonquian reed-mat houses on Hatteras dunes under overcast sky, Atlantic haze, photoreal 16:9, no faces to camera",
+    "Spanish Armada fireships on a dark Channel night, distant orange, photoreal cinematic 16:9, no readable text",
+    "looted wooden chests in wet sand under palisade shadows, rusted armor, photoreal 16:9, no people",
+    "fog through empty Fort Raleigh earthworks at blue hour, photoreal cinematic 16:9, no modern signs",
+    "pale quartz stone with shallow carved English letters on dark cloth, museum light, photoreal macro 16:9",
+    "old watercolor map of Carolina sounds with a paper patch lifting, candlelight, photoreal 16:9, no people",
+    "iron hammerscale flakes on dark sand beside pottery sherds, archaeological context, photoreal macro 16:9",
+    "overcast Hatteras shoreline, sea oats, empty beach into mist, photoreal cinematic 16:9, no people",
+    "lead Augsburg cloth seal and hand-wrought nail in dark earth, photoreal macro 16:9",
+    "candlelit 16th-century study with coastal charts and brass compass, photoreal 16:9, no faces"
+  ],
   "footage_queries": [
     "Outer Banks North Carolina aerial barrier island",
     "Roanoke Island marsh sunrise",

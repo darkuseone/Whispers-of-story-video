@@ -202,6 +202,11 @@ jobs:
     if: needs.detect.outputs.run_build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 330      # лимит GitHub 360, оставляем запас на выкладку
+    env:
+      # Magnific (Freepik) обратно включён: безлимитная генерация по
+      # подписке. xAI API упёрся в месячный лимит команды — 70% кадров
+      # снова рисует Magnific, seed/<id>/ закрывает дыру без API.
+      MAGNIFIC_ENABLED: "1"
     strategy:
       fail-fast: false
       matrix:

@@ -19,6 +19,7 @@ tension. Две обложки = два разных паттерна.
 import json
 import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -339,6 +340,7 @@ def build_covers(job, out: Path, video: Path = None):
     key = (os.environ.get("XAI_API_KEY") or "").strip()
     model = job.get("image_model", "grok-imagine-image")
     y = job.get("youtube") or {}
+    seed_dir = ROOT / "seed" / job.get("id", "")
     total_hint = 600.0
     if video and video.exists():
         try:
@@ -357,6 +359,12 @@ def build_covers(job, out: Path, video: Path = None):
         paths.append(dst)
         if dst.exists() and dst.stat().st_size > 1000:
             log(f"обложка {n}: уже есть, не трогаю ({text})")
+            continue
+        seeded = seed_dir / f"cover_{n}.jpg"
+        if seeded.exists() and seeded.stat().st_size > 1000:
+            out.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(seeded, dst)
+            log(f"обложка {n}: seed {seeded.name} ({text})")
             continue
         prompt = prompt_for(job, n - 1, text=text, scene=scene)
         if key:

@@ -27,6 +27,7 @@ import json
 import os
 import random
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -881,6 +882,39 @@ def build_images(job, prompts, out: Path, xai_model, xai_key):
             f"а Magnific их уже не осилил")
 
     return len(list(out.glob("img_*.jpg")))
+
+
+def copy_seed_images(job, out: Path) -> int:
+    """
+    Кадры, нарисованные заранее (Grok Imagine по подписке) и лежащие
+    в seed/<id>/. Нужны, когда xAI API упёрся в лимит, а озвучка уже
+    оплачена: build_images пропускает существующие img_NNN.jpg.
+    """
+    job_id = job.get("id") or ""
+    src_dir = Path("seed") / job_id
+    if not src_dir.is_dir():
+        return 0
+    out.mkdir(parents=True, exist_ok=True)
+    n = 0
+    files = sorted(src_dir.glob("img_*.jpg")) + sorted(src_dir.glob("img_*.png"))
+    for src in files:
+        dst = out / f"{src.stem}.jpg"
+        if dst.exists() and dst.stat().st_size > 1000:
+            n += 1
+            continue
+        try:
+            if src.suffix.lower() in {".jpg", ".jpeg"}:
+                shutil.copy2(src, dst)
+            else:
+                from PIL import Image
+                Image.open(src).convert("RGB").save(dst, "JPEG", quality=90)
+            n += 1
+            log(f"  seed {dst.name}")
+        except Exception as e:
+            log(f"  ! seed {src.name}: {e}")
+    if n:
+        log(f"  seed-картинок: {n} из {src_dir}")
+    return n
 
 
 def style_seed(video_id: str) -> int:
@@ -2516,6 +2550,7 @@ def main(job_path, stage="all"):
     key = (os.environ.get("XAI_API_KEY") or "").strip()
     model = job.get("image_model", "grok-imagine-image")
     prompts = job["image_prompts"]
+    copy_seed_images(job, work / "images")
     made = build_images(job, prompts, work / "images", model, key)
 
     # ПРОВЕРКА СРАЗУ, А НЕ НА МОНТАЖЕ. Без этой строки пустая папка
