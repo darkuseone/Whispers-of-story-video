@@ -1,0 +1,460 @@
+{
+  "_": "Разведка 2026-09-18: вирусные американские тайны — Roanoke/CROATOAN (новость Economic Times в день заказа; hammerscale 2025; Site X / патч карты 2012), Oak Island, Mesa Verde, Coral Castle, Alcatraz escape. Выбран Roanoke: старая Америка, не Кахокия и не before-usa (типы источников) и не Georgia Guidestones. Угол НЕ призрак и НЕ «куда пропали»: слово на столбе было АДРЕСОМ (без мальтийского креста), а настоящая пропажа — отказ четыре века его читать. Авторский тезис: колония не потерялась, потерялась способность стучать в дверь Croatoan.",
+  "_проверить": [
+    "Численность: часто 115, иногда 117 (список Уайта) или «более ста». В сценарии «a hundred and fifteen, give or take how you count a newborn» — не ставить одну жёсткую цифру как перепись.",
+    "Virginia Dare — первый ребёнок, рождённый английскими родителями в Северной Америке, 18 августа 1587. Не «первый европейский ребёнок в Новом Свете» (испанцы раньше).",
+    "Возвращение Уайта — 18 августа 1590, в день третьего дня рождения внучки. Мальтийский крест как знак беды — из собственного отчёта Уайта; без креста.",
+    "Houses taken down / palisade «very fort-like» / CROATOAN на столбе / CRO на дереве — формулировки близки к нарративу Уайта, не дословная цитата везде.",
+    "Simon Fernandes (не Fernandez) отказался вести семьи дальше на Чесапик — по Уайту; мотив пиратства/контракта, не доказанная «злая воля».",
+    "Убийство Pemisapan/Wingina, июнь 1586, отряд Ralph Lane. Голова — по английским отчётам, ирландец из отряда. Альгонкинской версии в лондонской печати нет — в сценарии это оговорено.",
+    "15 человек Гренвилла 1586: один скелет в 1587, остальные без следа.",
+    "Крещение Manteo 13 августа 1587, «lord of Roanoke and Dasemunkepeuc» — английский титул, не местный.",
+    "Армада 1588 задержала возвращение; 1590 — частный каперский рейс, не колониальное судно снабжения.",
+    "Site X / Merry Hill, Bertie County: патч на карте John White «La Virginea Pars», British Museum, 2012; First Colony Foundation. Augsburg cloth seal. НЕ формулировать как «колония найдена».",
+    "Hammerscale на Hatteras, 2025: Mark Horton + Scott Dawson / Croatoan Archaeological Society. Horton говорил «smoking gun»; в сценарии это ОТВЕДЕНО — amateur + пресс-цикл, стратиграфия как довод, не вердикт. Не закрывать дело.",
+    "Dare Stones: первый камень Louis Hammond 1937, Emory / Haywood Pearce Jr.; серия 40+ почти всеми считается подделкой (Bill Eberhardt). Первый камень — спорный; в сценарии автор не защищает его.",
+    "Слухи Джеймстауна (Smith / Powhatan) — только как слухи, не факт резни и не факт «одетых по-английски» поселений.",
+    "Засуха 1580s по дендрохронологии побережья — вспомогательная причина, не единственная.",
+    "Не называть современных жителей Hatteras «доказанными потомками 1587» — ДНК-проект не дал публикации, на которую можно опереться.",
+    "Не дублировать Кахокию / before-usa (White Sands, Hopewell, Hohokam, Mound Builders) — только если сравнение на полпредложения."
+  ],
+  "_структура": "Не хронология одной цивилизации (cahokia), не расследование по ТИПАМ источников (before-usa), не flash-forward со взрыва (guidestones): открывается СЛОВОМ на столбе как адресом, затем назад к тому, почему его вырезали (сброс Fernandes, насилие Lane, Manteo), затем вперёд через четыре века отказа читать знак (призрак, Dare Stones), затем археология, которая наконец читает (патч карты / Site X, hammerscale), кольцо на «мы не постучали в дверь». Форма: clue-first epistemic reverse.",
+  "_длительность": "25 минут озвучки по прямому запросу автора (не стандартные 30–40). Ориентир ~3700–3900 слов по script_blocks при ~145–155 слов/мин и speed 0.91 → примерно 24–27 минут. Тема: историческое расследование / потерянная колония Роанок.",
+  "id": "roanoke-01",
+  "voice_settings": {
+    "stability": 0.65,
+    "similarity": 0.85,
+    "speed": 0.91,
+    "style": 0
+  },
+  "bed_gain_db": -27,
+  "batch": false,
+  "magnific_share": 0.7,
+  "vet_vision": true,
+  "material_overshoot": 1.5,
+  "fill_limit": 27,
+  "photo_sources": [
+    "wikimedia",
+    "loc",
+    "openverse",
+    "met",
+    "cleveland"
+  ],
+  "video_sources": [
+    "pexels",
+    "pixabay",
+    "archive_org",
+    "wikimedia_video"
+  ],
+  "lut": "moonlit_marble",
+  "archive_lut": "archive_cyanotype",
+  "topic": {
+    "slug": "lost-colony-roanoke-croatoan",
+    "keywords": [
+      "Lost Colony of Roanoke",
+      "CROATOAN",
+      "John White 1590",
+      "Virginia Dare",
+      "Croatoan Hatteras",
+      "Site X Bertie County",
+      "Dare Stones hoax",
+      "First Colony Foundation",
+      "hammerscale Hatteras 2025",
+      "Manteo Croatoan",
+      "Outer Banks history",
+      "Elizabethan Virginia"
+    ]
+  },
+  "vet_context": "ACCEPT if the frame serves THIS episode: the 1580s English attempts to plant a colony on the Carolina Outer Banks, the Algonquian towns of that coast, and the later search for what happened to the 1587 families. This is an Elizabethan North-American historical investigation, NOT a Mediterranean antiquity episode and NOT a ghost show.\n\nACCEPT:\n1. PERIOD ART OF THIS COAST: John White watercolors (Pomeiooc, Secotan, fishing weirs, the Flyer, maps including La Virginea Pars), Theodor de Bry 1590 engravings of Carolina Algonquian people and towns, Hariot plates. These drawings of people ARE the archive — do not reject them as 'faces' or 'wrong period'.\n2. ELIZABETHAN ENGLAND that belongs to this plot: portraits of Elizabeth I (Armada Portrait), Sir Walter Raleigh, Armada paintings, 16th-century ships, parchment, armor, chests.\n3. THE PLACE TODAY AND IN RUINS: Roanoke Island, Hatteras Island / Croatoan, Outer Banks barrier islands, marshes, dunes, sea oats, inlets, fog, Fort Raleigh earthworks and palisade reconstructions, empty beaches, night sky over water. Modern visitors in the far background of a site are fine; posed faces to camera are not the subject.\n4. ARCHAEOLOGY AND PAPER: excavations, pottery, glass beads, rapier parts, lead cloth seals, hammerscale/iron flakes, museum drawers, the Dare Stones as objects, 1930s newsprint, British Museum maps with patches.\n\nREJECT:\n- UFOs, grey aliens, ghost-hunting night-vision as the SUBJECT (a foggy palisade is fine; orbs and jump-scare faces are not).\n- Mesoamerica, Egypt, Greece, Rome as the subject of the frame.\n- Unrelated American landmarks used as filler (Statue of Liberty, Grand Canyon, Mount Rushmore, Civil War reenactment).\n- Generic medieval European knights and castles that are not Elizabethan/Armada.\n- Stock office, gym, cars, smartphones as the subject.",
+  "vet_context_note": "Elizabethan Carolina / Outer Banks / John White–de Bry archive. Modern site photography of Fort Raleigh, Hatteras, marshes is in-period for this episode.",
+  "script_blocks": [
+    "On August 18, 1590, an English painter named John White waded ashore on a small island off what is now North Carolina, expecting to hear a child laugh. It was his granddaughter's third birthday. Her name was Virginia Dare. She was the first child born to English parents in North America, and he had never seen her walk.\n\nHe found silence.\n\nThe houses he had left three years earlier were gone — not burned, not smashed. Taken down. The timber had been pulled out of the ground and used to build something else: a palisade, high, with curtains and flankers, \"very fort-like,\" he wrote. On one of the chief posts at the right side of the entrance, five feet from the ground, the bark had been stripped, and in fair capital letters someone had cut a single word.\n\nCROATOAN.\n\nNo cross. No bones. No graves. Fresh footprints in the sand, and then nothing.\n\nI have sat with that word longer than is probably healthy. Most versions of this story treat it as a riddle, a curse, a title card for a horror series. I think that is the first mistake, and it is a mistake we have been making for four hundred years. Croatoan was not a mystery to John White. It was a place. It was a people. And he and the colonists had agreed, before he sailed for England, exactly what that carving would mean.\n\nTonight I want to walk the evidence as it actually sits. The letter White left us. The archaeology of the last fifteen years. The hoax that ate half a century of attention. And the habit, stubborn as weather, of refusing to read a sign that was written in English, on a post, at eye level.\n\nRoanoke is sold as America's oldest unsolved case. I am not sure it was ever lost. I think we were.",
+    "Here is where I think most people get this wrong. They hear CROATOAN and they hear a spell. They hear something that does not belong in daylight. White heard an address.\n\nBefore he left Roanoke in 1587, he and the settlers made a simple arrangement. If they had to move, they would carve the name of their destination into a tree or a post. If they were in distress — if they were leaving under attack, or starving, or hunted — they would add a Maltese cross over the letters. A cross meant come armed. A name without a cross meant we went here, on purpose.\n\nWhite found the name. He did not find the cross.\n\nCroatoan was not a nonsense word. It was the English rendering of a place and a people about fifty miles south of Roanoke Island, on what we now call Hatteras Island, in the Outer Banks of North Carolina. The Croatoan were an Algonquian-speaking community. They were, by the standards of that coast in the 1580s, unusually willing to deal with the English. Their leading man in White's circle was Manteo, who had already crossed the Atlantic twice and been baptized in the Church of England two weeks before Virginia Dare was born.\n\nThe clue was a forwarding address, in the only large script a carpenter had, on the one post a returning governor could not miss. White understood that. He wanted to sail to Croatoan the next morning. Weather, a lost anchor, and a crew of privateers who had not signed up to hunt for families stopped him. The mystery industry prefers the word. The record prefers the missing cross.",
+    "The 1587 voyage was not supposed to end on Roanoke at all.\n\nSir Walter Raleigh's patent from Elizabeth I was a piece of paper that pretended a coastline could be owned from a desk in London. The plan, on this fourth English voyage to the region, was different from the earlier military camps. This time they brought families. Middle-class Londoners. White's pregnant daughter Eleanor and her husband Ananias Dare. Roughly a hundred and fifteen people, give or take how you count a newborn. They were meant to plant a lasting town, and the intended site was farther north, toward the Chesapeake, where the harbor was deeper and the Spanish were less likely to stumble over them.\n\nThey never got there.\n\nThe Portuguese pilot, Simon Fernandes — a privateer who knew these waters and had his own calendar of plunder — put in at Roanoke first, to check on a small holding party left the year before and to drop off Manteo. Then he refused to take the settlers any farther. White's account is bitter about this. The families were unloaded onto an island that had already failed once as a military outpost, at the wrong season, with the wrong supplies, and with a pilot who had somewhere more profitable to be.\n\nFernandes is easy to turn into a villain. He may simply have been a man whose contract was to raid, not to found. What matters is simpler. The \"lost colony\" was already a compromise: a civilian town dropped onto the leftover footprint of a soldiers' camp, on an island the English themselves had made dangerous two years earlier. The vanishing is the famous part. The dumping is the part that explains how a hundred people ended up depending on neighbors they had not yet met.",
+    "To understand why Roanoke was a bad place to leave families, you have to rewind to 1585.\n\nRalph Lane's colony that year was a military venture: soldiers, not children, sitting on Roanoke Island through a hungry winter, demanding corn from Algonquian towns that had their own mouths to feed. Relations started useful and then curdled, the way they do when one side has muskets and the other has the food. Lane became convinced — on intelligence that still reads, to me, like panic dressed as strategy — that Wingina, the weroance of the Roanoke and Dasemunkepeuc people, who had taken the name Pemisapan, was plotting to wipe the English out.\n\nIn June 1586 Lane led a dawn attack on Dasemunkepeuc. Pemisapan was killed. An Irishman in Lane's party, according to the English reports, took the head.\n\nLane wrote his own defense. The Algonquian side of that morning did not get a pamphlet in London. Two years later, White's families stepped onto ground where the English had already assassinated a local leader. That is a diplomatic fact, not atmosphere.\n\nLane's men, starving and done, caught a ride home with Sir Francis Drake later that summer. A relief ship under Sir Richard Grenville arrived to find the camp empty and left about fifteen soldiers to hold it. When White arrived in 1587, those fifteen were gone. They found the bones of one man. The rest had vanished into the same woods the later colony would be asked to trust.\n\nSo the 1587 settlers did not land in a blank. They landed in a rumor. The island already had a disappearance on it. I think that matters more than the ghost stories do, because it means \"lost\" was a pattern the English had been writing before Virginia Dare ever drew breath.",
+    "Two Carolina Algonquian men had already seen England when the families arrived, and they did not bring home the same report.\n\nManteo, of Croatoan, and Wanchese, of Roanoke, had crossed with the 1584 reconnaissance, walked the streets of London, been displayed as living proof that Raleigh's \"Virginia\" was real. Manteo came back willing to work with the English. Wanchese came back as an enemy. I do not know what each of them saw in England — the palaces, the crowds, the smell, the way a person is treated when he is evidence instead of a guest — but I think the split between them is one of the most honest things in this whole file. Two witnesses. Same voyage. Opposite conclusions.\n\nWhite understood that Manteo was the colony's remaining bridge. On August 13, 1587, Manteo was baptized and named lord of Roanoke and Dasemunkepeuc, a title the English had no right to give and the local towns had not asked for. Five days later, on the 18th, Eleanor Dare gave birth to Virginia.\n\nThat week tries to turn a diplomat into an English landlord and an island into a hometown, while a pilot prepares to leave. Manteo stayed. He had every reason, after Lane, to close the door. He did not. The later carving — CROATOAN, no cross — is a receipt for that choice: if they left on purpose, they left toward the one community that had not yet decided the English were a disease. If you want a person at the center of this story, not a curse, start with him. The word on the post is his people's name.",
+    "White did not want to leave. The settlers made him.\n\nSomeone had to go back to England and argue for supplies: food, tools, more people, a ship that would actually come back. The colonists did not trust the assistants who might have gone. They trusted the governor who could paint what he had seen and speak to Raleigh in a room. White's granddaughter was nine days old. He sailed anyway, late in August 1587, promising to return.\n\nHe could not.\n\nIn 1588 the Spanish Armada came up the Channel, and every English hull that could float was a weapon. White's attempts to get a ship west were swallowed by a war he had not started. A 1588 effort collapsed into privateering and a fight with the French. He did not stand on Roanoke again until August 18, 1590 — three years to the day after Virginia's birth, which I do not think was planned and which I also do not think he failed to notice.\n\nI want to stay with that delay, because the ghost story skips it. A hundred and fifteen people were not spirited off a stage. They were left, through a war, on an island with a three-year food clock and neighbors who had already watched English soldiers take a head. Any community in that position makes a decision. Stay and starve on a sandbank. Move toward friends. Move inland. Split. The palisade White found — houses taken down, wood reused as a fort — looks to me like a decision, not a raid. You do not carefully recycle your walls if you are running from something in the night.\n\nWhen White finally got a crossing, it was a privateering voyage that agreed, as a favor, to drop him off. No extra settlers. No real cargo of relief. A storm sank one boat. That is what England could spare: a painter on a pirate's timetable.",
+    "It is worth reading what White actually wrote, not what the documentaries paraphrase.\n\nHe came ashore in darkness, saw fresh tracks, and hoped. In daylight he walked to where the houses had been. They were gone. In their place, a palisade of great trees. At the entrance, CROATOAN, \"without any cross or sign of distress.\" Near the shore, the letters CRO carved on a tree, as if someone had started the message and then finished it properly on the post. His own chests, buried before he left, had been dug up and looted — books spoiled, armor rusty, pictures and maps rotten from rain. He believed, and I believe him, that the damage was done after the colonists left, by \"savages,\" which in his vocabulary meant the people whose island this already was, or by his own sailors. He does not claim a massacre. He claims an absence.\n\nHe wanted to go to Croatoan. The captains agreed, then a storm blew up, an anchor was lost, and the crew — men who had come to rob Spanish shipping, not to ferry a grandfather around the Banks — refused to linger. White left. He never returned. He died in England, some years later, without seeing Eleanor, or Ananias, or the child whose birthday had been the date on the empty shore.\n\nThe first English child born in North America had a grandfather who missed her twice: once by a war, once by a storm, and then by the rest of his life. Mayflower and Jamestown get the origin story because those people lived long enough to write the next chapter. Roanoke's people wrote one word and stepped off the page we were willing to print. We should be suspicious of how satisfying that silence became.",
+    "Once White was gone, the word on the post stopped being a note and started being a brand.\n\nFor four hundred years, Croatoan has been treated as if it were untranslatable. Playwrights, novelists, television writers, a season of a horror anthology — they have all borrowed the carving as a stand-in for \"something unknowable happened here.\" I understand the temptation. A vanished colony is a better campfire story than a relocation. An empty palisade photographs better than a mixed village fifty miles south. And the United States, when it later needed a founding myth, needed the land to look vacant. A mystery in which English families simply dissolve is more useful, in that myth, than a mystery in which they walk into someone else's town and stay.\n\nI want to be blunt about this, because it is the part the usual documentary dances around. The \"lost colony\" is not only a historical problem. It is a cultural habit. We inherited a letter that said where they went, and we spent centuries insisting the letter was a rune.\n\nThere were rumors, later. At Jamestown, after 1607, English newcomers heard stories of people inland \"clothed like the English,\" of houses, of a massacre Powhatan was said to have claimed. Those reports are secondhand, politically useful to men who needed Native villains, and they have never been nailed to a grave. I will not promote them to fact. I will say they exist, and that they pull in two directions at once: some of the 1587 people may have lived for years; some may have died badly; none of this requires a curse.\n\nThe ghost story is what we built in the hole where a follow-up voyage should have been.",
+    "In 1937, a man named Louis Hammond walked into Emory University in Atlanta with a quartz stone he said he had found in a North Carolina swamp. Scratched into it, in shaky English, was a message supposedly from Eleanor Dare: the colonists had fled, many were dead, Virginia was among the living, please come.\n\nIt was the first of what would become a series — more than forty \"Dare Stones\" surfacing across the Southeast, each more detailed, each more convenient. A professor named Haywood Pearce Jr. staked his reputation on them. Newspapers ran the solution to America's oldest mystery. Then the later stones started to look like they had been made with the same chisel, by the same hand, with historical howlers no 1580s Englishwoman would write. Most scholars now treat the series as a hoax. The first stone still has a few defenders. I am not one of them, not with confidence. I will say: a single weathered rock is not a census.\n\nHere is why I include the stones at all. They tell you what we wanted the ending to be. We wanted a letter from Eleanor. We wanted tragedy with a signature. We wanted the lost colony to speak in the voice of a white mother, in English, on stone, confirming that the wilderness had killed her neighbors and spared her just long enough to write it down. That is a colonial fairy tale. It is also, I think, an insult to the actual clue, which was already in English, already signed by the group, and already pointing at a Native town.\n\nA culture that prefers a probable forgery to a palisade post is trying to keep the story inside the English family. Croatoan takes it out.",
+    "The first really new clue in a long time was not a stone. It was a piece of paper someone had glued shut.\n\nIn 2012, researchers with the First Colony Foundation asked the British Museum what lay under two small patches on John White's watercolor map, the one called La Virginea Pars, painted after the 1585 voyage. Under a patch at the west end of Albemarle Sound, in what is now rural Bertie County, North Carolina, was a symbol. A Renaissance fort. A little drawing of a planned or hoped-for stronghold, hidden under a paper bandage for four hundred years.\n\nWhite's 1587 colonists had told him they might move fifty miles into the mainland. For a long time historians assumed that meant north, toward the Chesapeake. The hidden fort sits west, up the sound, on the Chowan River, beside a cove you could hide a ship in. Archaeologists called the spot Site X, because of course they did, and they dug.\n\nThey did not find a town. They found something quieter and, to me, more convincing: a scatter of sixteenth-century English material on a site that was otherwise Algonquian. A lead cloth seal from Augsburg, the kind of trademark hammered onto German fabric that English households used. Nails. Pottery. Not a smoking palace. A handful of objects that do not belong in a Carolina village unless someone from Europe sat down there for a while.\n\nI want to keep this honest. Site X is not \"we found the lost colony.\" It is the first Elizabethan site identified on the mainland of what became the United States, in the direction White's people said they might go, under a symbol White himself had painted and then covered. That is a lead. In archaeology, a lead is not a verdict. It is a place you are no longer allowed to ignore.",
+    "The other direction is south, toward the word on the post.\n\nOn Hatteras Island — old Croatoan — mixed assemblages have been coming out of the ground for years: an English-glass arrowhead, a rapier hilt, German counting tokens, beads, the ordinary mess of two material cultures in the same trash pits. In 2025, a team associated with the Croatoan Archaeological Society, including the archaeologist Mark Horton and a local researcher, Scott Dawson, reported hammerscale from a Hatteras site. Hammerscale is the tiny flake of iron that jumps off a bloomery or a smith's work. It is industrial dandruff. It is also, in this context, an argument: forging iron in that way is an English craft of the period. Carolina Algonquian smithing did not produce that waste in that form.\n\nHorton called it a smoking gun. I am not going to. Smoking guns in this field have a way of cooling off in the next season's paper. Dawson is not a university appointment, and some of the language around \"the mystery is over\" has the heat of a press cycle. What I will say, because the geology and the stratigraphy as reported are not nothing: there is ironworking residue on Croatoan, in layers consistent with the late sixteenth or early seventeenth century, sitting with European objects in a Native town. That is exactly what you would expect if English settlers lived there, repaired tools, and were absorbed rather than annihilated.\n\nA split is the least theatrical version. Some went south, as the post said. A smaller group may have gone west, toward the hidden fort, to wait for White. Families split in a famine. The ghost story needs one gesture. The ground is willing to be more complicated. None of this is closed.",
+    "So what do we still not know? A lot, and pretending otherwise is how this story got stupid.\n\nWe do not have the bones of Eleanor Dare. We do not have Virginia's. We do not have a roll call of who arrived on Hatteras, who died of fever the first winter, who married in, who walked farther west and faded out of both English and Algonquian memory. DNA projects have been chasing surnames for twenty years. They have interesting family stories. They do not yet have a paper I would bet the episode on.\n\nWe do not know what happened to Grenville's fifteen from 1586, except the one skeleton. We do not know how much of White's looted chests was Native salvage and how much was his own sailors. We do not know whether the palisade was built against the Spanish, against Wanchese, or against weather and dogs and fear. We do not know if Manteo was there to greet them.\n\nThe Spanish were hunting this coast; a colony of English heretics was a military problem for Madrid. There is no confirmed Spanish after-action that wiped Roanoke out, and dismantled houses argue against a raid — raiders do not stack your timber into a better fort. Drought in the 1580s tree rings would have made corn politics worse. I mention it because we underuse climate when we prefer villains.\n\nThe inventory: a forwarding address without a cross; a hidden fort symbol and a mainland scatter; European iron in a Croatoan town; Jamestown rumors that cannot be sworn to; a hoax we wanted; a grandfather who missed a birthday and then the rest.",
+    "I started this with a word on a post, and I want to end with the habit of not reading it.\n\nThe United States likes its origin stories to begin empty. Jamestown, 1607. Plymouth, 1620. A shoreline waiting for a covenant. Roanoke is inconvenient because it is earlier, because it failed, and because the most boring explanation — they walked to their friends — means the first English families in the country did not disappear. They entered someone else's history and we declined to follow.\n\nI think that is the real vanishing. Not the people. The follow-up. White's captains would not sail fifty miles. Later writers would not accept a Native town as an ending. A professor in Georgia would rather have a forged stone in a mother's voice than a Croatoan address. Horror television would rather have a curse. Each of those choices is a small erasure, and they add up to a national legend called the Lost Colony.\n\nWere they lost? Some of them, almost certainly, in the ordinary ways: fever, hunger, a fight, a winter. The rest, I think, did what the post said. They went to Croatoan. They may have split. They became, over a generation, harder to photograph as English. That is not the same thing as never having existed.\n\nI do not get to close their file. Nobody does. What I can do is refuse the version that needs them to be a ghost in order for America to feel like a beginning. The palisade was empty because they had a plan. The plan had a name. The name was a place. The place is still there, a barrier island with a different name, and the question that actually keeps me up is not \"where did they go.\"\n\nIt is why we were so determined not to look.\n\nA hundred and fifteen people. A carved word. No cross. The rest is the story we told to avoid knocking on a Croatoan door."
+  ],
+  "image_prompts": [
+    "empty palisade of weathered vertical logs at dawn on a barrier island, one post with bark stripped, grey Atlantic behind, no people, photoreal cinematic 16:9",
+    "close view of capital letters carved into pale stripped tree bark on a wooden post, raking sidelight, dark void around, no people, photoreal macro 16:9",
+    "Elizabethan sailing ship at anchor off a low sandy island at dusk, cold horizon, marsh grass, no people facing camera, photoreal cinematic 16:9",
+    "pre-dawn Algonquian palisaded town on a Carolina sound, wood smoke, still water, no faces to camera, photoreal cinematic 16:9",
+    "wide view of a Croatoan village of reed-mat houses on Hatteras dunes under overcast sky, Atlantic haze, no people facing camera, photoreal 16:9",
+    "Spanish Armada fireships on a dark Channel night, distant orange, no readable text, photoreal cinematic 16:9",
+    "looted wooden chests open in wet sand under palisade shadows, rusted armor, ruined papers, no people, photoreal cinematic 16:9",
+    "fog moving through an empty reconstructed earthwork fort on Roanoke Island at blue hour, no people, photoreal cinematic 16:9",
+    "a pale quartz stone with shallow carved English letters on dark cloth, museum rim light, no extra text, photoreal macro 16:9",
+    "extreme close-up of an old watercolor map of the Carolina sounds with a small paper patch lifting at one corner, candlelight, no people, photoreal 16:9",
+    "macro of tiny iron hammerscale flakes on dark sand beside Native pottery sherds, archaeological context, no people, photoreal 16:9",
+    "overcast Hatteras Island shoreline, sea oats, empty beach receding into mist, no people, photoreal cinematic 16:9",
+    "wide aerial-style view of a barrier island chain at last light, one inlet, dark water, no people, no text, photoreal cinematic 16:9"
+  ],
+  "footage_queries": [
+    "Outer Banks North Carolina aerial barrier island",
+    "Roanoke Island marsh sunrise",
+    "Hatteras Island dunes sea oats",
+    "Cape Hatteras lighthouse distant dunes",
+    "Atlantic ocean waves fog barrier island",
+    "coastal marsh wetland North Carolina",
+    "empty wooden palisade logs fort",
+    "weathered timber stockade slow pan",
+    "carved letters in tree bark close up",
+    "Elizabethan sailing ship tall ship ocean",
+    "square-rigged ship at dusk",
+    "storm waves over sandbar inlet",
+    "fog over still sound water dawn",
+    "campfire embers night forest edge",
+    "blacksmith hammer sparks iron forge",
+    "iron slag flakes macro",
+    "archaeological excavation soil grid",
+    "pottery sherds in dirt close up",
+    "old parchment map candlelight",
+    "quill ink on paper writing",
+    "museum map drawer archive",
+    "night sky stars over ocean",
+    "full moon over marsh",
+    "empty beach footprints in sand",
+    "wooden chests on sand",
+    "rusted breastplate armor detail",
+    "rain on oak leaves forest",
+    "Spanish galleon painting footage ship",
+    "Channel storm waves night",
+    "lighthouse beam fog",
+    "pine forest path Carolina",
+    "slow drone over inlet shoals",
+    "reeds in wind brackish water",
+    "empty rowboat mist morning",
+    "historical fort earthworks grass",
+    "close up of bark stripped from log",
+    "candle in dark timber interior",
+    "waves under pier night",
+    "deserted island shoreline aerial",
+    "smoke drifting sideways field dawn",
+    "old book pages turning archive",
+    "lead seal artifact museum",
+    "glass beads archaeological find",
+    "ocean horizon no people cinematic"
+  ],
+  "archive_queries": [
+    "John White town of Pomeiooc watercolor",
+    "John White village of Secotan",
+    "John White Indian fishing Virginia",
+    "John White the flyer medicine man",
+    "John White Pomeiooc woman and child",
+    "John White La Virginea Pars map",
+    "Theodor de Bry Virginia 1590 engraving",
+    "de Bry Village of Secoton 1590",
+    "de Bry map of Virginia Roanoke Island",
+    "Americae pars nunc Virginia dicta",
+    "Thomas Hariot Briefe and True Report Virginia",
+    "Sir Walter Raleigh portrait Hilliard",
+    "Elizabeth I Armada Portrait",
+    "Spanish Armada 1588 English ships painting",
+    "Spanish Armada fireships",
+    "John White watercolor Algonquian village palisade",
+    "de Bry weroance great lord of Virginia",
+    "Fort Raleigh earthworks Roanoke Island",
+    "Virginia Dare baptism historical painting",
+    "Ralph Lane Roanoke colony 1585",
+    "Manteo Croatoan historical",
+    "Augsburg cloth seal sixteenth century",
+    "Elizabethan rapier hilt museum",
+    "German jetton counting token 16th century",
+    "hammerscale iron forging residue",
+    "British Museum John White drawings",
+    "Outer Banks historic map 16th century",
+    "Roanoke Island historic photograph fort",
+    "Hatteras Island historic photograph",
+    "Dare Stone 1937 Emory",
+    "quartz inscribed stone close museum",
+    "16th century lead cloth seal",
+    "Algonquian reed house engraving Virginia",
+    "de Bry Indians fishing weirs Virginia",
+    "Nicholas Hilliard Walter Raleigh miniature",
+    "George Gower Elizabeth I",
+    "Hariot Virginia copperplate village",
+    "White watercolor elder winter clothing Pomeiooc"
+  ],
+  "video_prompts": [
+    "slow drift over foggy barrier island marsh at dawn, no people, no text, photoreal 16:9",
+    "gentle push toward weathered wooden palisade logs, moonlight, no people, photoreal 16:9",
+    "aerial glide along empty Outer Banks shoreline, overcast, no people, photoreal 16:9",
+    "macro drift across carved capital letters in pale bark, raking light, photoreal 16:9",
+    "slow move over iron flakes and pottery in dark sand, archaeological, photoreal 16:9"
+  ],
+  "pinned_archive": [
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a3/John_White_-_The_town_of_Pomeiooc%2C_1906%2C0509.1.8.jpg",
+      "q": "John White town of Pomeiooc",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/e/e7/John_White_-_A_wife_of_an_Indian_%27werowance%27_or_chief_of_Pomeiooc%2C_and_her_daughter%2C_1906%2C0509.1.13.jpg",
+      "q": "John White Pomeiooc woman and child",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/4/48/John_White_-_A_wife_of_a_%27werowance%27_or_chief_of_Pomeiooc_carrying_a_child%2C_1906%2C0509.1.15.jpg",
+      "q": "John White Pomeiooc wife carrying child",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/4/48/John_White_-_An_elder_from_Pomeiooc_in_his_winter_clothing%2C_1906%2C0509.1.19.jpg",
+      "q": "John White Pomeiooc elder winter",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/b7/John_White_-_An_Indian_medicine_man%2C_%27The_flyer%27%2C_1906%2C0509.1.16.jpg",
+      "q": "John White the flyer",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/3/3e/White_indian_conjuror.jpg",
+      "q": "John White Indian conjuror",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/94/John_White_-_The_wife_of_a_chief_or_%27werowance%27_of_Secotan%2C_1906%2C0509.1.18.jpg",
+      "q": "John White Secotan werowance wife",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/2/29/Village_of_Secoton_Theodor_de_Bry_1590.jpg",
+      "q": "de Bry Village of Secoton 1590",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c6/North_carolina_algonkin-dorf.jpg",
+      "q": "de Bry Carolina Algonquian village",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/d/d7/HAHL_D147_Village_of_Secotan.png",
+      "q": "Village of Secotan engraving",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/b3/Their_manner_of_fishing_in_Virginia_LCCN2001695730.jpg",
+      "q": "manner of fishing in Virginia de Bry",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/2/21/Indians_fishing_de_bry.jpg",
+      "q": "de Bry Indians fishing",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/4/4d/Map_of_Virginia%2C_Theodorus_de_Bry%2C_1591.jpg",
+      "q": "de Bry map of Virginia 1591",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/7/75/The_Carte_of_all_the_Coast_of_Virginia_by_Theodor_de_Bry_1585_1586.jpg",
+      "q": "de Bry carte of the coast of Virginia",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/5/59/The_Carte_of_all_the_Coast_of_Virginia_by_Theodor_de_Bry_-_Roanoke_Island_detail.jpg",
+      "q": "de Bry Roanoke Island map detail",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/d/d7/De_Bry_Chief_Virginia.jpg",
+      "q": "de Bry chief of Virginia",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/4/4c/A_weroan_or_great_Lorde_of_Virginia_%28detail%29.jpg",
+      "q": "weroan great lord of Virginia",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/aa/Sir_Walter_Raleigh.jpg",
+      "q": "Sir Walter Raleigh portrait",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/1/18/Sir_Walter_Raleigh_oval_portrait_by_Nicholas_Hilliard.jpg",
+      "q": "Hilliard Raleigh miniature",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/7/7b/Elizabeth_I_%28Armada_Portrait%29.jpg",
+      "q": "Elizabeth I Armada Portrait",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Queen_Elizabeth_I_by_George_Gower.jpg",
+      "q": "George Gower Elizabeth I",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/1/1d/English_Ships_and_the_Spanish_Armada%2C_August_1588_RMG_BHC0262.jpg",
+      "q": "English ships Spanish Armada 1588",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/d/d0/Spanish_Armada_fireships.jpg",
+      "q": "Spanish Armada fireships",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/2/27/Pomeiooc.in.1585.png",
+      "q": "Pomeiooc village 1585",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/96/North_carolina_algonkin-rituale01.jpg",
+      "q": "Carolina Algonquian ritual de Bry",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/5/5e/North_carolina_algonkin-kleidung01.jpg",
+      "q": "Carolina Algonquian clothing de Bry",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/0/0d/Sir_Walter_Raleigh_by_Simon_van_de_Passe_%281617%29.jpg",
+      "q": "Raleigh engraving van de Passe",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c7/British_%28English%29_School_-_English_Ships_and_the_Spanish_Armada%2C_August_1588_-_BHC0262_-_Royal_Museums_Greenwich.jpg",
+      "q": "Armada painting Greenwich",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/bb/Village_of_Secotan.jpg",
+      "q": "Village of Secotan",
+      "src": "wikimedia",
+      "kind": "image"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/94/Secoton01.jpg",
+      "q": "Secotan village plate",
+      "src": "wikimedia",
+      "kind": "image"
+    }
+  ],
+  "pinned_clips": [],
+  "_pinned": "pinned_archive — заранее найденные PD-файлы Wikimedia (гравюры Уайта/de Bry, карта Виргинии, портреты Raleigh/Elizabeth, Армада). Пайплайн качает их ПЕРВЫМИ через gather_pinned в assets.py. Видео-стока PD по Роаноку почти нет — клипы идут обычным поиском Pexels/Pixabay/archive_org по footage_queries, с запасом material_overshoot 1.5 (~20%+ на отбраковку, ближе к рабочему минимуму канала). Запросов больше обычного (~44 footage / ~38 archive), чтобы после vet хватило на 25 минут.",
+  "reject": {
+    "clip": [],
+    "arch": []
+  },
+  "style_override": {
+    "generated_share": 0.42,
+    "body_clip_share": 0.28,
+    "intro_clip_share": 0.78,
+    "intro_footage_seconds": 200,
+    "overlay_kind": "mist",
+    "overlay_opacity": 0.22,
+    "crf": 22,
+    "fps": 30
+  },
+  "youtube": {
+    "title": "The Lost Colony of Roanoke Was Never Lost",
+    "title_alternatives": [
+      "CROATOAN Was an Address — What Happened to the 117 at Roanoke",
+      "They Carved a Place Name. We Turned It Into a Ghost Story"
+    ],
+    "description_intro": "In 1590 John White came back to Roanoke on his granddaughter's third birthday and found one word cut into a post: CROATOAN. No bones. No cross of distress. For four hundred years we treated that carving like a curse. It was an address. This is a slow walk through White's own account, the hidden fort under a British Museum patch, the Dare Stones hoax, and the iron flakes on Hatteras — evidence-first, no jump scares, built to be left on in the dark.",
+    "chapters": [
+      "A Birthday on an Empty Shore",
+      "The Word Was an Address",
+      "The Pilot Who Would Not Sail North",
+      "The Year They Made Enemies",
+      "Two Men Who Had Seen England",
+      "Three Years of War",
+      "What White Actually Found",
+      "How a Sign Became a Ghost Story",
+      "The Stones That Lied",
+      "The Patch on the Map",
+      "Iron Flakes on Hatteras",
+      "What the Record Still Won't Say",
+      "They Were Never Lost"
+    ],
+    "description_notes": "A general-interest historical investigation. Colonist counts vary by source (commonly 115–117). Site X and the 2025 Hatteras hammerscale are treated as leads, not as a closed identification of every 1587 colonist. The Dare Stones series is treated as a hoax with a disputed first stone. Jamestown-era rumors are labeled as rumors. Virginia Dare is described as the first child born to English parents in North America, not the first European child in the Americas.",
+    "hashtags": [
+      "#AncientHistory",
+      "#Roanoke",
+      "#Archaeology",
+      "#AmericanHistory",
+      "#Documentary"
+    ],
+    "tags": [
+      "lost colony of Roanoke",
+      "CROATOAN meaning",
+      "Virginia Dare",
+      "John White Roanoke",
+      "Hatteras Croatoan",
+      "Site X Bertie County",
+      "Dare Stones",
+      "Outer Banks history",
+      "Elizabethan America",
+      "sleep documentary history",
+      "American archaeology",
+      "Manteo Croatoan",
+      "Fort Raleigh",
+      "unsolved American mystery",
+      "First Colony Foundation"
+    ],
+    "thumbnail_at": 720.0,
+    "cover_texts": [
+      "JUST AN ADDRESS",
+      "NO DISTRESS MARK"
+    ],
+    "cover_patterns": [
+      "object",
+      "tension"
+    ],
+    "cover_scenes": [
+      "extreme close-up of a palisade post with bark stripped and the word CROATOAN cut in fair capital letters, gold rim light, dark navy void behind the wood",
+      "an empty palisade gate on a foggy Outer Banks shore at blue hour, one post lit, no carved cross, dark water behind"
+    ],
+    "cover_prompts": [
+      "YouTube thumbnail 16:9 photoreal mystery-history still. PATTERN: object. HERO: a weathered palisade post filling the frame, bark stripped, the word CROATOAN carved in fair capital letters five feet from the ground, gold rim light, dark navy void. High contrast, not beige AI. Empty negative space in the upper third for type; hero not under the letters. Bottom-right 180x72px empty (duration badge). 8% margins. No faces to camera, no extra text, arrows, circles, YouTube UI. ONLY text \"{text}\" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, letter height 20–30% of frame, readable at 120px wide.",
+      "YouTube thumbnail 16:9 photoreal mystery-history still. PATTERN: tension. HERO: empty palisade gate on a foggy Roanoke shore at blue hour, one stripped post in a shaft of cold light, no Maltese cross, dark water behind. High contrast, dark charcoal base, one lit subject. Empty negative space for type. Bottom-right clear for duration badge. No faces, no extra text, arrows, circles. ONLY text \"{text}\" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, huge, phone-readable at 120px wide."
+    ],
+    "shorts_questions": [
+      "What did CROATOAN actually mean?",
+      "Why was there no distress mark?"
+    ]
+  }
+}

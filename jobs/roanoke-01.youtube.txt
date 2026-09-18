@@ -1,0 +1,102 @@
+══════════════════════════════════════
+ANCIENT WHISPERS — YOUTUBE PACK
+id: roanoke-01
+date: 2026-09-18
+══════════════════════════════════════
+
+## TITLE
+The Lost Colony of Roanoke Was Never Lost
+
+## TITLE ALTERNATIVES
+1. CROATOAN Was an Address — What Happened to the 117 at Roanoke
+2. They Carved a Place Name. We Turned It Into a Ghost Story
+3. No Cross, No Bones: What the Palisade Actually Said
+
+## DESCRIPTION
+In 1590 John White came back to Roanoke on his granddaughter's third birthday and found one word cut into a post: CROATOAN. No bones. No cross of distress. For four hundred years we treated that carving like a curse. It was an address.
+
+This is a slow walk through White's own account, the year the English made enemies on that coast, the hidden fort under a British Museum patch, the Dare Stones hoax, and the iron flakes on Hatteras. Evidence-first. No jump scares. Built to be left on in the dark.
+
+Chapters
+00:00  A Birthday on an Empty Shore
+…      The Word Was an Address
+…      The Pilot Who Would Not Sail North
+…      The Year They Made Enemies
+…      Two Men Who Had Seen England
+…      Three Years of War
+…      What White Actually Found
+…      How a Sign Became a Ghost Story
+…      The Stones That Lied
+…      The Patch on the Map
+…      Iron Flakes on Hatteras
+…      What the Record Still Won't Say
+…      They Were Never Lost
+(точные секунды подставит конвейер после сборки из субтитров; порядок и названия глав здесь
+ обязаны совпасть с youtube.chapters в JSON)
+
+Sources
+- White, John. Narrative of the 1590 voyage, in Richard Hakluyt, "The Principal Navigations" (1600) — palisade, CROATOAN without a cross of distress, looted chests, storm
+- Quinn, David Beers. "Set Fair for Roanoke: Voyages and Colonies, 1584–1606." UNC Press (1985)
+- Horn, James. "A Kingdom Strange: The Brief and Tragic History of the Lost Colony of Roanoke." Basic Books (2010)
+- Hariot, Thomas. "A Briefe and True Report of the New Found Land of Virginia" (1590), with de Bry engravings after John White
+- British Museum, John White watercolors and the map "La Virginea Pars" — 2012 imaging of paper patches / fort symbol
+- First Colony Foundation — Site X (Merry Hill / Salmon Creek, Bertie County) excavations; Augsburg cloth seal
+- Encyclopedia Virginia, "The Roanoke Colonies" — 1585–1587 chronology, Manteo baptism, Virginia Dare
+- National Park Service, Fort Raleigh National Historic Site — official summary of White's 1590 landing
+- Horton, Mark / Croatoan Archaeological Society / Scott Dawson — 2025 Hatteras hammerscale reports (treat as a lead, not a closed identification)
+- Popular Mechanics / HISTORY.com coverage of the 2025 Hatteras ironworking residue (March–June 2025)
+- Pearce, Haywood Jr. / Emory University — 1937 Dare Stone; subsequent stones widely regarded as forgeries
+- Kupperman, Karen Ordahl. "Roanoke: The Abandoned Colony." Rowman & Littlefield
+- National Geographic, "The Search for the Lost Colony of Roanoke" — Site X public summary
+- Tree-ring / drought studies of the 1580s Carolina coast (Stahle et al., Science 1998, and later citations)
+
+Notes
+Colonist counts vary by source (commonly 115–117); the video does not pretend there was a census. Site X and the 2025 Hatteras hammerscale are leads: English material on Algonquian sites in the right century, not a roll call of every 1587 name. The Dare Stones series is treated as a hoax; the first stone is left disputed. Jamestown-era rumors of English-clothed people inland are labeled as rumors. Virginia Dare is the first child born to English parents in North America, not the first European child in the Americas. This is not a ghost story and it does not speak for Croatoan / Hatteras descendant communities.
+
+## TAGS (10-15)
+lost colony of Roanoke, CROATOAN meaning, Virginia Dare, John White Roanoke, Hatteras Croatoan, Site X Bertie County, Dare Stones, Outer Banks history, Elizabethan America, sleep documentary history, American archaeology, Manteo Croatoan, Fort Raleigh, unsolved American mystery, First Colony Foundation
+
+## HASHTAGS
+#AncientHistory #Roanoke #Archaeology #AmericanHistory #Documentary
+
+## COVER PROMPT (xAI / image model)
+1. YouTube thumbnail 16:9. PATTERN object: extreme close-up of a weathered palisade post filling the frame, bark stripped, CROATOAN carved in fair capital letters, gold rim light, dark navy void. High contrast. Empty negative space in the upper third for type. Bottom-right clear for duration badge. No faces, no extra text. ONLY text "JUST AN ADDRESS" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, readable at 120px wide.
+2. YouTube thumbnail 16:9. PATTERN tension: empty palisade gate on a foggy Roanoke shore at blue hour, one stripped post in a shaft of cold light, no Maltese cross, dark water behind. High contrast, dark base. Empty region for type. Bottom-right clear. No faces. ONLY text "NO DISTRESS MARK" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, huge, phone-readable.
+
+## COVER TEXT OPTIONS
+1. JUST AN ADDRESS
+2. NO DISTRESS MARK
+
+## YOUTUBE COMMUNITY POST
+John White came back to Roanoke on his granddaughter's third birthday and found one word on a post: CROATOAN. No bones. No cross of distress. Tonight's episode is not a ghost story. It is about a forwarding address we spent four centuries refusing to read — White's own account, a fort symbol hidden under a patch on his map, a hoax we wanted more than a Native town, and iron flakes on Hatteras. Slow, evidence-first, lights low.
+
+## COMMUNITY IMAGE PROMPTS
+1. Photoreal cinematic square image of a stripped palisade post with shallow capital letters cut into pale bark, gold rim light, dark navy void, no overlay text, no people, 1:1
+2. Cinematic photoreal square image of John White's watercolor map of the Carolina sounds on a dark table, one small paper patch lifting at a corner, candlelight, no people, no added text, 1:1
+
+## SHORTS
+### Short 1 — Hook
+Title: CROATOAN Wasn't a Curse. It Was an Address.
+Question on screen: What did CROATOAN actually mean?
+Pitch: Opens on the carved post and the missing Maltese cross — the prearranged signal in under 10 seconds; the full video walks the evidence.
+
+### Short 2 — Revelation
+Title: They Hid a Fort Under a Patch on the Map
+Question on screen: Why was there no distress mark?
+Pitch: The 2012 British Museum patch / Site X reveal — a concrete new clue after 400 years, without claiming the case is closed.
+
+## PINNED COMMENT (first comment under the video)
+Thank you for sitting with this one in the quiet. Roanoke gets sold as a haunting; the palisade post is more interesting than that.
+
+If you know the Outer Banks, or if you grew up with the ghost version: what do you think the missing cross actually tells us? I am still not willing to close the file — I am willing to stop calling an address a curse.
+
+Sources are in the description. My favourite chapter is "The Patch on the Map." If you want the next investigation, subscribe and keep the notifications on — these are made to be left playing.
+
+## POSTING CHECKLIST
+- [ ] JSON лежит в jobs/roanoke-01.json
+- [ ] Заголовок / описание / теги скопированы
+- [ ] Первый комментарий закреплён (PINNED COMMENT)
+- [ ] Две обложки cover_1 / cover_2 после сборки
+- [ ] Два шортса short_1 / short_2 после сборки
+- [ ] Sources указаны в описании
+- [ ] Не конфликтует с последними темами (не Cahokia, не before-usa, не Guidestones)

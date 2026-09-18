@@ -2010,6 +2010,83 @@ def purge_broken(work: Path):
         log(f"── вымел {total} битых файлов из пула прошлых прогонов")
 
 
+def gather_pinned(job, work: Path):
+    """
+    Качает заранее найденные URL из спецификации — ДО обычного поиска.
+
+    Зачем: узкая историческая тема (гравюры Джона Уайта, карта de Bry,
+    палисад Fort Raleigh) плохо ищется по тегам стока. Автор/чат находит
+    конкретные PD/CC0 файлы и кладёт их в pinned_archive / pinned_clips.
+    Поиск по запросам всё равно идёт следом, с запасом на отбраковку.
+
+    Элемент — строка-URL или словарь {url, q, src, kind}. kind по
+    умолчанию image для archive и video для clips. Уже скачанные URL
+    пропускаются, нумерация продолжается с диска — как в gather().
+    """
+    def _one(items, folder, prefix, default_kind):
+        if not items:
+            return 0
+        out = work / folder
+        out.mkdir(parents=True, exist_ok=True)
+        man = out / "_manifest.json"
+        old = []
+        if man.exists():
+            try:
+                old = json.loads(man.read_text())
+            except json.JSONDecodeError:
+                old = []
+        seen = {o.get("url") for o in old if o.get("url")}
+        have = [int(p.name.split("_")[1]) for p in out.glob(f"{prefix}_*")
+                if p.name.split("_")[1].isdigit()]
+        n = max(have) + 1 if have else 0
+        got = []
+        for raw in items:
+            if isinstance(raw, str):
+                it = {"url": raw, "q": "pinned", "src": "pinned",
+                      "kind": default_kind}
+            elif isinstance(raw, dict):
+                it = dict(raw)
+            else:
+                continue
+            url = (it.get("url") or "").split("?")[0].strip()
+            if not url or url in seen:
+                continue
+            kind = it.get("kind") or default_kind
+            src = it.get("src") or "pinned"
+            q = it.get("q") or "pinned"
+            low = url.lower()
+            if kind == "video":
+                ext = ".webm" if low.endswith(".webm") else (
+                    ".ogv" if low.endswith(".ogv") else ".mp4")
+            else:
+                ext = ".png" if low.endswith(".png") else ".jpg"
+            dst = out / f"{prefix}_{n:03d}_{src}{ext}"
+            seen.add(url)
+            if not fetch(url, dst):
+                continue
+            if kind == "video":
+                trim_long_clip(dst)
+                cap_clip_resolution(dst)
+            ok_file, why = playable(dst)
+            if not ok_file:
+                log(f"  ! pinned {dst.name}: {why} — выбрасываю")
+                dst.unlink(missing_ok=True)
+                continue
+            got.append({"file": str(dst), "q": q, "url": url,
+                        "src": src, "kind": kind})
+            log(f"  pinned {prefix} {n:03d}: {src}  «{q}»")
+            n += 1
+        if got:
+            man.write_text(json.dumps(old + got, indent=1))
+            log(f"  pinned {prefix}: добавлено {len(got)}")
+        return len(got)
+
+    n_v = _one(job.get("pinned_clips") or [], "footage", "clip", "video")
+    n_a = _one(job.get("pinned_archive") or [], "archive", "arch", "image")
+    if n_v or n_a:
+        log(f"  pinned всего: {n_v} клипов, {n_a} архивных")
+
+
 def fetch_material(job, work: Path):
     """
     Только футаж и архивные фото. Ни озвучки, ни генерации — денег не тратит.
@@ -2019,6 +2096,7 @@ def fetch_material(job, work: Path):
     этого заново озвучку за деньги незачем.
     """
     purge_broken(work)
+    gather_pinned(job, work)
     vids = sources_from(job, "video_sources", VIDEO_SOURCES)
     phot = sources_from(job, "photo_sources", PHOTO_SOURCES)
     # ЗАПАС 40%. Робот отбраковывает материал сам (vet.py), и часть подборки
