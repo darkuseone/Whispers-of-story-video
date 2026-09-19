@@ -19,20 +19,19 @@ This is a slow walk through White's own account, the year the English made enemi
 
 Chapters
 00:00  A Birthday on an Empty Shore
-…      The Word Was an Address
-…      The Pilot Who Would Not Sail North
-…      The Year They Made Enemies
-…      Two Men Who Had Seen England
-…      Three Years of War
-…      What White Actually Found
-…      How a Sign Became a Ghost Story
-…      The Stones That Lied
-…      The Patch on the Map
-…      Iron Flakes on Hatteras
-…      What the Record Still Won't Say
-…      They Were Never Lost
-(точные секунды подставит конвейер после сборки из субтитров; порядок и названия глав здесь
- обязаны совпасть с youtube.chapters в JSON)
+01:55  The Word Was an Address
+03:45  The Pilot Who Would Not Sail North
+05:44  The Year They Made Enemies
+07:50  Two Men Who Had Seen England
+09:51  Three Years of War
+12:03  What White Actually Found
+14:07  How a Sign Became a Ghost Story
+15:56  The Stones That Lied
+18:03  The Patch on the Map
+20:25  Iron Flakes on Hatteras
+22:37  What the Record Still Won't Say
+24:13  They Were Never Lost
+(Runtime 27:08)
 
 Sources
 - White, John. Narrative of the 1590 voyage, in Richard Hakluyt, "The Principal Navigations" (1600) — palisade, CROATOAN without a cross of distress, looted chests, storm
@@ -85,6 +84,16 @@ Title: They Hid a Fort Under a Patch on the Map
 Question on screen: Why was there no distress mark?
 Pitch: The 2012 British Museum patch / Site X reveal — a concrete new clue after 400 years, without claiming the case is closed.
 
+### Short 3 — What White found (storm / palisade / chests — video inserts)
+Title: A Storm, an Empty Palisade, and One Word
+Question on screen: What did White actually find?
+Pitch: 12:03–13:18. Storm sinks a boat, empty houses, palisade, CROATOAN, looted chests. Motion stock, not stills.
+
+### Short 4 — Hatteras 2025 (shore / excavation)
+Title: They Found English Iron on Croatoan
+Question on screen: What did they find on Croatoan in 2025?
+Pitch: 20:39–21:39. Hatteras assemblages, hammerscale, Horton's "smoking gun" taken down a notch. Dig and shoreline clips.
+
 ## PINNED COMMENT (first comment under the video)
 Thank you for sitting with this one in the quiet. Roanoke gets sold as a haunting; the palisade post is more interesting than that.
 
@@ -97,6 +106,6 @@ Sources are in the description. My favourite chapter is "The Patch on the Map." 
 - [ ] Заголовок / описание / теги скопированы
 - [ ] Первый комментарий закреплён (PINNED COMMENT)
 - [ ] Две обложки cover_1 / cover_2 после сборки
-- [ ] Два шортса short_1 / short_2 после сборки
+- [ ] Четыре шортса short_1 / short_2 / short_3 / short_4 после сборки
 - [ ] Sources указаны в описании
 - [ ] Не конфликтует с последними темами (не Cahokia, не before-usa, не Guidestones)

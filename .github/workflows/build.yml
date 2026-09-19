@@ -589,7 +589,10 @@ jobs:
           files: |
             ${{ steps.out.outputs.dir }}/shorts/short_1.mp4
             ${{ steps.out.outputs.dir }}/shorts/short_2.mp4
-          fail_on_unmatched_files: true
+            ${{ steps.out.outputs.dir }}/shorts/short_3.mp4
+            ${{ steps.out.outputs.dir }}/shorts/short_4.mp4
+            ${{ steps.out.outputs.dir }}/youtube.txt
+          fail_on_unmatched_files: false
 
       - name: Комплект для выкладки отдельно
         if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'

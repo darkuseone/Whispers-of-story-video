@@ -259,6 +259,19 @@ def words_from_marks(marks):
 
 # ─────────────────────── ВЫБОР ДВУХ ОКОН ───────────────────────
 
+def clip_share(shots, t0, t1):
+    """Доля экранного времени окна, закрытая стоковым видео, не фото."""
+    dur = max(0.01, t1 - t0)
+    acc = 0.0
+    for s in shots or []:
+        if s.get("kind") != "clip":
+            continue
+        a = float(s["start"])
+        b = a + float(s["duration"])
+        acc += max(0.0, min(b, t1) - max(a, t0))
+    return acc / dur
+
+
 def window_from(marks, idx, total, target=None, hard=None):
     """Окно от начала предложения idx: целые предложения, до hard max."""
     target = TARGET_LEN if target is None else target
@@ -274,11 +287,18 @@ def window_from(marks, idx, total, target=None, hard=None):
     return round(t0, 3), round(max(t1, t0 + 1.0), 3)
 
 
-def pick_windows(story, marks, total):
+def pick_windows(story, marks, total, job=None, shots=None):
     """
     Два окна: hook и revelation (или escalation). Каждое начинается с
     начала предложения. Окна не пересекаются.
+
+    Если в спецификации n_shorts > 2 и/или shorts_extra — добираем окна.
+    Extra по умолчанию берём из мест, где в плане больше стокового видео,
+    а не Ken Burns по фото: шортс на телефоне держит движение исходника.
     """
+    job = job or {}
+    n_wanted = int(job.get("n_shorts") or N_SHORTS)
+    n_wanted = max(N_SHORTS, min(6, n_wanted))
     soft = total < 180
     min_len = MIN_LEN_SOFT if soft else MIN_LEN
     target = min(TARGET_LEN, max(35.0, total * 0.35)) if soft else TARGET_LEN
@@ -289,13 +309,14 @@ def pick_windows(story, marks, total):
     def overlaps(a0, a1):
         return any(a0 < w["t1"] + 2.0 and a1 > w["t0"] - 2.0 for w in wins)
 
-    def add(idx, role, why):
+    def add(idx, role, why, prefer_clips=False):
         t0, t1 = window_from(marks, idx, total, target=target, hard=hard)
         if t1 - t0 < min_len:
             return False
         if overlaps(t0, t1):
             return False
-        wins.append(dict(t0=t0, t1=t1, role=role, why=why, mark_idx=idx))
+        wins.append(dict(t0=t0, t1=t1, role=role, why=why, mark_idx=idx,
+                         prefer_clips=prefer_clips))
         return True
 
     add(0, "hook", "первые фразы ролика — готовый крючок сценария")
@@ -320,20 +341,65 @@ def pick_windows(story, marks, total):
                 break
             add(b.first_mark, b.kind, "добор: сильных долей не хватило")
     starts = [m["start"] for m in marks]
+
+    for ex in job.get("shorts_extra") or []:
+        if len(wins) >= n_wanted:
+            break
+        try:
+            t0 = round(float(ex["t0"]), 3)
+            t1 = round(float(ex["t1"]), 3)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if t1 - t0 < min_len or t0 >= total - 1.0:
+            continue
+        t1 = min(t1, total - 0.1)
+        if overlaps(t0, t1):
+            continue
+        idx = bisect_left(starts, t0)
+        if idx >= len(marks):
+            idx = len(marks) - 1
+        wins.append(dict(
+            t0=t0, t1=t1,
+            role=str(ex.get("role") or "extra"),
+            why=str(ex.get("why") or "окно из спецификации"),
+            mark_idx=idx,
+            prefer_clips=True))
+
+    if shots and len(wins) < n_wanted:
+        scored = []
+        step = max(1, len(marks) // 40)
+        for idx in range(0, len(marks), step):
+            t0, t1 = window_from(marks, idx, total, target=target, hard=hard)
+            if t1 - t0 < min_len or overlaps(t0, t1):
+                continue
+            scored.append((clip_share(shots, t0, t1), idx, t0, t1))
+        scored.sort(reverse=True)
+        for share, idx, t0, t1 in scored:
+            if len(wins) >= n_wanted:
+                break
+            if share < 0.18:
+                continue
+            if overlaps(t0, t1):
+                continue
+            wins.append(dict(
+                t0=t0, t1=t1, role="extra", mark_idx=idx, prefer_clips=True,
+                why=f"добор по видеовставкам ({share:.0%} клипов)"))
+
     for k in range(20):
-        if len(wins) >= N_SHORTS:
+        if len(wins) >= n_wanted:
             break
         idx = bisect_left(starts, total * (0.18 + 0.08 * k))
         if idx < len(marks):
-            add(idx, "extra", "добор равным шагом по таймлайну")
-    while len(wins) < N_SHORTS:
+            add(idx, "extra", "добор равным шагом по таймлайну",
+                prefer_clips=True)
+    while len(wins) < n_wanted:
         w = dict(wins[len(wins) % max(len(wins), 1)])
         w["role"], w["why"] = "extra", "ролик короче двух окон, окно повторено"
         wins.append(w)
 
     wins.sort(key=lambda w: {"hook": 0, "revelation": 1,
                              "escalation": 2}.get(w["role"], 3))
-    return wins[:N_SHORTS]
+    return wins[:n_wanted]
 
 
 def wrap_question(text: str) -> str:
@@ -440,7 +506,7 @@ def _shot_blob(sh: dict) -> str:
     ]))
 
 
-def cut_plan(shots, t0, t1, rng, words=None):
+def cut_plan(shots, t0, t1, rng, words=None, prefer_clips=False):
     """
     Перерезка окна: 2.8–4.8 с на кадр + семантический выбор исходника.
 
@@ -469,7 +535,11 @@ def cut_plan(shots, t0, t1, rng, words=None):
         def score(s):
             overlap = len(said_tok & _tokens(_shot_blob(s)))
             bonus = 0.35 if s is on_tl else 0.0
-            kind_b = 0.15 if s.get("kind") == "clip" and t - t0 < 12 else 0.0
+            if s.get("kind") == "clip":
+                kind_b = 0.55 if prefer_clips else (
+                    0.15 if t - t0 < 12 else 0.0)
+            else:
+                kind_b = -0.25 if prefer_clips else 0.0
             return overlap + bonus + kind_b
 
         sh = max(cand, key=score)
@@ -794,7 +864,8 @@ def render_short(n, win, shots, words, marks, final: Path, sdir: Path,
         shutil.rmtree(tmp, ignore_errors=True)
     tmp.mkdir(parents=True, exist_ok=True)
 
-    cuts = cut_plan(shots, t0, t1, rng, words=words)
+    cuts = cut_plan(shots, t0, t1, rng, words=words,
+                    prefer_clips=bool(win.get("prefer_clips")))
     canvas_cache = {}
     segs = []
     for ci, c in enumerate(cuts):
@@ -926,17 +997,18 @@ def main(job_path):
         log(f"слова: {len(words)} раскиданы по длине (посимвольных "
             f"тайм-кодов нет — синтетика?)")
 
-    wins = pick_windows(story, marks, total)
+    wins = pick_windows(story, marks, total, job=job, shots=shots)
     y = job.get("youtube") or {}
     job_qs = list(y.get("shorts_questions") or [])
     sdir = out / "shorts"
     sdir.mkdir(parents=True, exist_ok=True)
+    n_wanted = max(N_SHORTS, min(6, int(job.get("n_shorts") or N_SHORTS)))
     for stale in sdir.glob("short_*.mp4"):
         try:
             n = int(stale.stem.split("_")[1])
         except (IndexError, ValueError):
             continue
-        if n > N_SHORTS:
+        if n > n_wanted:
             stale.unlink(missing_ok=True)
 
     log(f"── шортсы: {len(wins)} окна")

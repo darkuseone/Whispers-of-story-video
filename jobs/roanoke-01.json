@@ -33,6 +33,21 @@
   "vet_vision": true,
   "material_overshoot": 1.5,
   "fill_limit": 27,
+  "n_shorts": 4,
+  "shorts_extra": [
+    {
+      "t0": 723.364,
+      "t1": 798.312,
+      "role": "extra",
+      "why": "шторм + пустой частокол + сундуки — видеовставки, не фото"
+    },
+    {
+      "t0": 1238.781,
+      "t1": 1299.261,
+      "role": "extra",
+      "why": "Hatteras 2025 hammerscale — берег и раскопки"
+    }
+  ],
   "photo_sources": [
     "wikimedia",
     "loc",
@@ -469,7 +484,9 @@
     ],
     "shorts_questions": [
       "What did CROATOAN actually mean?",
-      "Why was there no distress mark?"
+      "Why was there no distress mark?",
+      "What did White actually find?",
+      "What did they find on Croatoan in 2025?"
     ]
   }
 }
