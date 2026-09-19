@@ -25,8 +25,8 @@ Your deliverables are always:
    footage as anachronistic. This is not hypothetical: it happened on
    `dead-internet-01`, which is the worked example to copy.
 2. `jobs/<id>.youtube.txt` — posting pack (title, description + sources,
-   tags, **two CTR cover prompts** (font locked to channel yellow
-   condensed caps; composition from `docs/протокол-обложки.md`),
+   tags, **two CTR cover prompts** (Anton #FFD400 locked to the upper third;
+   detailed 16:9 scene below; grid in `docs/протокол-обложки.md`),
    community post + image prompts, two Shorts titles/questions,
    **pinned first comment**)
 
