@@ -205,21 +205,86 @@ def chapters(job, cues):
 # Подписи в описании. Канал англоязычный, поэтому и умолчания английские;
 # ролик на другом языке переопределяет их полем description_labels в
 # спецификации, не трогая код.
-LABELS = {"chapters": "Chapters", "runtime": "Runtime"}
+LABELS = {"chapters": "Chapters", "sources": "Sources"}
 
 
 def description(job, chaps, total):
+    """
+    Описание ОДНИМ БЛОКОМ ПОД КОПИРОВАНИЕ, и порядок здесь — требование
+    автора, а не вкус: интро, главы, оговорка, источники, хэштеги. Он
+    выделяет это целиком и вставляет в поле YouTube одним движением, и
+    любая секция не на своём месте заставляет его собирать текст руками.
+
+    Строки «Runtime: MM:SS» здесь больше нет. YouTube показывает
+    хронометраж сам, у плеера, и дублировать его в описании незачем.
+
+    Источники берутся из youtube.sources спецификации. Без них описание
+    выходит неполным: канал держится на проверяемости, а ссылка на то,
+    откуда взят факт, живёт в описании, а не в голове у зрителя.
+    """
     y = job["youtube"]
     lab = {**LABELS, **(y.get("description_labels") or {})}
     parts = [y["description_intro"].strip(), "", lab["chapters"], ""]
     parts += [f"{stamp(t)}  {name}" for t, name in chaps]
     if y.get("description_notes"):
         parts += ["", y["description_notes"].strip()]
-    parts += ["", f"{lab['runtime']}: {stamp(total)}"]
+    sources = as_list(y.get("sources"), "sources") if y.get("sources") else []
+    if sources:
+        parts += ["", lab["sources"], ""]
+        parts += [s if s.startswith(("-", "•")) else f"- {s}" for s in sources]
     hashtags = as_list(y.get("hashtags"), "hashtags")
     if hashtags:
         parts += ["", " ".join(hashtags)]
     return "\n".join(parts)
+
+
+def pack_extras(job):
+    """
+    Всё, что автор копирует ПОМИМО описания: обложки, пост в сообщество,
+    шортсы. Раньше этого в work/<id>/out/youtube.txt не было вовсе — файл
+    обрывался на тегах, и автору приходилось лезть за промптами обложек и
+    названиями шортсов в jobs/<id>.youtube.txt, то есть держать два файла
+    вместо одного. Для четырёх шортсов это особенно заметно: у каждого
+    своё название и свой вопрос на карточке, и по памяти их не собрать.
+    """
+    y = job["youtube"]
+    out = []
+
+    covers = as_list(y.get("cover_prompts"), "cover_prompts") \
+        if y.get("cover_prompts") else []
+    texts = as_list(y.get("cover_texts"), "cover_texts") \
+        if y.get("cover_texts") else []
+    if covers:
+        out += ["", "ПРОМПТЫ ОБЛОЖЕК (xAI)", ""]
+        for i, pr in enumerate(covers, 1):
+            hook = texts[i - 1] if i <= len(texts) else ""
+            out += [f"{i}. Хук на обложке: {hook}" if hook else f"{i}.",
+                    f"   {pr}", ""]
+
+    post = (y.get("community_post") or "").strip()
+    if post:
+        out += ["ПОСТ В СООБЩЕСТВО", "", post, ""]
+    cprompts = as_list(y.get("community_image_prompts"),
+                       "community_image_prompts") \
+        if y.get("community_image_prompts") else []
+    if cprompts:
+        out += ["КАРТИНКА К ПОСТУ (1:1)", ""]
+        out += [f"{i}. {pr}" for i, pr in enumerate(cprompts, 1)]
+        out += [""]
+
+    titles = as_list(y.get("shorts_titles"), "shorts_titles") \
+        if y.get("shorts_titles") else []
+    quests = as_list(y.get("shorts_questions"), "shorts_questions") \
+        if y.get("shorts_questions") else []
+    if titles or quests:
+        out += ["ШОРТСЫ", ""]
+        for i in range(max(len(titles), len(quests))):
+            t = titles[i] if i < len(titles) else "(название не задано)"
+            q = quests[i] if i < len(quests) else "(вопрос подобран автоматически)"
+            out += [f"short_{i + 1}.mp4",
+                    f"  Название:        {t}",
+                    f"  Вопрос на карточке: {q}", ""]
+    return "\n".join(out)
 
 
 def thumbnail(video: Path, out: Path, at: float, title: str, style="lower_left"):
@@ -330,8 +395,10 @@ def main(job_path):
         "ЗАГОЛОВОК\n" + y["title"] +
         "\n\nЗАПАСНЫЕ ЗАГОЛОВКИ\n" +
         "\n".join(f"- {t}" for t in y.get("title_alternatives", [])) +
-        "\n\nОПИСАНИЕ\n" + description(job, chaps, total) +
-        f"\n\nТЕГИ ({len(tags)} из {TAGS_LIMIT} символов)\n" + tags + "\n",
+        "\n\nОПИСАНИЕ (копировать одним блоком)\n"
+        + description(job, chaps, total) +
+        f"\n\nТЕГИ ({len(tags)} из {TAGS_LIMIT} символов)\n" + tags + "\n"
+        + pack_extras(job),
         encoding="utf-8")
 
     # ДВЕ ОБЛОЖКИ ЧЕРЕЗ xAI. Крупный жёлтый текст рисует модель прямо на

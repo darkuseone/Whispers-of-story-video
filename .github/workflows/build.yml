@@ -202,11 +202,15 @@ jobs:
     if: needs.detect.outputs.run_build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 330      # лимит GitHub 360, оставляем запас на выкладку
-    env:
-      # Magnific (Freepik) обратно включён: безлимитная генерация по
-      # подписке. xAI API упёрся в месячный лимит команды — 70% кадров
-      # снова рисует Magnific, seed/<id>/ закрывает дыру без API.
-      MAGNIFIC_ENABLED: "1"
+    # MAGNIFIC_ENABLED ЗДЕСЬ БОЛЬШЕ НЕ ЗАДАЁТСЯ, и вернуть его нельзя без
+    # разговора с автором. Пока переменная стояла в "1", включённой была не
+    # только генерация картинок: на miami-tequesta-01 в пул футажа уехали
+    # 14 СГЕНЕРИРОВАННЫХ видеовставок (`по источникам: magnific_video 14`)
+    # плюс семь запросов к библиотеке готового стока. Заказано обратное —
+    # весь футаж настоящий, машина рисует только изображения, и не больше
+    # 10-15% экранного времени. Генерация видео запрещена отдельно и
+    # жёстко, в magnific.generate_video, чтобы одна переменная среды не
+    # возвращала её снова.
     strategy:
       fail-fast: false
       matrix:
@@ -579,6 +583,24 @@ jobs:
             ${{ steps.out.outputs.dir }}/cover_1.jpg
             ${{ steps.out.outputs.dir }}/cover_2.jpg
           fail_on_unmatched_files: true
+
+      # ШОРТСОВ МОЖЕТ БЫТЬ БОЛЬШЕ ДВУХ. Основной релиз выше требует
+      # short_1/short_2 и падает, если их нет (fail_on_unmatched_files),
+      # поэтому третий и четвёртый докладываются отдельным шагом, которому
+      # отсутствие файла — не ошибка: у выпуска с n_shorts: 2 их просто нет.
+      # Без этого шага short_3/short_4 оставались на раннере и приезжали в
+      # релиз только отдельным прогоном stage: shorts.
+      - name: Дополняем релиз — шортсы 3-4 и пакет выкладки
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'shorts'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: final-${{ steps.pick.outputs.job }}
+          name: Готово — ${{ steps.pick.outputs.job }}
+          files: |
+            ${{ steps.out.outputs.dir }}/shorts/short_3.mp4
+            ${{ steps.out.outputs.dir }}/shorts/short_4.mp4
+            ${{ steps.out.outputs.dir }}/youtube.txt
+          fail_on_unmatched_files: false
 
       - name: Обновляем шортсы в релизе
         if: steps.pick.outputs.stage == 'shorts'

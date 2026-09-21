@@ -1,0 +1,684 @@
+{
+ "_": "Разведка 2026-09-21: американская тема, которой ещё не было на канале — Майами. Не Кахокия (mound city, хронология одной цивилизации), не before-usa (типы источников), не Роанок (исчезнувшая колония), не Guidestones (true-crime). Выбран Tequesta / Miami Circle: город стоит ПРЯМО НА городе, которому две тысячи лет, и раскопки идут прямо сейчас под небоскрёбами Brickell (более миллиона артефактов, 2022-2025). Угол НЕ «куда исчез народ» — исчезновение задокументировано (эпидемии, набеги, вывоз на Кубу 1763). Авторский тезис: ничего не потеряно, всё описано и лежит в коробках; потеряно только место, где горожанин может об этом узнать. Форма — ревизия одного квадратного километра по адресам.",
+ "_проверить": [
+  "Miami Circle: 38 футов (11.5 м), 24 крупные лунки + сотни постмолдов; радиоуглерод по углю — порядка 1700-2000 лет; диапазон занятости участка шире. Не давать одну жёсткую дату как факт.",
+  "Покупка участка штатом — 26.7 млн долларов, ноябрь 1999, 2.5 акра; застройщик покупал землю за 8.5 млн. NRHP 2002, National Historic Landmark 2009. Сейчас круг засыпан защитным грунтом.",
+  "Версия Джеральда Миланича про дренажное поле септика — реальная опубликованная критика 1999 года, а не выдумка. Возражения: терракотовые трубы септика ПЕРЕСЕКАЮТ круг, кальцит на срезах, артефакты в заполнении.",
+  "Базальтовые топоры — источник камня по публикациям экскаваторов в Джорджии (около 600 миль). Формулировать как 'сотни миль на север', не как доказанный маршрут торговли.",
+  "Акула ~5 футов, череп дельфина, панцирь морской черепахи — описаны как преднамеренные депозиты. Интерпретация 'жертвенные' — осторожно.",
+  "Ponce de León 1513 — название бухты 'Chequesta/Tequesta' из отчёта плавания; подавать как 'в версии отчёта', не как автограф.",
+  "Миссия Менендеса на Miami River — март 1567, ~30 солдат, брат-иезуит Francisco Villareal; оставлена к 1570. Письма Виллареала — реальный источник, но пересказывать своими словами, не цитировать дословно.",
+  "1743: отцы José María Mónaco и José Javier Alaña, миссия Santa María de Loreto; считали МЕНЕЕ 200 человек в смешанной общине (Tequesta + жители Кис + Calusa). Миссия свёрнута в следующем году.",
+  "1763: передача Флориды Британии, вывоз остатков христианизированных индейцев Южной Флориды на Кубу. Цифры 'несколько десятков мужчин' — по разным источникам, подавать как оценку.",
+  "1896: курган у устья реки при строительстве Royal Palm Hotel; размеры (~100 на 70 футов, 20-25 футов высоты) и 50-60 черепов — по ВОСПОМИНАНИЯМ рабочих, записанным позже. Так и говорить.",
+  "Met Square (2013-2014): постмолды, складывающиеся в круглые постройки; в публикациях фигурируют 'шесть' и 'восемь' — в сценарии 'восемь и более по тогдашним подсчётам'. Сохранены под стеклом два участка бедрока.",
+  "Brickell/Related Group 2022-2025: 'более миллиона артефактов', Late Archaic — Glades II, погребения включая младенческое (предварительный отчёт, октябрь 2024); HEP Board в сентябре 2024 отправил план на доработку до января 2025. Имён застройщика и адресов в сценарии НЕТ намеренно — формулировки обобщённые.",
+  "2025: отдельная находка индейского погребального материала на стройке в Brickell (1809 Brickell / St. Regis по сообщениям прессы). В сценарии — без имени объекта.",
+  "Федерально признанного народа-потомка Tequesta сегодня нет; Seminole и Miccosukee не происходят от Tequesta, но участвуют в консультациях по останкам. Проверить формулировку перед выкладкой.",
+  "Археологическая ордонанс Miami-Dade — 1981 год. Проверить год перед выкладкой, если будет спор.",
+  "Переход на каноэ до Кубы/Багам — обсуждаемая возможность, не доказанный регулярный маршрут. В сценарии оговорено вслух."
+ ],
+ "_структура": "Не хронология цивилизации (cahokia), не разбор по типам источников (before-usa), не clue-first reverse (roanoke): РЕВИЗИЯ ОДНОГО КВАДРАТНОГО КИЛОМЕТРА ПО АДРЕСАМ. Открывается не событием, а местом — газон над кругом; дальше вниз через слои (чёрная земля, бедрок, инструменты), потом круг и драка 1999-го, потом назад по времени (1513 / 1567 / 1743 / 1896) и снова вперёд в сегодняшние стройки (Met Square, миллион артефактов), кольцо на том же газоне. Форма: site-audit, вертикальный разрез вместо ленты времени.",
+ "_длительность": "30-40 минут озвучки. Ориентир ~5650 слов по script_blocks при ~150-155 слов/мин и speed 0.91 → примерно 36-39 минут. Тема: археология под современным американским городом.",
+ "_pinned": "pinned_archive — заранее найденные и ПРОВЕРЕННЫЕ файлы Wikimedia Commons (Miami Circle / Brickell Point, устье Miami River, Biscayne Bay, мангры и сограсс, Royal Palm Hotel и Fort Dallas, Флаглер, гравюры Флориды XVI века). Берутся СТАНДАРТНЫЕ размеры миниатюр (upload/thumb.wikimedia.org/.../NNNNpx-), а не оригиналы: Commons отдаёт 429 на массовую выкачку оригиналов и прямо просит использовать миниатюры. Клипы по теме на Commons почти отсутствуют, поэтому видео идёт обычным поиском Pexels/Pixabay по footage_queries — там это НАСТОЯЩАЯ съёмка современного Майами, залива и болот, то есть ровно предмет выпуска.",
+ "id": "miami-tequesta-01",
+ "voice_settings": {
+  "stability": 0.65,
+  "similarity": 0.85,
+  "speed": 0.91,
+  "style": 0
+ },
+ "bed_gain_db": -27,
+ "batch": false,
+ "magnific_share": 0.0,
+ "vet_vision": true,
+ "material_overshoot": 1.8,
+ "fill_limit": 20,
+ "n_shorts": 4,
+ "photo_sources": [
+  "wikimedia",
+  "openverse",
+  "loc",
+  "met",
+  "nasa"
+ ],
+ "video_sources": [
+  "pexels",
+  "pixabay",
+  "archive_org",
+  "wikimedia_video"
+ ],
+ "lut": "aegean_teal",
+ "archive_lut": "archive_platinum",
+ "topic": {
+  "slug": "tequesta-miami-buried-city",
+  "keywords": [
+   "Tequesta",
+   "Miami Circle",
+   "Brickell Point",
+   "Miami River village",
+   "Met Square Miami",
+   "Bob Carr archaeology",
+   "Glades culture Florida",
+   "Royal Palm Hotel mound 1896",
+   "Santa Maria de Loreto 1743",
+   "Biscayne Bay prehistory",
+   "Miami archaeology ordinance",
+   "ancient downtown Miami"
+  ]
+ },
+ "vet_context": "ACCEPT if the frame serves THIS episode: the two-thousand-year-old Tequesta town at the mouth of the Miami River, the subtropical south Florida environment it lived in, and the modern city of Miami that is built directly on top of it. This episode is a present-day American archaeology investigation, NOT a Mediterranean antiquity episode.\n\nACCEPT:\n1. MODERN MIAMI AND ITS CONSTRUCTION: downtown Miami and Brickell skylines, glass towers, the Miami River, bridges, causeways, city streets by day or night, cranes, excavators, foundation pits, demolition, surveying, construction sites, an empty city lawn or park. The modern city is HALF THE SUBJECT of this episode — never reject a modern frame as 'wrong period'.\n2. SOUTH FLORIDA NATURE: Biscayne Bay, turquoise shallow water, seagrass flats, barrier islands, mangroves, sawgrass prairie and Everglades wetland, cypress swamp, limestone outcrops and porous rock, palms, tropical storms and rain, fog over marsh, night sky over water.\n3. THE BAY'S ANIMALS AND FOOD: manatee, sharks in shallow water, sea turtles, fish, wading birds, pelicans, conch and other shells, shell beaches.\n4. ARCHAEOLOGY AT WORK: excavation trenches, exposed bedrock with holes and basins, soil layers, people screening dirt, field recording, site plans, numbered artifacts, museum storage boxes and shelves, museum display cases. Archaeologists and museum visitors in frame are fine — this is how the subject reaches the viewer.\n5. ARTIFACTS OF THIS WORLD: shell tools, conch adzes, shark-tooth blades, bone points, plain prehistoric pottery sherds, ground stone axes, dugout canoes.\n6. THE HISTORICAL PAPER TRAIL OF FLORIDA: sixteenth-century engravings of Florida and its people by Theodor de Bry and after Jacques le Moyne, antique maps of Florida and the Caribbean, Spanish colonial portraits, sailing ships of the 16th century, manuscript letters and parchment.\n7. EARLY MIAMI, 1890s-1930s: the Royal Palm Hotel, Fort Dallas, the Miami River in old photographs, railway construction, early street scenes, period boats.\n\nREJECT:\n1. FRAMES WITH NO RELATION TO THE EPISODE: sports cars, ski slopes, snow, office meetings, generic business people, weddings, food plating, gym, holiday crowds, cats and dogs, seagull or insect close-ups that say nothing about the bay.\n2. ANOTHER CIVILIZATION AS THE SUBJECT OF THE FRAME: Maya, Aztec or Inca pyramids and stone carvings, Egypt, Greece, Rome, medieval castles, Mesopotamia, Asian temples. A generic 'ancient ruin' that is clearly not south Florida is a reject.\n3. NATIVE AMERICAN IMAGERY OF OTHER REGIONS PRESENTED AS THE SUBJECT: Plains tipis, war bonnets, Southwest pueblos and canyons, totem poles, powwow dancers in regalia. The people of this episode are a Florida coastal fishing culture and none of that iconography belongs to them.\n4. FANTASY AND RITUAL KITSCH: crystal skulls, glowing portals, alien or ancient-astronaut imagery, tarot, ghosts, obviously computer-generated 'ancient city' renders, treasure chests of gold coins.\n5. WRONG GEOGRAPHY SOLD AS FLORIDA: pine or spruce forest with mountains, rocky northern coasts with cliffs, deserts, tundra. Flat subtropical coast, wetland and warm shallow water is what this place looks like.\n6. TEXT-HEAVY SCREENSHOTS, charts, logos, watermarks, stock-site branding, modern advertising.",
+ "vet_context_note": "Современный Майами — ПОЛОВИНА предмета этого выпуска, поэтому стекло, краны и ночные улицы принимаются наравне с мангровыми зарослями. Бракуется чужая цивилизация как предмет кадра и индейская иконография других регионов (типи, уборы, пуэбло) — это не этот народ.",
+ "script_blocks": [
+  "There is a patch of grass in downtown Miami, about the size of a tennis court, between a condominium tower and the mouth of a river. People eat lunch on it. Tourists walk across it on the way to the water taxi and never look down. Underneath that grass, cut into the limestone bedrock, there is a circle thirty-eight feet across, made of twenty-four basins and hundreds of smaller holes, and it was carved by hand roughly two thousand years ago.\n\nIt is not a rumor. It is a National Historic Landmark. It is also buried, deliberately, under sod and fill, because that is the cheapest way to keep limestone from crumbling in the salt air.\n\nI keep coming back to that image, because it is the whole story in one frame. Miami has a reputation as a city with no past — glass, neon, money, a place that was swamp until a railroad showed up in 1896. That story is wrong in a specific and almost unbelievable way. Miami is built directly on top of a town that was already two thousand years old when the first European ship sailed into the bay. Not near it. On top of it. The river mouth that the Tequesta chose is the river mouth the city chose, for exactly the same reasons: fresh water meeting salt, a limestone shelf that does not flood, a channel deep enough for boats.\n\nTonight I want to do something slower than a mystery. I am not going to ask where an ancient people went, because we mostly know, and the answer is neither magic nor abduction. I want to walk a few city blocks — literal addresses, ones you can find on a map right now — and go down through what is underneath each of them. Four hundred and one Brickell Avenue. Three hundred Biscayne Boulevard Way. The corner where a luxury hotel is going up this year. Under each one there is a layer of black earth, shell, bone and worked stone, and in the last thirty years a construction permit has been the only thing that ever brought that layer into the light.\n\nHere is my honest position, and I will defend it for the next half hour. The Tequesta are not a lost civilization. Nothing about them is lost in the way that word gets used on the internet. Their town plan has been mapped. Their tools sit in boxes. More than a million objects from their world have been dug out of the ground in downtown Miami in the last four years alone, catalogued by professional archaeologists, and moved into storage.\n\nWhat is missing is not evidence. What is missing is any place in the city where a person can stand and be told, plainly: people lived here for two thousand years, and here is what they left. Let me show you what is actually down there.",
+  "Let me get one uncomfortable thing out of the way first, because it shapes everything you will see in this video.\n\nThere is no portrait of a Tequesta person. None. No sketch made from life, no painted village, no engraving of their houses done by someone who stood in front of them. When you look up this story, the images that come back to you are almost always the wrong people — engravings of Timucua towns from northern Florida, made in the 1590s by Theodor de Bry from paintings attributed to Jacques le Moyne, showing palisaded villages, granaries, ceremonies, chiefs. Those pictures are extraordinary, and they are also from four hundred miles away, a different language, a different world. De Bry was working in Frankfurt from other men's drawings. He had never been to Florida, and neither he nor his sources ever saw Biscayne Bay.\n\nI am going to show you some of those engravings in this video, because they are the closest visual record we have of sixteenth-century Florida and because they carry real information about coastal life here. But I want you to hold them at arm's length the way I do. They are not the Tequesta. When you see a village with a high fence and rows of round-roofed houses, that is an artist in Germany, imagining north Florida, for a European audience that wanted to see something classical.\n\nSo what do we actually have? Three kinds of things, and they are unevenly weighted.\n\nWe have the ground. That is the heavy one — middens, post holes, hearths, burials, tools, food remains, all of it under modern Miami, and almost all of it recovered under emergency conditions with a crane idling nearby.\n\nWe have a small stack of Spanish documents. A ship's account from 1513. A soldier's report from the 1560s. Letters from a Jesuit lay brother who lived here for about two years and did not enjoy it. A census-like note from 1743 that is one of the last times anyone counted these people as a living community. Every one of those documents was written by someone who wanted something from them — land, souls, labor, safety — and that shows.\n\nAnd we have absence. The name of the town, Tequesta, survives because the Spanish wrote it down. The name of the language does not. We know a handful of words. We do not know what these people called themselves, what they called the river, or what they called the circle in the rock.\n\nI find that absence clarifying rather than romantic. It tells you exactly how thin the written record gets when a culture is not the one doing the writing — and it means that in this story the ground is not a supplement to the history. The ground is the history.",
+  "So let us go down into it.\n\nIf you could peel the asphalt off downtown Miami, the first thing you would notice is not artifacts. It is the color of the soil. Across a big piece of the north bank of the Miami River and the south bank at Brickell Point, the dirt turns black — a greasy, dark, almost sticky layer packed with crushed shell. Archaeologists call this a midden. In plain language it is two thousand years of kitchen.\n\nConch, whelk, oyster, clam. Fish bone by the ton — catfish, snapper, mullet, jack. Deer. Turtle. Shark vertebrae. Charcoal from cooking fires, in lenses you can see in the wall of a trench. In places on this coast, that black layer runs several feet deep. It does not build up in a season, or during a visit, or on a seasonal camp. It builds up when generations of people live in the same spot and throw their shells in the same direction for longer than the entire history of the United States.\n\nUnder the black layer is the reason any of this exists: the rock. South Florida sits on limestone — here, the Miami Limestone, an oolitic formation made of tiny rounded grains cemented together, laid down when the sea was higher. It is soft enough to cut with shell and stone tools, and hard enough to hold a shape for two millennia. That combination is rare, and it is the single technical fact that makes this archaeology possible. On a sand coast, a post hole is gone within a generation. Here, if you cut a basin into the bedrock and let people fill it with charcoal and shell, the basin stays cut. Forever, more or less. What we are reading in Miami is not a ruin. It is a floor plan, etched into the rock like a circuit board.\n\nAnd the location is not an accident. Stand at the mouth of the Miami River and count the advantages. Fresh water coming out of the Everglades, through rapids, right into a protected bay. A barrier island chain to break the ocean. Sea grass flats full of protein. A deep natural channel. A limestone rise that stays dry in a storm surge that flattens the coast either side of it.\n\nEvery serious settlement in this place — Tequesta town, Spanish mission, Fort Dallas, the Royal Palm Hotel, and then the actual city — has been built on that same shelf of rock, within a few hundred meters of the same point. Not because of mystical energy. Because it is the only sensible place to stand. When people ask me why the ancient sites keep turning up under Miami's most expensive real estate, that is the whole answer: both civilizations did the math and got the same result.",
+  "Here is something that took me a long time to understand, and it is the part that makes the Tequesta genuinely unusual in North America.\n\nThey were not farmers. There is essentially no evidence of maize agriculture here — no field systems, no storage of grain at any scale, none of the things that normally anchor a large, permanent settlement. In the standard story of the ancient world, that combination is not supposed to happen. You get farming, then surplus, then permanence, then towns. South Florida skipped a step. The bay and the river were the surplus.\n\nLook at the tools and you can see the logic. Shark teeth, hafted into wood, used as cutting blades and as drills. Whelk and conch shells worked into hammers, adzes, gouges, dippers, and net weights — some of them beautiful, all of them practical. Bone points. Wooden objects that survive only in the wet, anaerobic muck at the edges of the river, which is where the rare, astonishing finds come from. Stone is scarce in south Florida, so stone means trade: the ground stone axes found at the Miami Circle were made of basalt that does not occur anywhere near here. The nearest source discussed by the excavators lies hundreds of miles north, in Georgia. Someone carried those axe heads down the peninsula, or passed them hand to hand, until they ended up in a hole in the bedrock at the mouth of this river.\n\nTheir range was water. Dugout canoes moved along the bay, through the Keys, into the Everglades — and there is a long-running argument, supported by Spanish reports of contact and by the sheer geography, about crossings to the Bahamas and Cuba. That is one hundred and eighty kilometers of open Straits from Miami to the north coast of Cuba in a hollowed log, and I want to be careful here: that is a reported and debated capability, not a proven routine ferry service. But nothing about that coastline suggests a people who stayed in the shallows.\n\nWhat I find striking is the stability. The Spanish arrive in the sixteenth century and describe a town at the mouth of the river with a chief, a name, satellite settlements, and relationships — sometimes hostile, sometimes not — with the Calusa on the Gulf coast and with the people of the Keys. The archaeology at Brickell Point shows occupation stretching back at least two and a half thousand years, deep into what specialists call the Glades period, and in the most recent excavations even further, into the Late Archaic, four thousand years ago and more.\n\nTwo thousand years in one spot without agriculture. No pyramids, no kings we can name, no stone city. Just an extremely good address, held for a hundred generations.",
+  "Now the circle itself, because that is what put this on the map in 1998.\n\nThe sequence is almost too neat. A developer buys the site at 401 Brickell Avenue — a 1950s apartment complex on the south bank of the river mouth — for eight and a half million dollars, intending to put up condominium towers. Because Miami-Dade has an archaeological ordinance, a survey is required before the ground is disturbed. Robert Carr, the county archaeologist who has spent decades on this coast, brings a crew for what is supposed to be a routine salvage dig in the debris of a demolished parking area.\n\nAnd they find holes in the rock. Not randomly. Twenty-four large basins cut into the limestone, arranged on the circumference of a circle thirty-eight feet across, with hundreds of smaller post molds around and between them. Nothing like it had been documented in eastern North America: a structural footprint carved into bedrock, not sunk into soil.\n\nInside and around it, the excavation recovered the kind of material that stops an argument. Shell tools. Pottery of the local Glades series. Two basalt axe heads, unused. Charcoal that returned radiocarbon results placing burned wood in the site around two thousand years old, give or take a couple of centuries. And then the deliberate deposits: the articulated skeleton of a five-foot shark; a dolphin skull; a sea turtle carapace — each placed, not dumped, in the ground at particular points.\n\nThat last detail is the one that changed how I read the site. You do not carefully bury a complete shark in the foundation of a storage shed.\n\nWhat was it? Honestly — and I want to be blunt, because this is where documentaries usually start guessing — we do not know. The most common reading is that the basins held the vertical posts of a large round structure, probably a council house or a chief's house, the kind of building the Spanish later describe elsewhere in Florida. Some researchers see an alignment with solstice positions and read it as a calendar. Others point out that in a town this size, a big circular building is simply what you would expect, and that not every arrangement of posts is an observatory.\n\nI lean toward the plain reading: a major building, at the center of a major town, with offerings placed in its foundations. That is not a smaller story. That is a two-thousand-year-old civic hall at the mouth of the Miami River, and it survived because someone in the first century carved it into stone instead of sand.",
+  "I want to be fair to the people who thought it was nothing, because that argument is a real part of this story and it nearly decided it.\n\nWhen photographs of the circle reached the wider archaeological world in early 1999, a serious objection came back: that the basins were not ancient at all, that they were the remains of a septic drain field from the twentieth-century apartments that had stood on the lot. Jerald Milanich, one of the most respected archaeologists in Florida, put that reading in print. It is not a stupid idea. Old septic systems do cut into bedrock, mid-century Miami did put them there, and holes in rock look like holes in rock.\n\nThe counter-arguments were technical and, to me, convincing. The terracotta outflow pipes of the actual septic system were found — cutting through the circle, not forming it. The basins held Glades period artifacts and charcoal in undisturbed contexts. Calcite had re-formed along the cut edges of the limestone, a slow process that does not happen in fifty years. And the deposits — the shark, the dolphin skull, the axes — do not belong to a plumbing feature.\n\nWhat happened next was not an academic debate. It was a street fight. The developer had a permit and had already paid for the land. Under the ordinance the county could require excavation, but not, on its own, force preservation. In January 1999 the Dade Heritage Trust filed suit. Protesters showed up at the fence. A shell-and-string version of the circle was laid out on the ground in a public park. School groups wrote letters. There were vigils on a vacant lot in a city that had never once been asked to feel sentimental about its own prehistory — and, briefly, it did.\n\nThe county moved toward eminent domain. In November 1999 the state of Florida bought the two-and-a-half-acre parcel for twenty-six point seven million dollars, through a land conservation program, and the towers were never built. In 2002 the site went on the National Register. In 2009 it was declared a National Historic Landmark — the highest federal designation there is.\n\nAnd then, to protect it, they buried it.\n\nThat is the part that stays with me. If you go to Brickell Point today you will find a lawn, a low railing, some interpretive panels, a view of the river, and a very expensive skyline behind you. The circle is under your shoes, packed in protective fill. It is the most successfully defended archaeological site in the history of this city, and the defense took the form of putting it back out of sight. Twenty-six million dollars for a patch of grass that almost nobody in Miami can point to.",
+  "Now let me go back up the timeline to the moment the outside world first wrote any of this down — because the first European document about Miami already contains the town's name, and almost nobody notices.\n\nIn 1513, Juan Ponce de León sailed down this coast on the voyage that gave Florida its European name. His pilot's account records a bay, and the name attached to it is a version of Tequesta — Chequesta in some renderings. Think about what that implies. The very first time a European writes about Biscayne Bay, the bay already belongs to somebody. It has a polity attached to it, known well enough along the coast that the Spanish pick the name up immediately, from people who had presumably been trading and raiding along this shore for a long time.\n\nThis is the pattern for the next two centuries. The Spanish do not discover a wilderness here. They arrive in an occupied, organized, politically complicated coast, and they spend a hundred and fifty years failing to control it.\n\nThe next real contact we can date is dramatic and almost accidental. In 1565, Pedro Menéndez de Avilés, the man who founded St. Augustine, is caught by weather near the mouth of this river. He is received. Jesuits in his circle take the nephew of the local chief back to Havana — as a guest, as a hostage, as a student; the categories blur in every account of this period and they blurred for the people living it too.\n\nIn March 1567, Menéndez comes back and establishes a mission at the mouth of the Miami River, with a garrison of about thirty soldiers and a Jesuit lay brother named Francisco Villareal. This is the first European settlement on the site of Miami — almost three hundred and thirty years before the city was incorporated.\n\nVillareal's letters are, for me, the single most human document in this entire story. He is not a conquistador. He is a lay brother, alone with soldiers he does not fully trust, in a town whose language he is trying to learn, teaching children and getting nowhere with their parents. He writes about mosquitoes. He writes about the difficulty of explaining an invisible God to people who have their own and are not unhappy with them. He writes about the soldiers behaving badly — and it is the soldiers, in the end, who wreck the arrangement.\n\nBy 1570 the mission is abandoned. The Spanish leave. The town stays. That is a sentence worth repeating, because it inverts the usual shape of these stories: at the mouth of this river, in the sixteenth century, it is the Europeans who fail to establish a permanent settlement, and the Tequesta who carry on.",
+  "So when does it end? This is where I have to slow down, because the honest answer is not a single event, and the internet badly wants it to be one.\n\nThrough the seventeenth century the record thins to almost nothing. Spanish ships pass. Occasional salvage crews and shipwreck survivors come ashore. Cuban fishermen trade along the coast. What is happening in the background is the thing that happened everywhere in the Americas and is almost invisible in documents: disease moving through populations with no immunity, generation after generation, subtracting people faster than the record can count them. Add to that the slave raids pushing south out of Carolina in the early 1700s, carried out by English-allied Native forces, which emptied much of the Florida peninsula of its indigenous population within a few decades.\n\nThe clearest late snapshot comes in 1743. The governor of Cuba sends two Jesuits — Father José María Mónaco and Father José Javier Alaña — back to Biscayne Bay with soldiers, to found a mission called Santa María de Loreto at the mouth of this river. They build a small stockade. And they count.\n\nWhat they count is the reason I keep this date in my head. Fewer than two hundred people, in a mixed community — remnants of the local Tequesta together with people from the Keys and from the Calusa coast, pushed together at the last defensible point on the peninsula. Two thousand years of continuous settlement, and the census fits in a paragraph.\n\nThe mission is gone within months; the Council of the Indies had not approved it, and it is withdrawn the following year. The fathers report that these communities cannot survive where they are, and propose moving them to Cuba. In 1763, when Spain hands Florida to Britain, the last of the Christianized south Florida people are taken to Cuba along with the Spanish evacuation. Some accounts count only a few dozen men in that final group.\n\nThey did not vanish. That word implies something unexplained, and there is nothing unexplained here. They were reduced by epidemic disease, by raiding, by two centuries of political pressure from empires using this coast as a highway — and the survivors were put on ships. Some of their descendants are almost certainly in Cuba, mixed into the population of Havana, unrecorded as anything in particular.\n\nThe people ended as a named community. The town did not end as a place. Fishermen, traders, Seminole families moving south later, soldiers at Fort Dallas — the mouth of the river never sat empty. The layer just kept getting deeper.",
+  "And then the city arrives, and the single most destructive year in the archaeology of this site is the year Miami is born.\n\n1896. Henry Flagler's railroad reaches the bay. A hotel — the Royal Palm — is to be built on the north bank of the Miami River, exactly where the Tequesta town center had been, because it is the same good ground with the same good view. Miami is incorporated in July of that year with a few hundred residents.\n\nStanding on that spot was a mound. From the recollections of men who worked the site, it rose something like twenty to twenty-five feet above the water, roughly a hundred feet long and seventy wide — a landmark visible from the bay. It was a burial mound.\n\nThe crews leveled it. The accounts are plain about what came out: something on the order of fifty to sixty skulls, along with other human remains, removed in a hurry so the hotel could go up on schedule. One worker later described taking bones home, storing them in barrels, and handing them out to anyone who wanted one. What was left, he said, went into a hole in the ground somewhere nearby.\n\nI have read that passage many times, and what strikes me is not cruelty. It is casualness. Nobody in that account is a villain in their own telling. They are laborers on a deadline in 1896, doing what the era considered normal, in a country that was at that moment building its entire self-image on the idea that this land had been empty.\n\nThat is the founding act of the city, and it is not a metaphor. Miami's first grand hotel stood on top of the graves of the people who had lived there for two thousand years, built with material cleared out of their burial mound.\n\nFor the next century the pattern held, minus the barrels. Seawalls, dredging of the river channel, causeways, the 1920s boom, the postwar boom — layer after layer of construction across the same few hundred meters. Every one of those projects went through the black earth. Almost none of them stopped to look.\n\nThe only reason we have anything at all is a legal accident: in 1981, Miami-Dade County adopted an archaeological ordinance that requires assessment before development in designated zones. It is a modest law. It does not usually stop a building. But it is the reason a county archaeologist gets a phone call before the machines start, and it is the reason everything I am about to describe was seen at all.",
+  "Cross the river and walk about four blocks north-east, to a city block bounded by Biscayne Boulevard Way, in the middle of downtown Miami. There is an entertainment complex there now — restaurants, a hotel, a cinema. In 2013 and 2014 it was a construction site, and what came out of it is, in my view, the most important archaeological discovery ever made inside an American downtown.\n\nAgain it starts with an ordinance and a routine survey. Again it is Robert Carr's team. And this time, as the fill is stripped back, the limestone that appears is not blank. It is drilled. Hundreds upon hundreds of post holes, cut into bedrock, and they are not scattered — they resolve into circles. Not one structure like the Miami Circle across the river, but a series of them: round buildings, eight or more by the counts published at the time, laid out along what looks like a street, with lines of holes that most likely held raised walkways over ground that floods.\n\nThat is not a camp. That is a town plan. Carr described it as very possibly the earliest prehistoric town plan ever found in eastern North America, with the settlement reaching back on the order of two and a half thousand years, and a population estimate in the hundreds, perhaps up to a thousand people at its height.\n\nRead that against the standard American history syllabus for a second. While the Roman Empire was at its height, there was a planned town of round houses and elevated walkways at the mouth of the Miami River, occupied continuously, trading stone down the peninsula and shell up it.\n\nThe fight over what to do about it was brutal, and it produced a very modern compromise. Total preservation would have killed a project already under construction. Total destruction was, by 2014, politically impossible. The outcome: parts of the bedrock with two circular features were to be preserved and put on display, surrounded by glass, inside the finished complex; other sections were documented and then built over, with some areas left accessible under the structure for future researchers.\n\nSo today you can, in principle, walk past two-thousand-year-old architecture on your way to a movie. I find that neither a scandal nor a triumph. It is the honest shape of what a city can do when it finds its own foundation and has already poured concrete on the deadline.",
+  "Which brings us to the part of this story that is happening right now, and is the reason I wanted to make this episode at all.\n\nSince the early 2020s, a large development on the Miami River just west of Brickell Avenue has been under excavation by archaeological teams working ahead of construction. The scale of what has come out of that ground is difficult to convey. Reporting on the project describes more than a million artifacts recovered and catalogued: pottery, shell tools, stone implements used to shape wood and hollow canoes, projectile points, trade objects, animal bone, hearths. The dated material runs from the Late Archaic period — roughly three and a half thousand years ago — through the Glades sequence to within a thousand years of the present.\n\nAnd human remains. A preliminary report submitted in late 2024 described burials at the site, including the formal burial of an infant, which raises the possibility that part of the area functioned as a cemetery. In 2025, separately, another Brickell construction site, where a luxury tower is going up, produced further indigenous burial material.\n\nI want to be careful with tone here, because it would be easy to make this sound like a villain story, and I do not think it is one. The excavation is happening because the law requires it and because the developers paid for it. Professional archaeologists were on site. The material was recovered rather than crushed. By the standards of 1896, this is a different planet.\n\nBut look at the shape of the process. Everything we now know about ancient Miami, we know because somebody wanted to build a tower there. The archaeology runs at the speed of a construction schedule. The finds are assessed by a preservation board that meets in a municipal room and can, in practice, delay and request revised plans but rarely stop a project outright — in late 2024 that board sent a developer's preservation plan back for a significantly expanded version, which is roughly the strongest move available to it.\n\nAnd afterwards, the objects go into boxes. Somewhere in the county, in climate-controlled storage, there is a warehouse holding a substantial fraction of the material culture of a two-thousand-year-old city, in labeled containers, professionally curated, viewed by almost nobody.\n\nA million objects, and no museum built for them.",
+  "There is one more absence I have to name, and it is the hardest one.\n\nWhen an ancient site is excavated in most of the United States, there is a legally recognized party at the table: a federally recognized tribe with a cultural claim, consulted about human remains and funerary objects under federal law. In south Florida that structure runs into a wall, because there is no recognized Tequesta nation today. The community that held this river was dissolved by disease, raiding and removal by the 1760s, and its surviving descendants disappear into the population of Cuba without an institutional trace.\n\nThe Seminole and Miccosukee — the nations of south Florida today, and the ones who are consulted on ancestral remains here — are not descended from the Tequesta. Their ancestors moved into the peninsula generations later, in the eighteenth and nineteenth centuries, mostly from Creek communities to the north, and built their own long history of resistance and survival in the same wet country. They have taken responsibility in these cases, and they are asked, and they answer. But they would be the first to tell you they are speaking for people who were not their own.\n\nSo when the developer's team lifts an infant's burial out of bedrock at the mouth of the Miami River, there is no descendant community with a legal seat to say what should happen to that child. There is a board. There are archaeologists. There is a plan document with a page count.\n\nThat is what I mean when I say the Tequesta are not a lost people. Nothing is lost. The circle is mapped to the centimeter. The town plan is published. The objects are numbered. The radiocarbon dates sit in reports you can download. Every piece of this is documented to a standard the nineteenth century could not have imagined.\n\nWhat is missing is the other half of the job — the part that turns evidence back into a place. A museum you can walk into. A marked floor you can stand on. A name the city uses for itself that admits it is the second town at this river mouth, not the first.",
+  "Let me leave you where I started, on that grass.\n\nIf you stand at Brickell Point at dusk, with the towers behind you and the river going out into the bay, you are standing on the exact spot where somebody, about two thousand years ago, carved twenty-four basins into the rock and set posts in them for a building large enough to matter. Under your feet, in packed fill, that circle is still there, intact, because a city that had no habit of caring about its own prehistory was persuaded for one strange year in 1999 to spend twenty-six million dollars on a hole in the ground.\n\nAcross the water, under a cinema, there are round houses cut into bedrock along a street. A few blocks west, more than a million objects from those houses are in boxes. Somewhere under the site of a hotel that burned down and was demolished long ago, there is whatever was left of a burial mound that once rose twenty-five feet over this water and was taken apart by hand in the summer of 1896.\n\nI do not think this is a tragedy exactly, and I am suspicious of stories that tidy it into one. Cities are built on cities. That is true in Rome, in London, in Mexico City, and it is true here — the only unusual thing about Miami is the speed and the lack of a story to go with it. Rome knows what it is standing on. Miami is still deciding whether to find out.\n\nAnd the record is not closed. Every deep foundation dug in that square mile is another trench through the same black layer. The ordinance holds. The archaeologists get their phone call. More will come out of the ground in the next ten years than came out in the last fifty, and none of it will be a discovery in the sense of a lost city found — it will be a city that was never lost, being read a few meters at a time, on somebody else's construction schedule.\n\nIf you take one thing from tonight, take this. The next time you see the Miami skyline in a film — the aerial shot, the causeway, the glass — remember that the rock under those towers is not blank. It is drilled, in circles, by people who lived there for a hundred generations, whose language we cannot speak and whose name for themselves we do not know.\n\nThey are underneath all of it. They always were."
+ ],
+ "image_prompts": [
+  "aerial view at dusk of a subtropical river mouth meeting a wide bay, glass towers on both banks, one small empty rectangle of dark lawn at the point, no people, photoreal cinematic 16:9",
+  "cross-section of ground under a city block: a thick black layer packed with crushed shell above pale porous limestone bedrock, cool raking light, no people, no text, photoreal 16:9",
+  "a circle of hand-cut basins in pale limestone bedrock seen from directly overhead at dawn, thin sheen of rainwater in the holes, no people, photoreal cinematic 16:9",
+  "large round thatched building on heavy wooden posts at a subtropical river mouth at blue hour, palms and mangroves behind, seen from a distance, no people near camera, photoreal 16:9",
+  "dugout canoes pulled up on a shell beach at low tide, mangrove wall behind, empty, blue hour, photoreal cinematic 16:9",
+  "worked conch shell tools, shell adzes and shark-tooth blades arranged on dark grey cloth under soft museum light, macro, no text, photoreal 16:9",
+  "a small sixteenth-century Spanish mission chapel and timber stockade at the edge of a subtropical river, overcast, empty clearing, photoreal cinematic 16:9",
+  "a broad dark earth and shell burial mound rising above mangroves at the mouth of a river, late nineteenth century atmosphere, overcast, no people, photoreal 16:9",
+  "an 1890s construction camp at a river mouth: carts, stacked timber, cleared white sand, a half-built hotel frame, no faces, photoreal cinematic 16:9",
+  "an archaeological excavation trench at night lit by work lamps, holes visible in exposed pale bedrock, silhouetted city towers behind, no people near camera, photoreal 16:9",
+  "long warehouse aisle of numbered archive storage boxes on steel shelving, cold even light, no people, photoreal cinematic 16:9",
+  "an empty city lawn at dusk with a low railing, the faint ring of a buried circle just readable in the grass, glass towers behind, no people, photoreal 16:9",
+  "a modern coastal city skyline seen low from dark water at night, long exposure, still black water in the foreground, no people, photoreal cinematic 16:9"
+ ],
+ "fill_prompts": [
+  "aerial view at dusk of a subtropical river mouth meeting a wide bay, glass towers on both banks, one small empty rectangle of dark lawn at the point, no people, photoreal cinematic 16:9",
+  "cross-section of ground under a city block: a thick black layer packed with crushed shell above pale porous limestone bedrock, cool raking light, no people, no text, photoreal 16:9",
+  "a circle of hand-cut basins in pale limestone bedrock seen from directly overhead at dawn, thin sheen of rainwater in the holes, no people, photoreal cinematic 16:9",
+  "large round thatched building on heavy wooden posts at a subtropical river mouth at blue hour, palms and mangroves behind, seen from a distance, no people near camera, photoreal 16:9",
+  "dugout canoes pulled up on a shell beach at low tide, mangrove wall behind, empty, blue hour, photoreal cinematic 16:9",
+  "worked conch shell tools, shell adzes and shark-tooth blades arranged on dark grey cloth under soft museum light, macro, no text, photoreal 16:9",
+  "a small sixteenth-century Spanish mission chapel and timber stockade at the edge of a subtropical river, overcast, empty clearing, photoreal cinematic 16:9",
+  "a broad dark earth and shell burial mound rising above mangroves at the mouth of a river, late nineteenth century atmosphere, overcast, no people, photoreal 16:9",
+  "an 1890s construction camp at a river mouth: carts, stacked timber, cleared white sand, a half-built hotel frame, no faces, photoreal cinematic 16:9",
+  "an archaeological excavation trench at night lit by work lamps, holes visible in exposed pale bedrock, silhouetted city towers behind, no people near camera, photoreal 16:9",
+  "long warehouse aisle of numbered archive storage boxes on steel shelving, cold even light, no people, photoreal cinematic 16:9",
+  "an empty city lawn at dusk with a low railing, the faint ring of a buried circle just readable in the grass, glass towers behind, no people, photoreal 16:9",
+  "a modern coastal city skyline seen low from dark water at night, long exposure, still black water in the foreground, no people, photoreal cinematic 16:9"
+ ],
+ "footage_queries": [
+  "Miami skyline aerial drone downtown",
+  "Miami river boats downtown bridge",
+  "Brickell Miami high rise towers aerial",
+  "Miami downtown street traffic night",
+  "Biscayne Bay turquoise water aerial",
+  "Miami causeway over water aerial",
+  "boat wake shallow turquoise bay",
+  "seagrass flats clear shallow water",
+  "mangrove roots in water close up",
+  "mangrove forest aerial coastline",
+  "Everglades sawgrass aerial wetland",
+  "Everglades marsh water slow current",
+  "Florida wetland grass wind",
+  "cypress swamp still water reflection",
+  "manatee swimming slowly underwater",
+  "nurse shark swimming shallow sand",
+  "sea turtle swimming underwater ocean",
+  "school of fish shallow reef",
+  "brown pelican flying over water",
+  "heron wading shallow water",
+  "conch shell on sand underwater",
+  "seashells on wet sand close up",
+  "waves breaking on limestone rock shore",
+  "porous limestone rock texture close up",
+  "rain falling on dark water surface",
+  "thunderstorm clouds over ocean",
+  "tropical rain palm trees storm",
+  "fog over marsh at dawn",
+  "night sky stars over calm water",
+  "campfire embers close up night",
+  "wooden dugout canoe on calm water",
+  "old sailing ship tall ship at sea",
+  "candle light old parchment manuscript",
+  "archaeologist brushing soil excavation",
+  "archaeological excavation trench site",
+  "hands sifting soil through screen dig",
+  "museum storage shelves boxes collection",
+  "museum display case artifacts lighting",
+  "excavator digging building foundation",
+  "tower crane construction site sunset",
+  "concrete pouring construction site",
+  "demolition of old building dust",
+  "empty city park lawn dusk",
+  "glass office tower reflection sky",
+  "aerial city grid at night lights",
+  "surveyor stakes on bare ground site"
+ ],
+ "archive_queries": [
+  "Miami Circle Brickell Point",
+  "Brickell Point archaeological site Miami",
+  "Miami River mouth historic photograph",
+  "Royal Palm Hotel Miami 1897",
+  "Fort Dallas Miami River",
+  "Henry Flagler portrait",
+  "Miami Florida 1900 photograph",
+  "Miami Florida 1920s street photograph",
+  "Biscayne Bay historic photograph",
+  "Florida east coast railway construction",
+  "Theodor de Bry Florida engraving 1591",
+  "Le Moyne Florida Indians engraving",
+  "Timucua village engraving 1591",
+  "Florida Indians dugout canoe engraving",
+  "Florida Indians fishing engraving 16th century",
+  "map of Florida 1591 de Bry",
+  "Florida peninsula antique map 17th century",
+  "Spanish colonial map of Florida",
+  "Pedro Menendez de Aviles portrait",
+  "Juan Ponce de Leon engraving",
+  "Spanish galleon sixteenth century engraving",
+  "Jesuit missionary sixteenth century engraving",
+  "Spanish colonial manuscript letter 16th century",
+  "shell tools prehistoric North America museum",
+  "conch shell adze artifact museum",
+  "shark tooth tool artifact",
+  "bone point artifact prehistoric",
+  "Glades period pottery sherds Florida",
+  "prehistoric pottery sherd collection museum",
+  "stone axe head polished artifact",
+  "shell midden excavation photograph",
+  "Florida shell mound site",
+  "dugout canoe archaeology museum",
+  "archaeological site plan drawing post holes",
+  "Everglades sawgrass prairie photograph",
+  "Florida mangrove coast photograph",
+  "Florida limestone outcrop oolite",
+  "Seminole Florida historic photograph 1900",
+  "Miami skyline aerial photograph",
+  "archaeology field notebook excavation record"
+ ],
+ "video_prompts": [
+  "slow overhead drift across pale limestone bedrock with hand-cut circular basins, thin water in the holes, no people, photoreal 16:9",
+  "gentle push across a black shell-packed soil layer in an open excavation trench, raking light, no people, photoreal 16:9",
+  "slow aerial glide over a subtropical river mouth meeting a bay at dusk, no people, photoreal 16:9",
+  "macro drift over worked conch shell tools on dark cloth, soft museum light, photoreal 16:9",
+  "slow pan along shelves of numbered archive boxes in a storage warehouse, cold light, no people, photoreal 16:9"
+ ],
+ "pinned_archive": [
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/02/Biscayne_Bay_FL1.jpg/1920px-Biscayne_Bay_FL1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Biscayne Bay shallow water Florida",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/63/Biscayne_Bay_by_moonlight%2C_Miami%2C_Florida_LCCN96510083.jpg/1280px-Biscayne_Bay_by_moonlight%2C_Miami%2C_Florida_LCCN96510083.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Biscayne Bay by moonlight historic print",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7e/Biscayne_Bay_sunset.jpg/1920px-Biscayne_Bay_sunset.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Biscayne Bay sunset water",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c0/Biscayne_bay_-_downtown_miami.jpg/1920px-Biscayne_bay_-_downtown_miami.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Biscayne Bay and downtown Miami skyline",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e7/Brickell_Point_Site_2012-09-15_16-54-59.jpg/1920px-Brickell_Point_Site_2012-09-15_16-54-59.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Brickell Point site Miami Circle park",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/67/Florida_-_Biscayne_Bay_-_NARA_-_23936555.jpg/1920px-Florida_-_Biscayne_Bay_-_NARA_-_23936555.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Biscayne Bay Florida archival photograph",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/80/Florida_-_Miami_-_NARA_-_23936903.jpg/1920px-Florida_-_Miami_-_NARA_-_23936903.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Florida archival aerial photograph",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/18/Haulover_Inlet_-_Biscayne_Bay%2C_Florida_01.jpg/1920px-Haulover_Inlet_-_Biscayne_Bay%2C_Florida_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Haulover Inlet Biscayne Bay barrier island",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cd/Miami_Circle_%289081683470%29.jpg/1280px-Miami_Circle_%289081683470%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle Brickell Point site",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/55/Miami_Circle_-_IMG_7995.JPG/1920px-Miami_Circle_-_IMG_7995.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle site Brickell Point Miami",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Miami_Circle_20110307.jpg/1920px-Miami_Circle_20110307.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle park by the Miami River",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Miami_Circle_Brickell_Point_Site.jpg/1920px-Miami_Circle_Brickell_Point_Site.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle Brickell Point archaeological site",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/12/Miami_Circle_aerial_view.JPG/1920px-Miami_Circle_aerial_view.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle aerial view Brickell Point",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/17/Miami_Circle_aerial_view_with_river_and_tower.JPG/1920px-Miami_Circle_aerial_view_with_river_and_tower.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle aerial with Miami River and tower",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5e/Miami_Circle_artifacts_-_HistoryMiami_-_IMG_8118.JPG/1920px-Miami_Circle_artifacts_-_HistoryMiami_-_IMG_8118.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle artifacts HistoryMiami museum display",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/86/Miami_FL_Miami_Circle01.jpg/1920px-Miami_FL_Miami_Circle01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle park lawn and railing",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8e/Miami_FL_Miami_Circle02.jpg/1920px-Miami_FL_Miami_Circle02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle park and Brickell towers",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5b/Miami_FL_Miami_Circle03.jpg/1920px-Miami_FL_Miami_Circle03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle park at the Miami River mouth",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/Miami_FL_Miami_Circle04.jpg/1920px-Miami_FL_Miami_Circle04.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle site ground view",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/32/Miami_FL_Miami_Circle_from_Brickell_Ave_Bridge01.jpg/1920px-Miami_FL_Miami_Circle_from_Brickell_Ave_Bridge01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle seen from Brickell Avenue bridge",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ed/Miami_FL_Miami_Circle_from_Brickell_Ave_Bridge02.jpg/1920px-Miami_FL_Miami_Circle_from_Brickell_Ave_Bridge02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle site and river mouth from bridge",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/18/Miami_FL_Miami_Circle_pano01.jpg/1920px-Miami_FL_Miami_Circle_pano01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle park panorama downtown Miami",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b6/Miami_FL_Miami_Circle_plaque01.jpg/1920px-Miami_FL_Miami_Circle_plaque01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami Circle interpretive plaque",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a5/Mouth_of_Miami_River_20100211.jpg/1920px-Mouth_of_Miami_River_20100211.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "mouth of the Miami River Biscayne Bay",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/96/Panorama_of_the_Miami_River%27s_Mouth_120314-8705-jikatu.jpg/1920px-Panorama_of_the_Miami_River%27s_Mouth_120314-8705-jikatu.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "panorama of the Miami River mouth downtown",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/36/Everglades_Sawgrass_Prairie_Moni3.JPG/1920px-Everglades_Sawgrass_Prairie_Moni3.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Everglades sawgrass prairie wetland",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/Florida_worship_french_column_1591.jpeg/1920px-Florida_worship_french_column_1591.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "de Bry 1591 engraving Florida Indians at the column",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/88/Gumbo_Limbo_shell_miden.JPG/1920px-Gumbo_Limbo_shell_miden.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Florida shell midden archaeological site",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/20/Haulover_Inlet_-_Biscayne_Bay%2C_Florida_03.jpg/1920px-Haulover_Inlet_-_Biscayne_Bay%2C_Florida_03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "inlet and shallow bay water Miami",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/89/Madira_Bickel_Mound_Site_Terra_Ceia_Florida_2019-2587_01.jpg/1920px-Madira_Bickel_Mound_Site_Terra_Ceia_Florida_2019-2587_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Florida shell mound site Madira Bickel",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Madira_Bickel_Mound_Site_Terra_Ceia_Florida_2019-2587_09.jpg/1920px-Madira_Bickel_Mound_Site_Terra_Ceia_Florida_2019-2587_09.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Florida prehistoric shell mound path",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2b/Mangrove_forest_%285747972952%29.jpg/1920px-Mangrove_forest_%285747972952%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "mangrove roots in shallow water",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/80/Fort_Dallas_Park.jpg/1920px-Fort_Dallas_Park.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Fort Dallas Park Miami river bank",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/68/Mangrove_forest_Islamorada_FL.jpg/1920px-Mangrove_forest_Islamorada_FL.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Florida mangrove forest coast",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/ba/Pedro_Menendez_de_Aviles_-_Josef_Camaron_lo_dibo._%3B_Franco._de_Paula_Marti_lo_grabo_ano_1791._LCCN90716344.jpg/1920px-Pedro_Menendez_de_Aviles_-_Josef_Camaron_lo_dibo._%3B_Franco._de_Paula_Marti_lo_grabo_ano_1791._LCCN90716344.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Pedro Menendez de Aviles portrait engraving",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ad/Sawgrass%2C_Pa-hay-okee_Trail%2C_Everglades_National_Park%2C_Florida_%2851130668684%29.jpg/1920px-Sawgrass%2C_Pa-hay-okee_Trail%2C_Everglades_National_Park%2C_Florida_%2851130668684%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Everglades sawgrass marsh",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/05/Wagner_Creek_-_Seybold_Canal_-_Mouth_of_Creek%2C_Miami_River_and_5th_Street_Bridge.jpg/1920px-Wagner_Creek_-_Seybold_Canal_-_Mouth_of_Creek%2C_Miami_River_and_5th_Street_Bridge.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami River channel and bridge",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/96/Henry_Morrison_Flagler_%281830-1913%29_portrait.jpg/1920px-Henry_Morrison_Flagler_%281830-1913%29_portrait.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Henry Flagler portrait photograph",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/86/On_the_Miami_River%2C_Florida%2C_1900.jpg/1920px-On_the_Miami_River%2C_Florida%2C_1900.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "on the Miami River Florida 1900 photograph",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/28/On_the_Miami_River-LCCN2008678267.jpg/1920px-On_the_Miami_River-LCCN2008678267.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami River historic photochrom",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d3/Sunset_on_Miami_River_%28on_Moonlight%29%2C_Florida_%28NYPL_b12647398-67584%29.tiff/lossy-page1-1920px-Sunset_on_Miami_River_%28on_Moonlight%29%2C_Florida_%28NYPL_b12647398-67584%29.tiff.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "sunset on the Miami River historic print",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/Florida_Indians_planting_seeds_of_beans_or_maize_LCCN2001695741.jpg/1280px-Florida_Indians_planting_seeds_of_beans_or_maize_LCCN2001695741.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "sixteenth century engraving of Florida Indians",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cd/Fort_Dallas_Former_Slave_Quarters_Miami_%288633509298%29.jpg/1280px-Fort_Dallas_Former_Slave_Quarters_Miami_%288633509298%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Fort Dallas stone building Miami",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/Large_Shell_Mound_.jpg/1280px-Large_Shell_Mound_.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "large prehistoric shell mound",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0f/Mangrove_plants_swamp_in_Florida.jpg/1280px-Mangrove_plants_swamp_in_Florida.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Florida mangrove swamp",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dd/Miami_aerial_01.jpg/1280px-Miami_aerial_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Miami downtown aerial skyline",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d3/Miami_-_Hotel_Royal_Palm.jpg/1280px-Miami_-_Hotel_Royal_Palm.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Royal Palm Hotel Miami 1900s",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7c/Miami_-_Hotel_Royal_Palm_02.jpg/1280px-Miami_-_Hotel_Royal_Palm_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Royal Palm Hotel Miami exterior historic",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7f/Miami_-_Hotel_Royal_Palm_2.jpg/1280px-Miami_-_Hotel_Royal_Palm_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Royal Palm Hotel Miami grounds historic",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Miami_-_Royal_Palm_Hotel_and_grounds.jpg/1280px-Miami_-_Royal_Palm_Hotel_and_grounds.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Royal Palm Hotel and grounds Miami",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c1/Miami_-_The_Royal_Palm_and_Miami_River.jpg/1280px-Miami_-_The_Royal_Palm_and_Miami_River.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Royal Palm Hotel and the Miami River",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f3/Miami_-_The_Royal_Palm_and_Miami_River_2.jpg/1280px-Miami_-_The_Royal_Palm_and_Miami_River_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Royal Palm Hotel above the Miami River mouth",
+   "src": "wikimedia",
+   "kind": "image"
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2b/Miami_-_View_from_Veranda_of_Royal_Palm_Hotel.jpg/1280px-Miami_-_View_from_Veranda_of_Royal_Palm_Hotel.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "view from the Royal Palm Hotel veranda Miami",
+   "src": "wikimedia",
+   "kind": "image"
+  }
+ ],
+ "pinned_clips": [
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/9/9d/Miami_DJI_Mini_4_Pro_Cinematic_4K_%2860FPS%29.webm",
+   "q": "aerial drone footage of downtown Miami and Biscayne Bay",
+   "src": "wikimedia_video",
+   "kind": "video"
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/f/f6/Google_Timelapse-_Miami%2C_Florida.webm",
+   "q": "satellite timelapse of Miami growing over the coast",
+   "src": "wikimedia_video",
+   "kind": "video"
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Grove_Isle_Miami_Panorama.webm",
+   "q": "panorama over Biscayne Bay from Miami shore",
+   "src": "wikimedia_video",
+   "kind": "video"
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Airboating_in_the_Everglades%2C_Florida%2C_USA_-_20130831.webm",
+   "q": "moving through Everglades sawgrass wetland",
+   "src": "wikimedia_video",
+   "kind": "video"
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/1/1e/Alligator_in_the_Everglades.ogv",
+   "q": "alligator in Everglades water",
+   "src": "wikimedia_video",
+   "kind": "video"
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/4/44/Florida_manatee_%28Trichechus_manatus_latirostris%29.webm",
+   "q": "Florida manatee swimming in shallow water",
+   "src": "wikimedia_video",
+   "kind": "video"
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/3/37/Hurricane_Irma_Raw_Footage_Downtown_Miami.webm",
+   "q": "tropical storm over downtown Miami streets",
+   "src": "wikimedia_video",
+   "kind": "video"
+  }
+ ],
+ "reject": {
+  "clip": [],
+  "arch": []
+ },
+ "style_override": {
+  "generated_share": 0.12,
+  "body_clip_share": 0.3,
+  "intro_clip_share": 0.78,
+  "intro_footage_seconds": 240,
+  "overlay_kind": "stars",
+  "overlay_opacity": 0.18,
+  "crf": 22,
+  "fps": 30
+ },
+ "youtube": {
+  "title": "They Found a 2,000-Year-Old City Under Miami — Then Buried It Again",
+  "title_alternatives": [
+   "Miami Is Built on a Lost City. A Million Pieces of It Sit in a Warehouse.",
+   "The 2,000-Year-Old City Under Miami That Almost Nobody Is Allowed to See"
+  ],
+  "description_intro": "There is a patch of grass in downtown Miami with a two-thousand-year-old circle cut into the bedrock underneath it. A few blocks away, round houses are carved into the limestone under a cinema. Just west of Brickell Avenue, more than a million artifacts have come out of the ground since the early 2020s, ahead of a tower.\n\nThis is not a lost-civilisation mystery. The Tequesta held the mouth of the Miami River for roughly two thousand years, and almost everything we know about them was found because a developer needed a permit. A slow, evidence-first walk through the archaeology under a modern American city — no jump scares, built to be left on in the dark.",
+  "chapters": [
+   "The Grass Over the Circle",
+   "A People With No Portrait",
+   "Black Earth and Bedrock",
+   "Two Thousand Years Without a Field",
+   "Twenty-Four Holes in the Rock",
+   "The Septic Tank Argument",
+   "The Bay Already Had a Name",
+   "The Last Count",
+   "The Mound at the Mouth, 1896",
+   "A Town Plan Under a Cinema",
+   "A Million Objects in Boxes",
+   "Nobody Left to Ask",
+   "Underneath All of It"
+  ],
+  "description_notes": "A general-interest historical investigation. Dates for the Miami Circle are given as a range (commonly cited as roughly 1,700-2,000 years for the radiocarbon material, with occupation at Brickell Point stretching further back); figures for artifact counts, site extents and population estimates follow published reporting and excavation summaries and are treated as estimates, not settled numbers. The 1896 mound account rests on workers' later recollections. The Tequesta are not ancestral to the Seminole or Miccosukee nations of Florida today.",
+  "hashtags": [
+   "#archaeology",
+   "#Miami",
+   "#AmericanHistory",
+   "#AncientHistory",
+   "#Documentary"
+  ],
+  "tags": [
+   "Tequesta",
+   "Miami Circle",
+   "Brickell Point",
+   "Miami archaeology",
+   "ancient Miami",
+   "Tequesta village",
+   "Miami River history",
+   "Florida archaeology",
+   "lost city America",
+   "Native American Florida",
+   "Bob Carr archaeologist",
+   "Met Square Miami",
+   "history documentary",
+   "sleep documentary history",
+   "American prehistory"
+  ],
+  "thumbnail_at": 900.0,
+  "cover_texts": [
+   "BURIED UNDER MIAMI",
+   "A MILLION OBJECTS"
+  ],
+  "cover_patterns": [
+   "object",
+   "tension"
+  ],
+  "cover_scenes": [
+   "the real Miami Circle at Brickell Point at night — a 38-foot ring of 24 cut basins in pale oolite limestone, lit warm, with the Brickell skyline and palms behind it",
+   "a warehouse aisle of numbered archaeology boxes, one open crate of shell tools and pottery lit warm, the Miami skyline visible through a high window"
+  ],
+  "cover_prompts": [
+   "YouTube thumbnail, exact 16:9 photoreal mystery-history still, Ancient Whispers cover grid.\n\nCOMPOSITION LOCK:\n- Upper third: empty dark navy/charcoal negative space ONLY for type. The hero sits entirely in the lower two-thirds. Letters never overlap the subject.\n- Type: ONLY the words \"BURIED UNDER MIAMI\" extra-condensed ALL-CAPS Anton (Impact-like fallback), yellow-gold #FFD400, centered in the upper third, nearly full frame width, letter height 20-30% of the frame, readable at 120px wide. No other text, no subtitle, no arrows, no circles, no UI.\n- 8% safe margins on all sides.\n- Bottom-right 180x72 px kept empty and dark for the duration badge.\n- No faces to camera, no people, no tourists, no extra typography, no watermarks, no YouTube chrome.\n\nHERO / LOWER TWO-THIRDS — one lit subject:\nNight at Miami Circle Park, Brickell Point, at the mouth of the Miami River where it meets Biscayne Bay. Photoreal cinematic still, not stock travel, not beige AI.\n\nForeground-mid: a circular lawn cut open as a precise archaeological reveal of the REAL Miami Circle. Pale honey-cream Miami oolite limestone bedrock, a 38-foot (11.5 m) perfect circle. 24 large loaf-shaped and tadpole / dot-dash basins (a wide oval or quasi-rectangular basin with a narrower connected tail) alternating with smaller round postholes, plus a scatter of minor holes inside and just outside the ring. Basin walls nearly vertical with visible shell-tool cut striations. Trowel-clean rim. Rainwater sheen pooling in the cut holes, catching a single warm key light. The surrounding turf is dark, wet and tightly mown; the excavated disk is the only brightly lit object in the frame.\n\nBackground — must read instantly as Miami, not generic tropics:\nBehind and above the circle, the Brickell waterfront skyline at night: Icon Brickell glass towers with curved sail profiles and stacked warm window grids rising immediately off the park, more Brickell high-rises packed behind them. Royal palms and coconut palms in silhouette and partial rim-light along the riverwalk. Dark water of the Miami River and Biscayne Bay with long reflections of tower lights. The Brickell Avenue Bridge hinted at the far left, not dominant. Night sky deep charcoal-navy, no sunset candy colors.\n\nLIGHTING / GRADE:\nHigh contrast, dark navy/charcoal base. One subject: the limestone circle raked by a warm amber-tungsten uplight so the basins, cut marks and water sheen pop. Cool cyan-teal spill from the glass towers and bay reflections only in the background. Deep shadows in the grass. Photoreal night editorial, wet limestone texture, no fog, no neon cyberpunk, no HDR halo.\n\nCAMERA:\nSlightly elevated three-quarter view, ~28mm cinematic still, eye just above the circle so the basins read as a complete ring AND the towers and palms stay in frame. Razor-sharp on the cut limestone, skyline readable but secondary. No drone fisheye, no top-down flat map.\n\nQUALITY:\nPhotoreal, high-contrast, tactile stone and wet grass, cinematic still from a mystery-history documentary. Not beige, not oversaturated tropical postcard, not illustration, not CGI overlay, not plastic AI limestone.\n\nNEGATIVE:\nno faces, no people, no extra text, no arrows, no circles drawn on the image, no YouTube UI, no watermark, no logo, no beige limestone sludge, no generic beach, no Art Deco South Beach swap, no daytime, no sunset orange sky, no crowded park, no glass pyramid over the site, no replica plaque dominating the frame",
+   "YouTube thumbnail, exact 16:9 photoreal mystery-history still, Ancient Whispers cover grid.\n\nCOMPOSITION LOCK:\n- Upper third: empty dark navy/charcoal negative space ONLY for type. The hero sits entirely in the lower two-thirds. Letters never overlap the subject.\n- Type: ONLY the words \"A MILLION OBJECTS\" extra-condensed ALL-CAPS Anton (Impact-like fallback), yellow-gold #FFD400, centered in the upper third, nearly full frame width, letter height 20-30% of the frame, readable at 120px wide. No other text, no subtitle, no arrows, no circles, no UI.\n- 8% safe margins on all sides.\n- Bottom-right 180x72 px kept empty and dark for the duration badge.\n- No faces to camera, no people, no tourists, no extra typography, no watermarks, no YouTube chrome.\n\nHERO / LOWER TWO-THIRDS — one lit subject:\nNight inside an archaeological curation warehouse in Miami-Dade. Photoreal cinematic still, not a clean corporate stock interior.\n\nForeground-mid: one open grey archival crate on a steel cart under a single warm work lamp. Inside, laid on acid-free foam in numbered compartments: worked whelk and conch shell tools (adzes, hammers, dippers) with chalky weathered surfaces, shark-tooth blades, bone points, and plain sand-tempered Glades-period pottery sherds, buff to dark grey, undecorated. Each piece has a small white catalogue label with a handwritten number. Behind the crate, steel shelving runs away into the dark, packed with identical numbered boxes, aisle after aisle, receding out of the light.\n\nBackground — must read instantly as Miami, not a generic storeroom:\nA high industrial window at the rear of the aisle, and through it the Brickell / downtown Miami skyline at night — glass towers with warm window grids, a few palms in silhouette against the city glow, dark water beyond. The city is small in frame but unmistakable.\n\nLIGHTING / GRADE:\nHigh contrast, dark navy/charcoal base. One subject: the open crate of artifacts under a warm amber work lamp, so shell texture, chalky surfaces and handwritten labels pop. Cool cyan-teal city light only through the window. Shelving falls into deep shadow. Photoreal night editorial, no fog, no neon, no HDR halo.\n\nCAMERA:\nLow three-quarter view along the aisle, ~35mm cinematic still, the open crate close and sharp, the shelving and window receding behind it. Shallow-to-medium depth: razor-sharp on the shell tools, shelves readable but secondary.\n\nQUALITY:\nPhotoreal, high-contrast, tactile shell and cardboard and steel, cinematic still from a mystery-history documentary. Not beige, not illustration, not CGI overlay, not plastic AI artifacts.\n\nNEGATIVE:\nno faces, no people, no hands, no extra text beyond the catalogue numbers, no arrows, no circles drawn on the image, no YouTube UI, no watermark, no logo, no gold treasure, no Egyptian or Mesoamerican artifacts, no museum gallery with visitors, no daytime, no clean white lab"
+  ],
+  "shorts_questions": [
+   "What is buried under this Miami lawn?",
+   "Why did Miami pay $26 million for a hole in the rock?",
+   "What did they find under downtown Miami?",
+   "Where did a million ancient objects go?"
+  ],
+  "sources": [
+   "Florida Division of Historical Resources — Miami Circle at Brickell Point (project pages, National Historic Landmark documentation)",
+   "National Register listing (2002) and National Historic Landmark designation (2009) for the Miami Circle",
+   "Robert S. Carr, «Digging Miami» (University Press of Florida) and published field reporting on Brickell Point and the downtown Miami excavations",
+   "Jerald T. Milanich, «Archaeology of Precolumbian Florida», and his 1999 published critique of the Miami Circle interpretation",
+   "Brother Francisco Villareal's letters (1568) and the 1743 report of Fathers José María Mónaco and José Javier Alaña, in published translations in «Tequesta», the journal of HistoryMiami",
+   "HistoryMiami Museum — Miami Circle Park interpretation and collections",
+   "Reporting on the downtown and Brickell excavations: NPR (2013, 2014), CNN (2014), National Geographic (2014), Science (2023), The Art Newspaper (2024), Miami Herald and Axios Miami on the HEP Board hearings",
+   "City of Miami Historic and Environmental Preservation Board records; Miami-Dade archaeological ordinance"
+  ],
+  "shorts_titles": [
+   "There's a 2,000-Year-Old Circle Under This Miami Lawn",
+   "Miami Paid $26 Million for a Hole in the Rock — Then Buried It",
+   "They Found a Town Plan Carved Under Downtown Miami",
+   "A Million Ancient Objects Came Out of Brickell. Where Are They Now?"
+  ],
+  "community_post": "There is a lawn in downtown Miami, about the size of a tennis court, with a two-thousand-year-old circle cut into the bedrock underneath it. Twenty-four basins, thirty-eight feet across, carved by hand at the mouth of the river. The state paid twenty-six million dollars for that patch of ground in 1999 — and then covered the circle back up to protect it. Most people who walk across it have no idea. Tonight's episode goes down through the layers under one square mile of a modern American city, and what is down there is not a mystery. It is a town that was never lost.",
+  "community_image_prompts": [
+   "Square 1:1 photoreal overhead macro: hand-cut circular basins in pale limestone bedrock, rainwater sheen in the holes, one clean excavated edge, dark navy shadow around the stone, single raking light. No people, no text.",
+   "Square 1:1 photoreal, blue hour: a small empty city lawn between glass towers and a dark river mouth, one low railing, the faint ring of a buried circle just readable in the grass. No people, no text."
+  ]
+ }
+}

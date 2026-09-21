@@ -2395,6 +2395,12 @@ def fill_video(job, work: Path, missing: int, need_clips: int):
     движение — за неподвижным кадром сюда бы не пошли, для этого есть
     изображения с ходом камеры.
     """
+    if not magnific.VIDEO_GEN_ALLOWED:
+        log(f"  футажа не хватает {missing}, но генерация видео запрещена "
+            f"(magnific.VIDEO_GEN_ALLOWED) — весь футаж ролика настоящий. "
+            f"Нехватку закроют изображения с движением камеры; добрать "
+            f"настоящего можно этапом material")
+        return 0
     if not magnific.available():
         log("  ! футажа не хватает, а MAGNIFIC_API_KEY не задан — "
             "нехватку закроют изображения с движением камеры")
