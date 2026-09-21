@@ -590,11 +590,10 @@
   "fps": 30
  },
  "youtube": {
-  "title": "The 2,000-Year-Old City Underneath Miami",
+  "title": "They Found a 2,000-Year-Old City Under Miami — Then Buried It Again",
   "title_alternatives": [
-   "Miami Is Built on a Town That Was Already Ancient",
-   "A Million Objects Under Brickell: The City Miami Never Mentions",
-   "They Found a 2,000-Year-Old Town Under Downtown Miami. Then They Buried It Again."
+   "Miami Is Built on a Lost City. A Million Pieces of It Sit in a Warehouse.",
+   "The 2,000-Year-Old City Under Miami That Almost Nobody Is Allowed to See"
   ],
   "description_intro": "There is a patch of grass in downtown Miami with a two-thousand-year-old circle cut into the bedrock underneath it. A few blocks away, round houses are carved into the limestone under a cinema. Just west of Brickell Avenue, more than a million artifacts have come out of the ground since the early 2020s, ahead of a tower.\n\nThis is not a lost-civilisation mystery. The Tequesta held the mouth of the Miami River for roughly two thousand years, and almost everything we know about them was found because a developer needed a permit. A slow, evidence-first walk through the archaeology under a modern American city — no jump scares, built to be left on in the dark.",
   "chapters": [
@@ -659,6 +658,27 @@
    "Why did Miami pay $26 million for a hole in the rock?",
    "What did they find under downtown Miami?",
    "Where did a million ancient objects go?"
+  ],
+  "sources": [
+   "Florida Division of Historical Resources — Miami Circle at Brickell Point (project pages, National Historic Landmark documentation)",
+   "National Register listing (2002) and National Historic Landmark designation (2009) for the Miami Circle",
+   "Robert S. Carr, «Digging Miami» (University Press of Florida) and published field reporting on Brickell Point and the downtown Miami excavations",
+   "Jerald T. Milanich, «Archaeology of Precolumbian Florida», and his 1999 published critique of the Miami Circle interpretation",
+   "Brother Francisco Villareal's letters (1568) and the 1743 report of Fathers José María Mónaco and José Javier Alaña, in published translations in «Tequesta», the journal of HistoryMiami",
+   "HistoryMiami Museum — Miami Circle Park interpretation and collections",
+   "Reporting on the downtown and Brickell excavations: NPR (2013, 2014), CNN (2014), National Geographic (2014), Science (2023), The Art Newspaper (2024), Miami Herald and Axios Miami on the HEP Board hearings",
+   "City of Miami Historic and Environmental Preservation Board records; Miami-Dade archaeological ordinance"
+  ],
+  "shorts_titles": [
+   "There's a 2,000-Year-Old Circle Under This Miami Lawn",
+   "Miami Paid $26 Million for a Hole in the Rock — Then Buried It",
+   "They Found a Town Plan Carved Under Downtown Miami",
+   "A Million Ancient Objects Came Out of Brickell. Where Are They Now?"
+  ],
+  "community_post": "There is a lawn in downtown Miami, about the size of a tennis court, with a two-thousand-year-old circle cut into the bedrock underneath it. Twenty-four basins, thirty-eight feet across, carved by hand at the mouth of the river. The state paid twenty-six million dollars for that patch of ground in 1999 — and then covered the circle back up to protect it. Most people who walk across it have no idea. Tonight's episode goes down through the layers under one square mile of a modern American city, and what is down there is not a mystery. It is a town that was never lost.",
+  "community_image_prompts": [
+   "Square 1:1 photoreal overhead macro: hand-cut circular basins in pale limestone bedrock, rainwater sheen in the holes, one clean excavated edge, dark navy shadow around the stone, single raking light. No people, no text.",
+   "Square 1:1 photoreal, blue hour: a small empty city lawn between glass towers and a dark river mouth, one low railing, the faint ring of a buried circle just readable in the grass. No people, no text."
   ]
  }
 }
