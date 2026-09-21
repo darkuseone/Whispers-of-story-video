@@ -1,0 +1,126 @@
+══════════════════════════════════════
+ANCIENT WHISPERS — YOUTUBE PACK
+id: miami-tequesta-01
+date: 2026-09-21
+══════════════════════════════════════
+
+## TITLE
+The 2,000-Year-Old City Underneath Miami
+
+## TITLE ALTERNATIVES
+1. Miami Is Built on a Town That Was Already Ancient
+2. A Million Objects Under Brickell: The City Miami Never Mentions
+3. They Found a 2,000-Year-Old Town Under Downtown Miami. Then They Buried It Again.
+
+## DESCRIPTION
+There is a patch of grass in downtown Miami with a two-thousand-year-old circle cut into the bedrock underneath it. A few blocks away, round houses are carved into the limestone under a cinema. Just west of Brickell Avenue, more than a million artifacts have come out of the ground since the early 2020s, ahead of a tower.
+
+This is not a lost-civilisation mystery. The Tequesta held the mouth of the Miami River for roughly two thousand years, and almost everything we know about them was found because a developer needed a permit. A slow, evidence-first walk through the archaeology under a modern American city — no jump scares, built to be left on in the dark.
+
+I have wanted to make this one for a long time, because it breaks the rule that American cities
+have no deep past. Miami has one. It is directly underneath the most expensive real estate in the
+state, it is documented to the centimetre, and there is almost nowhere in the city you can go to
+see it.
+
+Chapters
+00:00  The Grass Over the Circle
+       A People With No Portrait
+       Black Earth and Bedrock
+       Two Thousand Years Without a Field
+       Twenty-Four Holes in the Rock
+       The Septic Tank Argument
+       The Bay Already Had a Name
+       The Last Count
+       The Mound at the Mouth, 1896
+       A Town Plan Under a Cinema
+       A Million Objects in Boxes
+       Nobody Left to Ask
+       Underneath All of It
+       (exact timecodes are filled in by the pipeline from the subtitles after the build;
+        the order and the names here match youtube.chapters)
+
+Sources
+- Florida Department of State, Division of Historical Resources — Miami Circle at Brickell Point (project pages and National Historic Landmark documentation)
+- National Historic Landmark nomination / National Register listing for the Miami Circle (2002 listing, 2009 NHL designation)
+- Robert S. Carr, "Digging Miami" (University Press of Florida) and published field reporting on Brickell Point and the Met Square / downtown Miami excavations
+- Jerald T. Milanich, "Archaeology of Precolumbian Florida" and his 1999 published critique of the Miami Circle interpretation
+- The Jesuit letters of Brother Francisco Villareal, 1568, and the 1743 report of Fathers José María Mónaco and José Javier Alaña (published translations in Tequesta, the journal of HistoryMiami / the Historical Association of Southern Florida)
+- HistoryMiami Museum — Miami Circle Park interpretation and collections
+- Contemporary reporting on the downtown and Brickell excavations: NPR (2013, 2014), CNN (2014), National Geographic (2014), Science (2023), The Art Newspaper (2024), Miami Herald / Axios Miami coverage of the HEP Board hearings
+- City of Miami Historic and Environmental Preservation Board records and the Miami-Dade archaeological ordinance
+
+Notes
+A general-interest historical investigation. Dates for the Miami Circle are given as a range (commonly cited as roughly 1,700-2,000 years for the radiocarbon material, with occupation at Brickell Point stretching further back); figures for artifact counts, site extents and population estimates follow published reporting and excavation summaries and are treated as estimates, not settled numbers. The 1896 mound account rests on workers' later recollections. The Tequesta are not ancestral to the Seminole or Miccosukee nations of Florida today.
+
+## TAGS (10–15)
+Tequesta, Miami Circle, Brickell Point, Miami archaeology, ancient Miami, Tequesta village, Miami River history, Florida archaeology, lost city America, Native American Florida, Bob Carr archaeologist, Met Square Miami, history documentary, sleep documentary history, American prehistory
+
+## HASHTAGS
+#archaeology #Miami #AmericanHistory #AncientHistory #Documentary
+
+## COVER PROMPT (xAI / image model)
+1. YouTube thumbnail, 16:9 photoreal mystery-history still. PATTERN: object. HERO: an extreme close-up of hand-cut circular basins in pale limestone bedrock, rainwater sheen in the holes, a trowel-clean edge, seen from directly above. High contrast, dark navy/charcoal base, one lit subject, not beige AI. Empty negative space at the top for type; the hero is not under the letters. Bottom-right 180x72px empty (duration badge). 8% margins. No faces to camera, no extra text, arrows, circles, YouTube UI. ONLY text "BURIED TO SAVE IT" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, letter height 20-30% of frame, readable at 120px wide.
+
+2. YouTube thumbnail, 16:9 photoreal mystery-history still. PATTERN: tension. HERO: a small empty city lawn at blue hour between glass towers and a dark river mouth, one low railing, and the faint ring of a buried circle just readable in the grass under a single raking light. High contrast, dark navy/charcoal base, one lit subject, not beige AI. Empty negative space on the left side for type; the hero is not under the letters. Bottom-right 180x72px empty (duration badge). 8% margins. No faces to camera, no extra text, arrows, circles, YouTube UI. ONLY text "A MILLION OBJECTS" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, letter height 20-30% of frame, readable at 120px wide.
+
+## COVER TEXT OPTIONS
+1. BURIED TO SAVE IT
+2. A MILLION OBJECTS
+
+## YOUTUBE COMMUNITY POST
+There is a lawn in downtown Miami, about the size of a tennis court, with a two-thousand-year-old
+circle cut into the bedrock underneath it. Twenty-four basins, thirty-eight feet across, carved by
+hand into limestone at the mouth of the river. The state paid twenty-six million dollars for that
+patch of ground in 1999 — and then covered the circle back up to protect it. Most people who walk
+across it have no idea. Tonight's episode goes down through the layers under one square mile of a
+modern American city, and what is down there is not a mystery. It is a town that was never lost.
+
+## COMMUNITY IMAGE PROMPTS
+1. Photoreal 16:9, blue hour: a small empty city lawn between glass towers and a dark river mouth,
+   one low railing, the faint ring of a buried circle just readable in the grass under a single
+   raking light. No people, no text.
+2. Photoreal 1:1 overhead macro: hand-cut circular basins in pale limestone bedrock, rainwater
+   sheen in the holes, a clean excavated edge, dark navy shadow around the stone. No people, no text.
+
+## SHORTS
+### Short 1 — Hook
+Title: There Is a 2,000-Year-Old Circle Under This Miami Lawn
+Question on screen: What is buried under this Miami lawn?
+Pitch: The cold open — a patch of grass people eat lunch on, and the carved bedrock underneath it.
+
+### Short 2 — Revelation
+Title: Miami Paid $26 Million for a Hole in the Rock — Then Buried It
+Question on screen: Why did Miami pay $26 million for a hole in the rock?
+Pitch: The 1999 fight, the septic-tank argument, the purchase, and the decision to cover it again.
+
+### Short 3 — Escalation
+Title: They Found a Town Plan Under Downtown Miami
+Question on screen: What did they find under downtown Miami?
+Pitch: Round houses cut into bedrock along a street — under what is now a cinema.
+
+### Short 4 — Extra
+Title: A Million Ancient Objects Came Out of Brickell. Where Are They?
+Question on screen: Where did a million ancient objects go?
+Pitch: The excavation that runs on a construction schedule, and the warehouse at the end of it.
+
+## PINNED COMMENT (first comment under the video)
+Thank you for staying with this one — it is a slow episode, and it is meant to be listened to in
+the dark rather than watched closely.
+
+One question I keep turning over: if a city finds a two-thousand-year-old town under its own
+downtown, what does it actually owe that town — a museum, a marked floor, or just a good report?
+
+Sources are in the description, and the chapters are timestamped if you want to come back to a
+particular part. The chapter on 1896 is the one I found hardest to write.
+
+If these long, quiet investigations are your kind of thing, subscribe and turn notifications on —
+there is a new one every few weeks.
+
+## POSTING CHECKLIST
+- [ ] JSON лежит в jobs/miami-tequesta-01.json
+- [ ] Заголовок / описание / теги скопированы
+- [ ] Первый комментарий закреплён (PINNED COMMENT)
+- [ ] Две обложки cover_1 / cover_2 после сборки
+- [ ] Четыре шортса short_1..short_4 после сборки
+- [ ] Sources указаны в описании
+- [ ] Не конфликтует с последними темами channel/log.json

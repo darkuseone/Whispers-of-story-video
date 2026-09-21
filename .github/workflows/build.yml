@@ -580,6 +580,24 @@ jobs:
             ${{ steps.out.outputs.dir }}/cover_2.jpg
           fail_on_unmatched_files: true
 
+      # ШОРТСОВ МОЖЕТ БЫТЬ БОЛЬШЕ ДВУХ. Основной релиз выше требует
+      # short_1/short_2 и падает, если их нет (fail_on_unmatched_files),
+      # поэтому третий и четвёртый докладываются отдельным шагом, которому
+      # отсутствие файла — не ошибка: у выпуска с n_shorts: 2 их просто нет.
+      # Без этого шага short_3/short_4 оставались на раннере и приезжали в
+      # релиз только отдельным прогоном stage: shorts.
+      - name: Дополняем релиз — шортсы 3-4 и пакет выкладки
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'shorts'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: final-${{ steps.pick.outputs.job }}
+          name: Готово — ${{ steps.pick.outputs.job }}
+          files: |
+            ${{ steps.out.outputs.dir }}/shorts/short_3.mp4
+            ${{ steps.out.outputs.dir }}/shorts/short_4.mp4
+            ${{ steps.out.outputs.dir }}/youtube.txt
+          fail_on_unmatched_files: false
+
       - name: Обновляем шортсы в релизе
         if: steps.pick.outputs.stage == 'shorts'
         uses: softprops/action-gh-release@v2
