@@ -209,21 +209,90 @@ def prompt_for(job, index, text=None, scene=None, pattern=None):
             + " " + TYPE_LOCK.format(text=text))
 
 
+# ОБЛОЖКА РИСУЕТСЯ НА МАКСИМУМЕ, КОТОРЫЙ ДАЁТ КЛЮЧ, и это не про
+# перфекционизм. Обложка — единственная картинка ролика, которую зритель
+# видит ДО того, как решит смотреть, и единственная, которую он видит в
+# размере 120 px рядом с чужими. Кадр внутри ролика живёт 12 секунд под
+# рассказ, обложка работает полсекунды против всей ленты.
+#
+# Порядок предпочтения моделей и параметры выбираются НА МЕСТЕ, через
+# /v1/models, ровно по той же причине, что и у зрения (см. vet.py):
+# имена моделей живут своей жизнью. На сентябрь 2026 верхняя — Grok
+# Imagine Image 2.0 (`grok-imagine-image-2.0`), у неё же заметно лучше
+# рендер типографики, а это ровно то, что на обложке важнее всего.
+# `grok-imagine-image-quality` выводится из эксплуатации 2 ноября 2026 и
+# после этой даты сам перенаправляется на 2.0 в НИЗКОМ качестве — то есть
+# оставить старое имя в спецификации значит однажды молча получить
+# худшую картинку.
+IMAGE_MODEL_PREFERENCE = ("imagine-image-2", "image-2.0", "image-2",
+                          "quality", "imagine-image", "image")
+IMAGE_MODEL_EXCLUDE = ("video", "embed", "vision", "tts", "whisper")
+
+# quality: API принимает low / medium / auto, и medium — ПОТОЛОК для
+# генерации (auto сам разворачивается в low). resolution 2k против 1k по
+# умолчанию: обложку режут и кадрируют под разные плитки YouTube.
+COVER_QUALITY = "medium"
+COVER_RESOLUTION = "2k"
+
+
+def best_image_model(key: str, want: str = None) -> str:
+    """
+    Самая качественная из доступных моделей рисования.
+
+    want (поле image_model спецификации) перебивает выбор целиком: иногда
+    нужно закрепить конкретную модель, чтобы серия роликов выглядела
+    одинаково.
+    """
+    if want:
+        return want
+    try:
+        r = requests.get(f"{XAI}/models", timeout=30,
+                         headers={"Authorization": f"Bearer {key}"})
+        ids = [m["id"] for m in r.json().get("data", [])]
+    except Exception as e:
+        log(f"  ! список моделей не пришёл ({e}) — беру grok-imagine-image-2.0")
+        return "grok-imagine-image-2.0"
+    ids = [i for i in ids
+           if "image" in i.lower()
+           and not any(x in i.lower() for x in IMAGE_MODEL_EXCLUDE)]
+    if not ids:
+        log("  ! моделей рисования в списке нет — беру grok-imagine-image-2.0")
+        return "grok-imagine-image-2.0"
+    for pat in IMAGE_MODEL_PREFERENCE:
+        for i in ids:
+            if pat in i.lower():
+                log(f"  обложки рисует {i} "
+                    f"(quality={COVER_QUALITY}, resolution={COVER_RESOLUTION}); "
+                    f"доступны: {', '.join(ids)}")
+                return i
+    log(f"  обложки рисует {ids[0]}; доступны: {', '.join(ids)}")
+    return ids[0]
+
+
 def xai_cover(prompt: str, dst: Path, model: str, key: str) -> bool:
-    body = {"model": model, "prompt": prompt, "n": 1,
-            "aspect_ratio": "16:9"}
-    r = requests.post(f"{XAI}/images/generations", timeout=180,
-                      headers={"Authorization": f"Bearer {key}",
-                               "Content-Type": "application/json"},
-                      json=body)
-    if r.status_code != 200:
-        if "aspect" in r.text.lower() or r.status_code == 400:
-            body.pop("aspect_ratio", None)
-            r = requests.post(f"{XAI}/images/generations", timeout=180,
-                              headers={"Authorization": f"Bearer {key}",
-                                       "Content-Type": "application/json"},
-                              json=body)
-    if r.status_code != 200:
+    # Отступаем ПО ОДНОМУ полю, а не всё сразу: если ключ не знает
+    # resolution, это не повод терять и 16:9, и качество.
+    attempts = [
+        {"model": model, "prompt": prompt, "n": 1, "aspect_ratio": "16:9",
+         "quality": COVER_QUALITY, "resolution": COVER_RESOLUTION},
+        {"model": model, "prompt": prompt, "n": 1, "aspect_ratio": "16:9",
+         "quality": COVER_QUALITY},
+        {"model": model, "prompt": prompt, "n": 1, "aspect_ratio": "16:9"},
+        {"model": model, "prompt": prompt, "n": 1},
+    ]
+    r = None
+    for body in attempts:
+        r = requests.post(f"{XAI}/images/generations", timeout=240,
+                          headers={"Authorization": f"Bearer {key}",
+                                   "Content-Type": "application/json"},
+                          json=body)
+        if r.status_code == 200:
+            break
+        if r.status_code != 400:
+            break
+        log(f"  ? обложка: {r.status_code} на полях "
+            f"{sorted(set(body) - {'model', 'prompt', 'n'})} — пробую проще")
+    if r is None or r.status_code != 200:
         log(f"  ! обложка не вышла: {r.status_code} {r.text[:180]}")
         return False
     try:
@@ -298,7 +367,12 @@ def build_covers(job, out: Path, video: Path = None):
     texts = cover_texts(job)
     scenes = scene_hints(job)
     key = (os.environ.get("XAI_API_KEY") or "").strip()
-    model = job.get("image_model", "grok-imagine-image")
+    # Имя модели БОЛЬШЕ НЕ ЗАШИТО умолчанием: "grok-imagine-image" — это
+    # старое имя, и ключ однажды молча начнёт отдавать по нему картинку
+    # хуже той, что доступна. Спрашиваем у сервиса, поле image_model
+    # спецификации по-прежнему перебивает выбор.
+    model = best_image_model(key, job.get("image_model")) if key \
+        else job.get("image_model", "grok-imagine-image-2.0")
     y = job.get("youtube") or {}
     seed_dir = ROOT / "seed" / job.get("id", "")
     total_hint = 600.0

@@ -51,11 +51,65 @@ Tequesta, Miami Circle, Brickell Point, Miami archaeology, ancient Miami, Teques
 
 ПРОМПТЫ ОБЛОЖЕК (xAI)
 
-1. Хук на обложке: BURIED TO SAVE IT
-   YouTube thumbnail, 16:9 photoreal mystery-history still. PATTERN: object. HERO: an extreme close-up of hand-cut circular basins in pale limestone bedrock, rainwater sheen in the holes, a trowel-clean edge, seen from directly above. High contrast, dark navy/charcoal base, one lit subject, not beige AI. Empty negative space at the top for type; the hero is not under the letters. Bottom-right 180x72px empty (duration badge). 8% margins. No faces to camera, no extra text, arrows, circles, YouTube UI. ONLY text "BURIED TO SAVE IT" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, letter height 20-30% of frame, readable at 120px wide.
+1. Хук на обложке: BURIED UNDER MIAMI
+   YouTube thumbnail, exact 16:9 photoreal mystery-history still, Ancient Whispers cover grid.
+
+COMPOSITION LOCK:
+- Upper third: empty dark navy/charcoal negative space ONLY for type. The hero sits entirely in the lower two-thirds. Letters never overlap the subject.
+- Type: ONLY the words "BURIED UNDER MIAMI" extra-condensed ALL-CAPS Anton (Impact-like fallback), yellow-gold #FFD400, centered in the upper third, nearly full frame width, letter height 20-30% of the frame, readable at 120px wide. No other text, no subtitle, no arrows, no circles, no UI.
+- 8% safe margins on all sides.
+- Bottom-right 180x72 px kept empty and dark for the duration badge.
+- No faces to camera, no people, no tourists, no extra typography, no watermarks, no YouTube chrome.
+
+HERO / LOWER TWO-THIRDS — one lit subject:
+Night at Miami Circle Park, Brickell Point, at the mouth of the Miami River where it meets Biscayne Bay. Photoreal cinematic still, not stock travel, not beige AI.
+
+Foreground-mid: a circular lawn cut open as a precise archaeological reveal of the REAL Miami Circle. Pale honey-cream Miami oolite limestone bedrock, a 38-foot (11.5 m) perfect circle. 24 large loaf-shaped and tadpole / dot-dash basins (a wide oval or quasi-rectangular basin with a narrower connected tail) alternating with smaller round postholes, plus a scatter of minor holes inside and just outside the ring. Basin walls nearly vertical with visible shell-tool cut striations. Trowel-clean rim. Rainwater sheen pooling in the cut holes, catching a single warm key light. The surrounding turf is dark, wet and tightly mown; the excavated disk is the only brightly lit object in the frame.
+
+Background — must read instantly as Miami, not generic tropics:
+Behind and above the circle, the Brickell waterfront skyline at night: Icon Brickell glass towers with curved sail profiles and stacked warm window grids rising immediately off the park, more Brickell high-rises packed behind them. Royal palms and coconut palms in silhouette and partial rim-light along the riverwalk. Dark water of the Miami River and Biscayne Bay with long reflections of tower lights. The Brickell Avenue Bridge hinted at the far left, not dominant. Night sky deep charcoal-navy, no sunset candy colors.
+
+LIGHTING / GRADE:
+High contrast, dark navy/charcoal base. One subject: the limestone circle raked by a warm amber-tungsten uplight so the basins, cut marks and water sheen pop. Cool cyan-teal spill from the glass towers and bay reflections only in the background. Deep shadows in the grass. Photoreal night editorial, wet limestone texture, no fog, no neon cyberpunk, no HDR halo.
+
+CAMERA:
+Slightly elevated three-quarter view, ~28mm cinematic still, eye just above the circle so the basins read as a complete ring AND the towers and palms stay in frame. Razor-sharp on the cut limestone, skyline readable but secondary. No drone fisheye, no top-down flat map.
+
+QUALITY:
+Photoreal, high-contrast, tactile stone and wet grass, cinematic still from a mystery-history documentary. Not beige, not oversaturated tropical postcard, not illustration, not CGI overlay, not plastic AI limestone.
+
+NEGATIVE:
+no faces, no people, no extra text, no arrows, no circles drawn on the image, no YouTube UI, no watermark, no logo, no beige limestone sludge, no generic beach, no Art Deco South Beach swap, no daytime, no sunset orange sky, no crowded park, no glass pyramid over the site, no replica plaque dominating the frame
 
 2. Хук на обложке: A MILLION OBJECTS
-   YouTube thumbnail, 16:9 photoreal mystery-history still. PATTERN: tension. HERO: a small empty city lawn at blue hour between glass towers and a dark river mouth, one low railing, and the faint ring of a buried circle just readable in the grass under a single raking light. High contrast, dark navy/charcoal base, one lit subject, not beige AI. Empty negative space on the left side for type; the hero is not under the letters. Bottom-right 180x72px empty (duration badge). 8% margins. No faces to camera, no extra text, arrows, circles, YouTube UI. ONLY text "A MILLION OBJECTS" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, letter height 20-30% of frame, readable at 120px wide.
+   YouTube thumbnail, exact 16:9 photoreal mystery-history still, Ancient Whispers cover grid.
+
+COMPOSITION LOCK:
+- Upper third: empty dark navy/charcoal negative space ONLY for type. The hero sits entirely in the lower two-thirds. Letters never overlap the subject.
+- Type: ONLY the words "A MILLION OBJECTS" extra-condensed ALL-CAPS Anton (Impact-like fallback), yellow-gold #FFD400, centered in the upper third, nearly full frame width, letter height 20-30% of the frame, readable at 120px wide. No other text, no subtitle, no arrows, no circles, no UI.
+- 8% safe margins on all sides.
+- Bottom-right 180x72 px kept empty and dark for the duration badge.
+- No faces to camera, no people, no tourists, no extra typography, no watermarks, no YouTube chrome.
+
+HERO / LOWER TWO-THIRDS — one lit subject:
+Night inside an archaeological curation warehouse in Miami-Dade. Photoreal cinematic still, not a clean corporate stock interior.
+
+Foreground-mid: one open grey archival crate on a steel cart under a single warm work lamp. Inside, laid on acid-free foam in numbered compartments: worked whelk and conch shell tools (adzes, hammers, dippers) with chalky weathered surfaces, shark-tooth blades, bone points, and plain sand-tempered Glades-period pottery sherds, buff to dark grey, undecorated. Each piece has a small white catalogue label with a handwritten number. Behind the crate, steel shelving runs away into the dark, packed with identical numbered boxes, aisle after aisle, receding out of the light.
+
+Background — must read instantly as Miami, not a generic storeroom:
+A high industrial window at the rear of the aisle, and through it the Brickell / downtown Miami skyline at night — glass towers with warm window grids, a few palms in silhouette against the city glow, dark water beyond. The city is small in frame but unmistakable.
+
+LIGHTING / GRADE:
+High contrast, dark navy/charcoal base. One subject: the open crate of artifacts under a warm amber work lamp, so shell texture, chalky surfaces and handwritten labels pop. Cool cyan-teal city light only through the window. Shelving falls into deep shadow. Photoreal night editorial, no fog, no neon, no HDR halo.
+
+CAMERA:
+Low three-quarter view along the aisle, ~35mm cinematic still, the open crate close and sharp, the shelving and window receding behind it. Shallow-to-medium depth: razor-sharp on the shell tools, shelves readable but secondary.
+
+QUALITY:
+Photoreal, high-contrast, tactile shell and cardboard and steel, cinematic still from a mystery-history documentary. Not beige, not illustration, not CGI overlay, not plastic AI artifacts.
+
+NEGATIVE:
+no faces, no people, no hands, no extra text beyond the catalogue numbers, no arrows, no circles drawn on the image, no YouTube UI, no watermark, no logo, no gold treasure, no Egyptian or Mesoamerican artifacts, no museum gallery with visitors, no daytime, no clean white lab
 
 ПОСТ В СООБЩЕСТВО
 
