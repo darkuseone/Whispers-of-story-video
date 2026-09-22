@@ -53,6 +53,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -359,6 +360,40 @@ def cheap_problems(path: Path):
 
 
 # ─────────────────── ПОВТОРЫ И ПАМЯТЬ ВЕРДИКТОВ ───────────────────
+
+# Слова, у которых окончание -s не множественное: срезать его — значит
+# склеить «news» с «new», «cosmos» с «cosmo».
+_STEM_KEEP = {"news", "cosmos", "chaos", "lens", "bus", "gas", "glass",
+              "mars", "christmas", "texas", "atlas", "canvas", "always",
+              "various", "famous", "previous", "genesis", "osiris", "isis",
+              "memphis", "tanis", "abydos", "knossos", "delphos", "carlos",
+              "paris", "athens", "thebes", "wales", "series", "species"}
+
+
+def stem(w: str) -> str:
+    """
+    Одна форма на слово: «pyramids» и «pyramid», «ruins» и «ruin».
+
+    Нужна в двух местах, и правило у них обязано быть одним: при отборе
+    выдачи стока (assets._match_words) и при подборе кадра под начитку
+    (build.words_of). Поэтому живёт здесь — оба модуля импортируют vet.
+
+    Без этого подбор по смыслу промахивался на самом частом случае:
+    запрос к стоку пишется во множественном числе («shell mounds»), а
+    диктор говорит в единственном («the mound») — и пересечение слов
+    нулевое. Срезается только окончание множественного числа, и одинаково
+    с обеих сторон: и у слов файла, и у слов начитки.
+    """
+    if w in _STEM_KEEP or len(w) <= 3:
+        return w
+    if w.endswith("ies") and len(w) > 4:
+        return w[:-3] + "y"
+    if w.endswith(("ches", "shes", "sses", "xes", "zes")):
+        return w[:-2]
+    if w.endswith("s") and not w.endswith(("ss", "us", "is", "os")):
+        return w[:-1]
+    return w
+
 
 def dhash(im: Image.Image, side=8) -> int:
     """
@@ -682,9 +717,16 @@ Be strict. There is more material than the video needs, so rejecting a \
 doubtful frame costs nothing, while one wrong frame is visible to every \
 viewer for the whole video.
 
+Finally, list what is ACTUALLY VISIBLE, so the editor can put the shot \
+under the right sentence of the narration: 3 to 8 concrete English nouns \
+or two-word names (place, object, material, landscape, era, activity) — \
+"pyramid", "shell mound", "mangrove", "museum case", "excavation", \
+"river mouth". No adjectives about mood, no words like "image" or "scene".
+
 Answer with STRICT JSON and nothing else:
 {{"keep": true or false, "quality": 1-5, "why": "at most 12 words", \
-"what": "what you see, at most 8 words"}}"""
+"what": "what you see, at most 8 words", \
+"subjects": ["noun", "noun", "..."]}}"""
 
 # Ниже какой оценки кадр не берём, даже когда модель сказала keep=true.
 #
@@ -750,8 +792,8 @@ def choose_model(im, topic, desc, key, want=None, period_context=None):
         inp, outp = price_of(name)
         log(f"    {name:<44} {inp:>5.2f} / {outp:<5.2f}")
     for name in cands[:6]:
-        keep, why, used, _q = ask_vision(im, topic, desc, name, key, tries=1,
-                                         period_context=period_context)
+        keep, why, *_rest = ask_vision(im, topic, desc, name, key, tries=1,
+                                       period_context=period_context)
         if keep is not None:
             log(f"  зрение: работает модель {name}")
             return name, ""
@@ -767,12 +809,49 @@ def to_data_url(im: Image.Image) -> str:
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
+def seen_of(data: dict, quality: int) -> dict:
+    """
+    ЧТО НА КАДРЕ, словами зрения: описание, предметы и оценка.
+
+    Зрение и так смотрело каждый кадр и писало, что видит, — но слова эти
+    уходили только в лог. Монтаж подбирал кадр под фразу диктора по
+    словам ПОИСКОВОГО ЗАПРОСА, а запрос — это то, что искали, не то, что
+    нашлось: по «shell mound Florida» приезжает и раковинный холм, и
+    мангры, и пляж с отдыхающими, и у всех троих одинаковые слова. Здесь
+    увиденное сохраняется рядом с вердиктом, и build.keywords_for кладёт
+    его в слова файла — фраза про мангры находит мангры, а не третий
+    по счёту клип с того же запроса.
+    """
+    subj = data.get("subjects") or []
+    if isinstance(subj, str):
+        subj = [x for x in re.split(r"[,;]", subj)]
+    subj = [str(x).strip().lower()[:32] for x in subj if str(x).strip()][:10]
+    out = {"what": str(data.get("what") or "")[:90].strip(),
+           "tags": subj, "quality": int(quality)}
+    return {k: v for k, v in out.items() if v}
+
+
+def merge_seen(a: dict, b: dict) -> dict:
+    """Два кадра одного клипа: предметы складываются, оценка — худшая."""
+    if not a:
+        return dict(b or {})
+    if not b:
+        return dict(a)
+    tags = list(dict.fromkeys(list(a.get("tags", [])) + list(b.get("tags", []))))
+    out = {"what": a.get("what") or b.get("what", ""), "tags": tags[:14]}
+    qs = [q for q in (a.get("quality"), b.get("quality")) if q]
+    if qs:
+        out["quality"] = min(qs)
+    return {k: v for k, v in out.items() if v}
+
+
 def ask_vision(im: Image.Image, topic: str, description: str, model: str,
                key: str, tries=2, period_context=None):
     """
     Вердикт модели по одному кадру.
 
-    Возвращает (годится, что видно, (входных токенов, выходных), оценка).
+    Возвращает (годится, что видно, (входных токенов, выходных), оценка,
+    увиденное — см. seen_of).
 
     При любой беде возвращает None в первом поле — «не знаю», и кадр
     остаётся в работе. Отбраковывать по неудавшемуся запросу нельзя: так
@@ -809,7 +888,7 @@ def ask_vision(im: Image.Image, topic: str, description: str, model: str,
                     time.sleep(2 * (attempt + 1))
                     continue
                 return (None, f"зрение ответило {r.status_code}: "
-                        f"{r.text[:120]}", (0, 0), 0)
+                        f"{r.text[:120]}", (0, 0), 0, {})
             txt = r.json()["choices"][0]["message"]["content"].strip()
             # модель иногда оборачивает JSON в ```json ... ```
             if txt.startswith("```"):
@@ -825,16 +904,17 @@ def ask_vision(im: Image.Image, topic: str, description: str, model: str,
             quality = max(1, min(5, quality))
             keep = bool(data.get("keep", True))
             why = str(data.get("what") or data.get("why") or "")[:70]
+            info = seen_of(data, quality)
             if keep and quality < MIN_QUALITY:
                 keep = False
                 why = f"оценка {quality}/5 — {why}"
-            return keep, why, used, quality
+            return keep, why, used, quality, info
         except Exception as e:
             if attempt + 1 < tries:
                 time.sleep(1.5)
                 continue
-            return None, f"зрение не ответило: {e}", (0, 0), 0
-    return None, "зрение не ответило", (0, 0), 0
+            return None, f"зрение не ответило: {e}", (0, 0), 0, {}
+    return None, "зрение не ответило", (0, 0), 0, {}
 
 
 # ─────────────────────── ГЛАВНОЕ ───────────────────────
@@ -1099,6 +1179,8 @@ def vet_all(job, work: Path, use_vision=True):
         log(f"── проверяю {kind}: {len(files)} шт")
 
         decided, ask_list, frames, fkeys, mid_hash = {}, [], {}, {}, {}
+        # что зрение увидело на кадре — уходит в vetted.json к монтажу
+        seen = {}
         cheap_n = cached_n = twin_n = critic_n = 0
         for f in files:
             # ПАМЯТЬ ПРОВЕРЯЕТСЯ ДО РАЗБОРА ФАЙЛА. Отпечаток считается по
@@ -1110,6 +1192,8 @@ def vet_all(job, work: Path, use_vision=True):
             hit = cache.get(fkey)
             if hit is not None:
                 decided[f] = (bool(hit["keep"]), hit["why"])
+                if hit.get("seen"):
+                    seen[f] = hit["seen"]
                 cached_n += 1
                 continue
             im, bad, pale, look = cheap_problems(f)
@@ -1217,12 +1301,15 @@ def vet_all(job, work: Path, use_vision=True):
                 # и если сложить только его токены, строка стоимости
                 # занижает счёт вдвое на всём видео ролика.
                 tin = tout = calls = 0
+                both = {}
                 for im in frames[f][:2]:
                     res = ask_vision(im, topic, desc, model, api_key,
                                      period_context=period_context)
                     tin += res[2][0]
                     tout += res[2][1]
                     calls += 1
+                    if len(res) > 4:
+                        both = merge_seen(both, res[4])
                     if worst is None:
                         worst = res
                     elif res[0] is False:
@@ -1230,6 +1317,10 @@ def vet_all(job, work: Path, use_vision=True):
                         break
                     elif res[0] is not None and worst[0] is None:
                         worst = res
+                # Предметы — с ОБОИХ кадров: клип режется с любого места,
+                # и слова должны описывать весь файл, а не одну середину.
+                if worst is not None and both:
+                    worst = tuple(worst[:4]) + (both,)
                 return f, worst, tin, tout, calls
 
             # ОСТАНОВКА ПО ДОСТАТКУ. Скачивается материала в разы больше,
@@ -1303,6 +1394,8 @@ def vet_all(job, work: Path, use_vision=True):
                     keep, why = True, "зрение не спрашивалось"
                 else:
                     keep, why = answer[0], answer[1]
+                    if len(answer) > 4 and answer[4]:
+                        seen[f] = answer[4]
                     if keep is None:
                         keep, why = True, f"неясный ответ зрения: {why}"
                     else:
@@ -1315,7 +1408,11 @@ def vet_all(job, work: Path, use_vision=True):
                         # тоже: иначе следующая пересборка соберёт корзины
                         # заново и снова заплатит за представителя.
                         cache[fkeys[f]] = {"keep": bool(keep), "why": why}
+                        if seen.get(f):
+                            cache[fkeys[f]]["seen"] = seen[f]
             verdicts[kind][str(n)] = {"keep": bool(keep), "why": why}
+            if seen.get(f):
+                verdicts[kind][str(n)]["seen"] = seen[f]
             # ПРИЗНАК «НЕ СМОТРЕЛИ». Для монтажа это тот же отказ — файл в
             # ролик не идёт. А вот добору материала (assets.refill_after_vet)
             # разница принципиальна: он меряет долю брака и по ней решает,
@@ -1372,6 +1469,34 @@ def skipped_from(work: Path):
     data = json.loads(p.read_text(encoding="utf-8"))
     return {kind: {int(n) for n, v in d.items() if v.get("skipped")}
             for kind, d in data.items()}
+
+
+def seen_from(work: Path):
+    """
+    Что зрение увидело на каждом годном файле: {(вид, номер): увиденное}.
+
+    Читается монтажом (build.keywords_for) — слова увиденного ложатся в
+    слова файла рядом со словами запроса, а оценка качества идёт в подбор
+    кадра как предпочтение при равном смысле. Файлов без записи здесь
+    нет: арифметика и память старых прогонов предметов не знают, и для
+    них подбор остаётся по запросу, как было.
+    """
+    p = work / "vetted.json"
+    if not p.exists():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    out = {}
+    for kind, d in data.items():
+        for n, v in d.items():
+            if v.get("keep") and v.get("seen"):
+                try:
+                    out[(kind, int(n))] = v["seen"]
+                except ValueError:
+                    continue
+    return out
 
 
 def rejected_from(work: Path):
