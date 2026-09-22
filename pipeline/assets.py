@@ -1567,12 +1567,59 @@ def src_met(q, n):
     return out
 
 
+# LoC стоит за Cloudflare и режет облачный адрес уже на втором запросе
+# подряд (замер 22 сентября 2026: 200, потом 429 «Just a moment...» на
+# трёх повторах). Частые повторы лимит только продлевают, поэтому здесь
+# свой темп — не чаще раза в LOC_GAP секунд — и БЕЗ повторов на 429:
+# вместо них тот же фонд берётся через зеркало (loc_via_mirror).
+LOC_GAP = 4.0
+_loc_last = [0.0]
+_loc_blocked = [False]
+
+
+def loc_via_mirror(q, n):
+    """
+    Фонды Библиотеки Конгресса через Commons — когда loc.gov закрыт.
+
+    Prints & Photographs LoC массово выложены на Wikimedia Commons с
+    номером «LCCN» в имени файла, в общественном достоянии. Поиск Commons
+    по «<запрос> LCCN» отдаёт именно их (замер: «Royal Palm Hotel Miami
+    LCCN» — четыре скана LoC из четырёх), и лимит у Commons свой, с
+    Cloudflare у loc.gov не пересекающийся. Индекс Openverse здесь не
+    годится: копии LoC в нём почти не проиндексированы.
+    """
+    out = src_wikimedia(f"{q} LCCN", n)
+    for it in out:
+        it["src"] = "loc"
+    if out:
+        log(f"    loc «{q}»: loc.gov закрыт, {len(out)} взято из копий "
+            f"фонда на Commons")
+    return out
+
+
 def src_loc(q, n):
     """Библиотека Конгресса. Ключ не нужен."""
-    r = http_get("https://www.loc.gov/photos/", timeout=TIMEOUT, headers=UA,
-                     params={"q": q, "fo": "json", "c": n * 2})
+    if _loc_blocked[0]:
+        return loc_via_mirror(q, n)
+    wait = LOC_GAP - (time.time() - _loc_last[0])
+    if wait > 0:
+        time.sleep(wait)
+    _loc_last[0] = time.time()
+    try:
+        r = requests.get("https://www.loc.gov/photos/", timeout=TIMEOUT,
+                         headers=UA, params={"q": q, "fo": "json", "c": n * 2})
+    except requests.RequestException as e:
+        log(f"    ! loc «{q}»: {e}")
+        return loc_via_mirror(q, n)
+    if r.status_code == 429 or "Just a moment" in r.text[:400]:
+        # Лимит Cloudflare держится минуты: до конца прогона loc.gov не
+        # трогаем вовсе, иначе каждый запрос продлевал бы блок.
+        _loc_blocked[0] = True
+        log(f"    loc: Cloudflare закрыл loc.gov (429) — дальше фонд "
+            f"берётся через копии на Commons")
+        return loc_via_mirror(q, n)
     if not ok(r, "loc", q):
-        return []
+        return loc_via_mirror(q, n)
     out = []
     for it in r.json().get("results", [])[:n * 2]:
         imgs = it.get("image_url") or []
