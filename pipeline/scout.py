@@ -177,6 +177,16 @@ def search(job, per: int, extra, only):
         for name, fn in srcs:
             try:
                 found = fn(q, per) or []
+                # ПУСТО — ЕЩЁ НЕ ОТВЕТ. Узкий запрос («Miami River
+                # Florida») сток отбрасывает целиком фильтром по теме;
+                # тот же запрос без хвоста («miami river») находит кадры.
+                # Повтор короче — только когда первый дал ноль.
+                if not found:
+                    sq = assets.short_query(q, keep=2)
+                    if sq and sq.lower() != q.lower():
+                        found = fn(sq, per) or []
+                        if found:
+                            log(f"    {name}: «{q}» пусто, взято по «{sq}»")
             except Exception as e:
                 log(f"  ! {name} «{q}»: {e}")
                 continue
