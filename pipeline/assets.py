@@ -2046,6 +2046,22 @@ def purge_broken(work: Path):
         log(f"── вымел {total} битых файлов из пула прошлых прогонов")
 
 
+def seen_of_pinned(item: dict) -> dict:
+    """Увиденное чатом у запиненного элемента — в том же виде, что у зрения."""
+    subj = item.get("subjects") or []
+    if isinstance(subj, str):
+        subj = re.split(r"[,;]", subj)
+    subj = [str(x).strip().lower() for x in subj if str(x).strip()][:10]
+    out = {"what": str(item.get("what") or "")[:90].strip(), "tags": subj}
+    try:
+        q = int(item.get("quality") or 0)
+    except (TypeError, ValueError):
+        q = 0
+    if 1 <= q <= 5:
+        out["quality"] = q
+    return {k: v for k, v in out.items() if v}
+
+
 def gather_pinned(job, work: Path):
     """
     Качает заранее найденные URL из спецификации — ДО обычного поиска.
@@ -2058,6 +2074,13 @@ def gather_pinned(job, work: Path):
     Элемент — строка-URL или словарь {url, q, src, kind}. kind по
     умолчанию image для archive и video для clips. Уже скачанные URL
     пропускаются, нумерация продолжается с диска — как в gather().
+
+    Элемент, отсмотренный чатом (pipeline/scout.py), несёт ещё и
+    увиденное: what, subjects, quality. Оно пишется в манифест полем
+    seen — по нему монтаж ставит кадр под фразу (build.keywords_for).
+    Обновляется и у уже скачанных строк: предметы дописывают в
+    спецификацию после скачивания, и качать файл заново ради этого
+    незачем.
     """
     def _one(items, folder, prefix, default_kind):
         if not items:
@@ -2072,6 +2095,19 @@ def gather_pinned(job, work: Path):
             except json.JSONDecodeError:
                 old = []
         seen = {o.get("url") for o in old if o.get("url")}
+        # увиденное чатом — и новым строкам, и уже лежащим в манифесте
+        looked = {}
+        for raw in items:
+            if isinstance(raw, dict) and raw.get("url"):
+                s_ = seen_of_pinned(raw)
+                if s_:
+                    looked[raw["url"].split("?")[0].strip()] = s_
+        refreshed = 0
+        for o in old:
+            s_ = looked.get(o.get("url"))
+            if s_ and o.get("seen") != s_:
+                o["seen"] = s_
+                refreshed += 1
         have = [int(p.name.split("_")[1]) for p in out.glob(f"{prefix}_*")
                 if p.name.split("_")[1].isdigit()]
         n = max(have) + 1 if have else 0
@@ -2108,13 +2144,19 @@ def gather_pinned(job, work: Path):
                 log(f"  ! pinned {dst.name}: {why} — выбрасываю")
                 dst.unlink(missing_ok=True)
                 continue
-            got.append({"file": str(dst), "q": q, "url": url,
-                        "src": src, "kind": kind})
+            row = {"file": str(dst), "q": q, "url": url,
+                   "src": src, "kind": kind}
+            if looked.get(url):
+                row["seen"] = looked[url]
+            got.append(row)
             log(f"  pinned {prefix} {n:03d}: {src}  «{q}»")
             n += 1
-        if got:
+        if got or refreshed:
             man.write_text(json.dumps(old + got, indent=1))
+        if got:
             log(f"  pinned {prefix}: добавлено {len(got)}")
+        if refreshed:
+            log(f"  pinned {prefix}: увиденное обновлено у {refreshed}")
         return len(got)
 
     n_v = _one(job.get("pinned_clips") or [], "footage", "clip", "video")
@@ -2285,7 +2327,7 @@ def refill_after_vet(job, work: Path):
                           "archive", "arch", "image")
 
     log("── повторная отбраковка после добора")
-    vet.vet_all(job, work, use_vision=job.get("vet_vision", True))
+    vet.vet_all(job, work, use_vision=job.get("vet_vision", vet.VISION_DEFAULT))
     return True
 
 
@@ -2537,13 +2579,13 @@ def main(job_path, stage="all"):
     # раздувать кэш на гигабайт за раз.
     if stage == "vet":
         log("── отбраковка материала роботом (без скачивания)")
-        vet.vet_all(job, work, use_vision=job.get("vet_vision", True))
+        vet.vet_all(job, work, use_vision=job.get("vet_vision", vet.VISION_DEFAULT))
         return
 
     if stage == "material":
         fetch_material(job, work)
         log("── отбраковка материала роботом")
-        vet.vet_all(job, work, use_vision=job.get("vet_vision", True))
+        vet.vet_all(job, work, use_vision=job.get("vet_vision", vet.VISION_DEFAULT))
         refill_after_vet(job, work)
         log("── материал добран, озвучка и картинки не тронуты")
         return
@@ -2579,7 +2621,7 @@ def main(job_path, stage="all"):
     fetch_material(job, work)
 
     log("── отбраковка материала роботом")
-    vet.vet_all(job, work, use_vision=job.get("vet_vision", True))
+    vet.vet_all(job, work, use_vision=job.get("vet_vision", vet.VISION_DEFAULT))
 
     # Если отбраковка съела слишком много — вторая волна скачивания
     # (настоящий материал), и только потом генерация закрывает остаток.

@@ -646,6 +646,51 @@ class MaterialMix:
 
 # ───────────────────────── ПЛАН КАДРОВ ─────────────────────────
 
+def pinned_seen(assets: Path, job):
+    """
+    Увиденное чатом у запиненных файлов: {(вид, номер): увиденное}.
+
+    Берётся из манифеста (поле seen пишет assets.gather_pinned), а если
+    его там нет — из самой спецификации по адресу файла: предметы могли
+    дописать после скачивания, и пересборка монтажа (stage: render) не
+    качает заново и манифест не трогает.
+    """
+    import assets as assets_mod
+    by_url = {}
+    for key in ("pinned_clips", "pinned_archive"):
+        for it in (job or {}).get(key) or []:
+            if isinstance(it, dict) and it.get("url"):
+                s_ = assets_mod.seen_of_pinned(it)
+                if s_:
+                    by_url[it["url"].split("?")[0].strip()] = s_
+    out = {}
+    for folder in ("footage", "archive"):
+        man = assets / folder / "_manifest.json"
+        if not man.exists():
+            continue
+        try:
+            rows = json.loads(man.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        for row in rows:
+            seen = row.get("seen") or by_url.get(row.get("url"))
+            name = Path(row.get("file", "")).name
+            try:
+                n = int(name.split("_")[1].split(".")[0])
+            except (IndexError, ValueError):
+                continue
+            if seen:
+                out[(name.split("_")[0], n)] = seen
+    return out
+
+
+def seen_for(assets: Path, job):
+    """Увиденное у каждого файла: чатом (pinned) поверх зрения (vetted.json)."""
+    out = dict(vet.seen_from(assets))
+    out.update(pinned_seen(assets, job))
+    return out
+
+
 def keywords_for(assets: Path, job):
     """
     Слова каждого файла материала — по ним подбирается кадр под текст.
@@ -709,7 +754,7 @@ def keywords_for(assets: Path, job):
     # Слова увиденного ДОБАВЛЯЮТСЯ к словам запроса, а не заменяют их:
     # запрос несёт имя темы («tequesta»), которого на кадре не прочесть.
     seen_n = 0
-    for (kind, n), seen in vet.seen_from(assets).items():
+    for (kind, n), seen in seen_for(assets, job).items():
         blob = " ".join([seen.get("what", "")] + list(seen.get("tags", [])))
         extra = words_of(blob)
         if extra:
@@ -717,7 +762,7 @@ def keywords_for(assets: Path, job):
             seen_n += 1
     if seen_n:
         log(f"  подбор по смыслу: у {seen_n} файлов есть слова увиденного "
-            f"зрением, не только запроса")
+            f"(чатом или зрением), не только запроса")
 
     missing = 0
     for folder, pat in (("footage", "clip_*"), ("archive", "arch_*")):
@@ -734,9 +779,9 @@ def keywords_for(assets: Path, job):
     return out
 
 
-def quality_for(assets: Path):
-    """Оценка зрения 1-5 по (вид, номер) — предпочтение при равном смысле."""
-    return {k: int(v["quality"]) for k, v in vet.seen_from(assets).items()
+def quality_for(assets: Path, job=None):
+    """Оценка 1-5 по (вид, номер) — предпочтение при равном смысле."""
+    return {k: int(v["quality"]) for k, v in seen_for(assets, job).items()
             if str(v.get("quality", "")).isdigit()}
 
 
@@ -918,7 +963,7 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     clip_caps = {j: min(MAX_CLIP_REPEATS, cutter.capacity(p, typical))
                  for j, p in enumerate(clips)}
 
-    qual = quality_for(assets)
+    qual = quality_for(assets, job)
 
     def q_of(paths, kind):
         out = {}
