@@ -97,6 +97,13 @@ MODEL_PREFERENCE = ("4.1-fast", "4-1-fast", "fast",
 # Заведомо не для зрения: генераторы картинок и эмбеддинги.
 MODEL_EXCLUDE = ("image", "imagine", "embed", "tts", "whisper")
 
+# ЗРЕНИЕ xAI ВЫКЛЮЧЕНО ПО УМОЛЧАНИЮ (22 сентября 2026). Материал отбирает
+# и смотрит чат, который пишет сценарий (pipeline/scout.py), а ключ xAI
+# оставлен только генерации картинок — и денег на нём сейчас нет. Без
+# этого флага каждый vet по-прежнему стучался бы в xAI, получал отказ и
+# печатал его как поломку. Вернуть: "vet_vision": true в спецификации.
+VISION_DEFAULT = False
+
 PROBE_W = 512          # кадр под проверку: больше модели не нужно
 WORKERS = 6            # запросов к зрению одновременно
 VET_TIMEOUT = 60
@@ -1442,6 +1449,12 @@ def vet_all(job, work: Path, use_vision=True):
         log(f"   ${cost:.3f} за ролик, ${cost/asked*1000:.2f} за тысячу запросов "
             f"(тариф ${p_in:.2f}/${p_out:.2f} за млн). "
             f"Токены измерены по полю usage в ответах API.")
+    elif not use_vision:
+        # Штатный режим с 22 сентября 2026: смотрит чат (scout.py), а не
+        # xAI. Тревогой это не является — тревога ниже, когда зрение
+        # просили, а оно не заработало.
+        log("── зрение xAI выключено (vet_vision): смысл кадров проверяет чат "
+            "через scout.py, здесь работали только бесплатные ярусы")
     elif not vision_ok:
         log("── зрение НЕ РАБОТАЛО: отбор сделан одним локальным ярусом, "
             "спорный материал остался в ролике")
@@ -1514,7 +1527,7 @@ def main(job_path):
     work = Path("work") / job["id"] / "assets"
     if not work.exists():
         raise SystemExit(f"нет {work} — сначала собери материал")
-    vet_all(job, work, use_vision=job.get("vet_vision", True))
+    vet_all(job, work, use_vision=job.get("vet_vision", VISION_DEFAULT))
 
 
 if __name__ == "__main__":
