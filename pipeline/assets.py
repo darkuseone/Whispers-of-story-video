@@ -39,8 +39,74 @@ sys.path.insert(0, str(Path(__file__).parent))
 import magnific
 import vet
 
-UA = {"User-Agent": "sleep-docs-pipeline/1.0 (educational video project)"}
+def load_local_env(path: Path = Path(__file__).parent.parent / ".env"):
+    """
+    Ключи из .env в корне репозитория — для сессии чата, не для Actions.
+
+    В Actions ключи приходят секретами, а у чата, который отбирает
+    материал (scout.py), их взять неоткуда, кроме окружения сессии.
+    Файл в .gitignore и в репозиторий не попадает. Уже заданные
+    переменные среды НЕ перезаписываются: секрет Actions главнее.
+    """
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        k, v = k.strip(), v.strip().strip('"').strip("'")
+        if k and v and not os.environ.get(k):
+            os.environ[k] = v
+
+
+load_local_env()
+
+# Wikimedia требует у ботов User-Agent с контактом (адрес проекта) и без
+# него режет запросы 429 заметно чаще. Почту сюда не кладём.
+UA = {"User-Agent": "AncientWhispersPipeline/1.1 "
+                    "(https://github.com/darkuseone/Whispers-of-story-video) "
+                    "python-requests"}
 TIMEOUT = 60
+
+# Коды, на которых источник просит подождать, а не отказывает.
+RETRY_CODES = (429, 502, 503, 504)
+RETRY_TRIES = 4
+RETRY_WAIT_MAX = 20.0
+
+
+def http_get(url, **kw):
+    """
+    requests.get с повтором на 429/5xx по заголовку Retry-After.
+
+    Замер 22 сентября 2026: Wikimedia с облачного адреса отвечает
+    429/200/429 на трёх запросах подряд, с Retry-After: 5. Без повтора
+    источник выглядел мёртвым и отдавал ноль на весь запрос, хотя через
+    пять секунд тот же запрос проходил. Ждём столько, сколько просит
+    сервис (не больше RETRY_WAIT_MAX), с нарастанием, если не просит.
+    Последний ответ возвращается как есть — дальше его разбирает ok().
+    """
+    r = None
+    for attempt in range(RETRY_TRIES):
+        try:
+            r = requests.get(url, **kw)
+        except requests.RequestException:
+            if attempt + 1 >= RETRY_TRIES:
+                raise
+            time.sleep(2.0 * (attempt + 1))
+            continue
+        if r.status_code not in RETRY_CODES or attempt + 1 >= RETRY_TRIES:
+            return r
+        try:
+            wait = float(r.headers.get("Retry-After") or 0)
+        except ValueError:
+            wait = 0.0
+        wait = min(RETRY_WAIT_MAX, max(wait, 2.0 * (attempt + 1)))
+        r.close()
+        time.sleep(wait + random.uniform(0, 1.0))
+    return r
 
 
 def tts_timeout(text: str) -> int:
@@ -365,7 +431,7 @@ def available_voices(api_key, limit=25):
     Сама по себе никогда не роняет прогон: это диагностика, а не проверка.
     """
     try:
-        r = requests.get("https://api.elevenlabs.io/v1/voices", timeout=30,
+        r = http_get("https://api.elevenlabs.io/v1/voices", timeout=30,
                          headers={"xi-api-key": api_key})
         if r.status_code != 200:
             return f"(список голосов получить не вышло: {r.status_code})"
@@ -579,7 +645,7 @@ def images_sync(items, out: Path, model, key):
             log(f"  ! картинка {i} не вышла: {r.status_code} {r.text[:160]}")
             continue
         url = r.json()["data"][0]["url"]
-        dst.write_bytes(requests.get(url, timeout=120).content)
+        dst.write_bytes(http_get(url, timeout=120).content)
         log(f"  картинка {i} (grok)")
 
 
@@ -677,7 +743,7 @@ def images_batch(items, out: Path, model, key, poll=120, max_wait=5400):
 
     waited, s = 0, {}
     while True:
-        r = requests.get(f"{XAI}/batches/{bid}", timeout=TIMEOUT,
+        r = http_get(f"{XAI}/batches/{bid}", timeout=TIMEOUT,
                          headers={"Authorization": f"Bearer {key}"})
         if r.status_code != 200:
             # 404 значит, что пакета больше нет: он протух или его снесли.
@@ -724,7 +790,7 @@ def images_batch(items, out: Path, model, key, poll=120, max_wait=5400):
             f"{s.get('status') or st.get('status') or '?'}). "
             f"Состояние сброшено, перезапусти")
 
-    resp = requests.get(f"{XAI}/files/{ofid}/content", timeout=TIMEOUT,
+    resp = http_get(f"{XAI}/files/{ofid}/content", timeout=TIMEOUT,
                         headers={"Authorization": f"Bearer {key}"})
     if resp.status_code != 200:
         raise reset(f"файл результатов {ofid}: {resp.status_code} "
@@ -751,7 +817,7 @@ def images_batch(items, out: Path, model, key, poll=120, max_wait=5400):
             log(f"  ! {cid} без результата: {err}")
             why.append(f"{cid}: {err}")
             continue
-        img = requests.get(url, timeout=120)
+        img = http_get(url, timeout=120)
         if img.status_code != 200:
             log(f"  ! {cid}: ссылка отдала {img.status_code}")
             why.append(f"{cid}: ссылка {img.status_code}")
@@ -950,7 +1016,7 @@ def src_pexels(q, n):
     # Берём с запасом и режем relevant(): иначе API отдаёт n «почти по теме»,
     # а после фильтра остаётся ноль.
     ask = min(80, max(n * 3, n + 6))
-    r = requests.get("https://api.pexels.com/videos/search", timeout=TIMEOUT,
+    r = http_get("https://api.pexels.com/videos/search", timeout=TIMEOUT,
                      headers={"Authorization": k},
                      params={"query": q, "per_page": ask,
                              "orientation": "landscape"})
@@ -1160,12 +1226,22 @@ def src_pixabay(q, n):
     if not k:
         return []
     ask = min(80, max(n * 3, n + 6))
-    r = requests.get("https://pixabay.com/api/videos/", timeout=TIMEOUT,
-                     params={"key": k, "q": q, "per_page": max(ask, 3)})
+    # video_type=film — только съёмка. Без него Pixabay отдаёт вперемешку
+    # «animation»: рендеры и нейросетевые ролики, которые по тегам не
+    # отличить от настоящих мангров (замер 22 сентября 2026, id 336184:
+    # type animation, isLowQuality). Весь футаж канала — настоящая съёмка.
+    r = http_get("https://pixabay.com/api/videos/", timeout=TIMEOUT,
+                 params={"key": k, "q": q, "per_page": max(ask, 3),
+                         "video_type": "film"})
     if not ok(r, "pixabay", q):
         return []
-    out, dropped, longish = [], 0, 0
+    out, dropped, longish, fake = [], 0, 0, 0
     for v in r.json().get("hits", []):
+        # Страховка поверх фильтра запроса: флаги самого Pixabay.
+        if (v.get("type") not in (None, "film") or v.get("isAiGenerated")
+                or v.get("isLowQuality")):
+            fake += 1
+            continue
         vv = v.get("videos", {})
         pick = None
         for name in ("large", "medium", "small"):
@@ -1194,6 +1270,9 @@ def src_pixabay(q, n):
             f"{MAX_CLIP_SECONDS * 2} с")
     if dropped:
         log(f"    pixabay «{q}»: отсеяно {dropped} не по теме")
+    if fake:
+        log(f"    pixabay «{q}»: отсеяно {fake} анимации/нейросети/"
+            f"низкого качества")
     return out
 
 
@@ -1205,7 +1284,7 @@ def src_nasa(q, n, media="image"):
     В теги кладём title+description, иначе relevant() и ShotPicker
     видят пустую строку и отбраковывают годное.
     """
-    r = requests.get("https://images-api.nasa.gov/search", timeout=TIMEOUT,
+    r = http_get("https://images-api.nasa.gov/search", timeout=TIMEOUT,
                      headers=UA, params={"q": q, "media_type": media})
     if not ok(r, "nasa", q):
         return []
@@ -1240,7 +1319,7 @@ def src_nasa_video(q, n):
     основной: орбита, запуски, планеты, архив миссий. В умолчания видео
     не ставим — подключать полем video_sources.
     """
-    r = requests.get("https://images-api.nasa.gov/search", timeout=TIMEOUT,
+    r = http_get("https://images-api.nasa.gov/search", timeout=TIMEOUT,
                      headers=UA, params={"q": q, "media_type": "video"})
     if not ok(r, "nasa_video", q):
         return []
@@ -1257,7 +1336,7 @@ def src_nasa_video(q, n):
         if blob and not relevant(q, blob):
             continue
         try:
-            files = requests.get(href, timeout=30, headers=UA).json()
+            files = http_get(href, timeout=30, headers=UA).json()
         except Exception:
             continue
         pick = [f for f in files if f.endswith(".mp4") and "~mobile" in f] or \
@@ -1323,7 +1402,7 @@ def src_archive_org(q, n):
         '(collection:(prelinger) OR collection:(publicmoviescollection) OR '
         'licenseurl:(*publicdomain*))'
     )
-    r = requests.get("https://archive.org/advancedsearch.php", timeout=TIMEOUT,
+    r = http_get("https://archive.org/advancedsearch.php", timeout=TIMEOUT,
                      headers=UA,
                      params={"q": f'{sq} AND mediatype:(movies) AND {collections}',
                              "fl[]": "identifier,title,description",
@@ -1343,7 +1422,7 @@ def src_archive_org(q, n):
         blob = f"{title} {desc}"
         if blob and not relevant(q, blob):
             continue
-        meta = requests.get(f"https://archive.org/metadata/{ident}",
+        meta = http_get(f"https://archive.org/metadata/{ident}",
                             timeout=25, headers=UA).json()
         # Берём САМЫЙ ЛЁГКИЙ подходящий файл, а не первый попавшийся.
         # В хронике рядом с обзорной нарезкой лежит полнометражная версия
@@ -1375,7 +1454,7 @@ def src_artic(q, n):
     достояние. Предметный музей: по запросу про фарфор отдаёт фарфор,
     а не обмеры зданий, — то самое, чего не хватало от Library of Congress.
     """
-    r = requests.get("https://api.artic.edu/api/v1/artworks/search",
+    r = http_get("https://api.artic.edu/api/v1/artworks/search",
                      timeout=TIMEOUT, headers=UA,
                      params={"q": q, "limit": n * 2,
                              "fields": "id,image_id,is_public_domain,title"})
@@ -1400,7 +1479,7 @@ def src_cleveland(q, n):
     что можно брать без атрибуции. Сильная коллекция прикладного искусства:
     металл, часы, оружие, керамика.
     """
-    r = requests.get("https://openaccess-api.clevelandart.org/api/artworks/",
+    r = http_get("https://openaccess-api.clevelandart.org/api/artworks/",
                      timeout=TIMEOUT, headers=UA,
                      params={"q": q, "cc0": 1, "has_image": 1, "limit": n * 2})
     if not ok(r, "cleveland", q):
@@ -1445,7 +1524,7 @@ def src_openverse(q, n):
     Лицензии фильтруются на стороне сервиса: cc0 и pdm — то, что можно
     брать без атрибуции. Всё остальное не запрашивается вовсе.
     """
-    r = requests.get("https://api.openverse.org/v1/images/", timeout=TIMEOUT,
+    r = http_get("https://api.openverse.org/v1/images/", timeout=TIMEOUT,
                      headers=UA,
                      params={"q": q, "license": "cc0,pdm",
                              "page_size": min(n * 2, 40),
@@ -1470,14 +1549,14 @@ def src_openverse(q, n):
 
 def src_met(q, n):
     """Met Museum. Ключ не нужен, только объекты в открытом доступе."""
-    r = requests.get("https://collectionapi.metmuseum.org/public/collection/"
+    r = http_get("https://collectionapi.metmuseum.org/public/collection/"
                      "v1/search", timeout=TIMEOUT, headers=UA,
                      params={"q": q, "hasImages": "true", "isPublicDomain": "true"})
     if not ok(r, "met", q):
         return []
     out = []
     for oid in (r.json().get("objectIDs") or [])[:n * 2]:
-        o = requests.get("https://collectionapi.metmuseum.org/public/"
+        o = http_get("https://collectionapi.metmuseum.org/public/"
                          f"collection/v1/objects/{oid}",
                          timeout=TIMEOUT, headers=UA).json()
         img = o.get("primaryImage")
@@ -1490,7 +1569,7 @@ def src_met(q, n):
 
 def src_loc(q, n):
     """Библиотека Конгресса. Ключ не нужен."""
-    r = requests.get("https://www.loc.gov/photos/", timeout=TIMEOUT, headers=UA,
+    r = http_get("https://www.loc.gov/photos/", timeout=TIMEOUT, headers=UA,
                      params={"q": q, "fo": "json", "c": n * 2})
     if not ok(r, "loc", q):
         return []
@@ -1517,7 +1596,7 @@ def src_wikimedia(q, n):
     отдавал ноль на всех запросах ролика dead-internet-01, ни разу не
     подав признака неисправности.
     """
-    r = requests.get("https://commons.wikimedia.org/w/api.php", timeout=TIMEOUT,
+    r = http_get("https://commons.wikimedia.org/w/api.php", timeout=TIMEOUT,
                      headers=UA,
                      params={"action": "query", "generator": "search",
                              "gsrsearch": f"{q} filetype:bitmap",
@@ -1526,7 +1605,7 @@ def src_wikimedia(q, n):
                              "iiprop": "url|extmetadata", "iiurlwidth": 1920,
                              "format": "json"})
     if not ok(r, "wikimedia", q):
-        return []
+        return wikimedia_via_openverse(q, n)
     out = []
     for page in (r.json().get("query", {}).get("pages", {}) or {}).values():
         ii = (page.get("imageinfo") or [{}])[0]
@@ -1542,6 +1621,39 @@ def src_wikimedia(q, n):
     return out
 
 
+def wikimedia_via_openverse(q, n):
+    """
+    Commons через индекс Openverse — когда сам Commons отказал.
+
+    Openverse держит копию каталога Commons, и запрос с source=wikimedia
+    отдаёт те же файлы (адреса upload.wikimedia.org) другим путём. Лимит
+    у него свой, поэтому 429 от Commons его не касается. Лицензии те же,
+    что у src_wikimedia: только cc0 и public domain, атрибуцию не берём.
+    """
+    r = http_get("https://api.openverse.org/v1/images/", timeout=TIMEOUT,
+                 headers=UA,
+                 params={"q": q, "source": "wikimedia", "license": "cc0,pdm",
+                         "page_size": min(n * 2, 40), "mature": "false"})
+    if not ok(r, "wikimedia→openverse", q):
+        return []
+    out = []
+    for it in (r.json().get("results") or []):
+        url = it.get("url")
+        w = it.get("width") or 0
+        if not url or (w and w < 900):
+            continue
+        out.append({"url": url, "src": "wikimedia", "kind": "image",
+                    "tags": " ".join([it.get("title") or ""] +
+                                     [t.get("name", "") for t in
+                                      (it.get("tags") or [])])})
+        if len(out) >= n:
+            break
+    if out:
+        log(f"    wikimedia «{q}»: Commons отказал, взято {len(out)} "
+            f"через индекс Openverse")
+    return out
+
+
 def src_wikimedia_video(q, n):
     """
     Хроника с Commons. Ключа не нужно, но нужен User-Agent.
@@ -1551,7 +1663,7 @@ def src_wikimedia_video(q, n):
     Commons отдаёт webm и ogv — ffmpeg их читает, а дальше всё равно идёт
     перекодирование в общий формат, так что контейнер значения не имеет.
     """
-    r = requests.get("https://commons.wikimedia.org/w/api.php", timeout=TIMEOUT,
+    r = http_get("https://commons.wikimedia.org/w/api.php", timeout=TIMEOUT,
                      headers=UA,
                      params={"action": "query", "generator": "search",
                              "gsrsearch": f"{short_query(q)} filetype:video",
@@ -1679,7 +1791,7 @@ def fetch(url, dst: Path, limit=MAX_FILE_BYTES, seconds=FETCH_SECONDS):
     """
     stop = time.time() + seconds
     try:
-        r = requests.get(url, headers=UA, stream=True, timeout=(15, 30))
+        r = http_get(url, headers=UA, stream=True, timeout=(15, 30))
         if r.status_code != 200:
             return False
         size = int(r.headers.get("Content-Length") or 0)
@@ -1856,7 +1968,7 @@ def check_keys():
     def probe(name, url, headers=None, params=None):
         """Возвращает True, если сервис принял ключ."""
         try:
-            r = requests.get(url, headers=headers, params=params, timeout=30)
+            r = http_get(url, headers=headers, params=params, timeout=30)
         except Exception as e:
             log(f"  ? {name}: сеть недоступна ({e}) — проверить не удалось")
             return None
@@ -2145,7 +2257,7 @@ def gather_pinned(job, work: Path):
                 dst.unlink(missing_ok=True)
                 continue
             row = {"file": str(dst), "q": q, "url": url,
-                   "src": src, "kind": kind}
+                   "src": src, "kind": kind, "pinned": True}
             if looked.get(url):
                 row["seen"] = looked[url]
             got.append(row)
@@ -2553,7 +2665,7 @@ def _fill_generate(job, work: Path, missing: int, model, key):
         except (KeyError, IndexError):
             log(f"  ! добор {k+1}: в ответе нет ссылки")
             continue
-        dst.write_bytes(requests.get(url, timeout=120).content)
+        dst.write_bytes(http_get(url, timeout=120).content)
         got += 1
         log(f"  добор {k+1}/{missing} (grok)")
     # промпты добора кладутся рядом: build.py возьмёт из них слова для

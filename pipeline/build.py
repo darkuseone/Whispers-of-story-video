@@ -390,13 +390,23 @@ class ShotPicker:
     OPENING_QUALITY_BOOST = 3.0
 
     def __init__(self, pool, total: float, prior=None, caps=None,
-                 quality=None):
+                 quality=None, pinned=None, pin_cap=None):
         # pool: [(path, tag, keywords), ...]
         self.pool = pool
         self.total = max(total, 0.001)
         # Оценка зрения по индексу в пуле; нет оценки — нейтральная тройка.
         self.quality = dict(quality or {})
         self.opening_until = -1.0
+        # ЗАКРЕПЛЁННОЕ ИДЁТ ПЕРВЫМ (заказ автора, 22 сентября 2026).
+        # Индексы файлов, отсмотренных чатом (pinned_clips/pinned_archive):
+        # пока у такого файла не кончился его лимит повторов, он выигрывает
+        # у любого файла из запасного поиска — даже при худшем совпадении
+        # по словам. Запас подключается, только когда ВСЕ закреплённые,
+        # подходящие под слот, выбрали свой лимит. Лимит — caps файла, а
+        # у кого его нет (фото), pin_cap, то есть MAX_CLIP_REPEATS.
+        self.pinned = set(pinned or ())
+        self.pin_cap = pin_cap if pin_cap is not None else MAX_CLIP_REPEATS
+        self.pinned_hits = 0
         # ВЕС СЛОВА ПО РЕДКОСТИ В ПУЛЕ. Слово темы («tequesta», «miami»)
         # стоит в запросе у каждого второго файла, и совпадение по нему не
         # отличает один кадр от другого: раньше оно весило столько же,
@@ -478,16 +488,29 @@ class ShotPicker:
             # любому другому — но не запрещён совсем: если весь пул
             # исчерпан, показать повтор лучше, чем упасть.
             over = 1 if self.used.get(j, 0) >= self.caps.get(j, 10 ** 6) else 0
-            return (same, over, -overlap, used, abs(j - k), j)
+            # Ярус: закреплённый файл, не выбравший лимит, — нулевой ярус,
+            # всё остальное — первый. Стоит ПЕРЕД смыслом намеренно.
+            tier = 0 if (j in self.pinned and self.used.get(j, 0)
+                         < self.caps.get(j, self.pin_cap)) else 1
+            return (same, over, tier, -overlap, used, abs(j - k), j)
 
-        best = min(range(n), key=score)
+        cands = range(n)
+        if require_match and want:
+            # Совпадение по смыслу обязательно: выбираем только среди
+            # совпавших, и уже среди них закреплённое идёт первым. Иначе
+            # закреплённый кадр без совпадения перекрыл бы совпавший запас
+            # и слот ушёл бы в генерацию.
+            cands = [j for j in range(n) if want & self.pool[j][2]]
+            if not cands:
+                # не считаем это попаданием и не списываем файл
+                self.calls -= 1
+                return None, None
+        best = min(cands, key=score)
         matched = bool(want & self.pool[best][2])
-        if require_match and want and not matched:
-            # не считаем это попаданием и не списываем файл
-            self.calls -= 1
-            return None, None
         if matched:
             self.hits += 1
+        if best in self.pinned:
+            self.pinned_hits += 1
         self.last_repeat = self.used.get(best, 0)
         self.used[best] = self.used.get(best, 0) + 1
         self.last = self.pool[best][0]
@@ -498,6 +521,9 @@ class ShotPicker:
             return "не использовался"
         carried = sum(1 for v in self.prior.values() if v)
         tail = f", {carried} файлов уже шли в эфир" if carried else ""
+        if self.pinned:
+            tail += (f", закреплённых {self.pinned_hits} из {self.calls} "
+                     f"(в пуле {len(self.pinned)})")
         return (f"{self.hits} из {self.calls} кадров подобраны по смыслу "
                 f"({self.hits/self.calls*100:.0f}%){tail}")
 
@@ -681,6 +707,42 @@ def pinned_seen(assets: Path, job):
                 continue
             if seen:
                 out[(name.split("_")[0], n)] = seen
+    return out
+
+
+def pinned_files(assets: Path, job):
+    """
+    (вид, номер) файлов, отсмотренных чатом и закреплённых в спецификации.
+
+    Признаков три, и хватает любого: флаг pinned в строке манифеста (его
+    ставит assets.gather_pinned), источник "pinned" или адрес файла из
+    pinned_clips / pinned_archive спецификации — последнее ловит и
+    материал, скачанный ещё до появления флага.
+    """
+    urls = set()
+    for key in ("pinned_clips", "pinned_archive"):
+        for it in (job or {}).get(key) or []:
+            u = it.get("url") if isinstance(it, dict) else it
+            if u:
+                urls.add(u.split("?")[0].strip())
+    out = set()
+    for folder in ("footage", "archive"):
+        man = assets / folder / "_manifest.json"
+        if not man.exists():
+            continue
+        try:
+            rows = json.loads(man.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        for row in rows:
+            if not (row.get("pinned") or row.get("src") == "pinned"
+                    or (row.get("url") or "").split("?")[0] in urls):
+                continue
+            name = Path(row.get("file", "")).name
+            try:
+                out.add((name.split("_")[0], int(name.split("_")[1].split(".")[0])))
+            except (IndexError, ValueError):
+                continue
     return out
 
 
@@ -976,11 +1038,29 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
                 out[j] = q
         return out
 
+    pins = pinned_files(assets, job)
+
+    def pin_of(paths, kind):
+        out = set()
+        for j, p in enumerate(paths):
+            try:
+                if (kind, int(p.name.split("_")[1].split(".")[0])) in pins:
+                    out.add(j)
+            except (IndexError, ValueError):
+                continue
+        return out
+
     gen_pick = ShotPicker([(p, "gen", kw_of(p)) for p in images], total, prior)
     arch_pick = ShotPicker([(p, "arch", kw_of(p)) for p in archive], total, prior,
-                           quality=q_of(archive, "arch"))
+                           quality=q_of(archive, "arch"),
+                           pinned=pin_of(archive, "arch"))
     clip_pick = ShotPicker([(p, "clip", kw_of(p)) for p in clips], total, prior,
-                           caps=clip_caps, quality=q_of(clips, "clip"))
+                           caps=clip_caps, quality=q_of(clips, "clip"),
+                           pinned=pin_of(clips, "clip"))
+    if pins:
+        log(f"  закреплённое: {len(clip_pick.pinned)} клипов, "
+            f"{len(arch_pick.pinned)} фото идут первыми, запас — после "
+            f"их лимита повторов")
     if clips:
         once = sum(1 for v in clip_caps.values() if v <= 1)
         log(f"  сток: {len(clips)} клипов, "
