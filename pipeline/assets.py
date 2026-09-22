@@ -1038,9 +1038,11 @@ _REL_WEAK = {"dark", "night", "light", "lights", "room", "background",
 
 def _match_words(query: str, tags: str):
     """Значимые слова запроса, слова находки и их пересечение."""
-    want = {w for w in re.findall(r"[a-z]+", (query or "").lower())
+    # Слова сводятся к одной форме (vet.stem): запрос «shell mounds»
+    # и теги «shell, mound» иначе совпадали одним словом из двух.
+    want = {vet.stem(w) for w in re.findall(r"[a-z]+", (query or "").lower())
             if len(w) > 2 and w not in _REL_STOP and w not in _REL_WEAK}
-    have = {w for w in re.findall(r"[a-z]+", (tags or "").lower())
+    have = {vet.stem(w) for w in re.findall(r"[a-z]+", (tags or "").lower())
             if w not in _REL_WEAK}
     return want, have, want & have
 

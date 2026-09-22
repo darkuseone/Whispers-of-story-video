@@ -75,6 +75,10 @@ INTRO_MOVES = style_mod.INTRO_MOVES
 # (assets.MAX_CLIP_SECONDS) означает, что клип по-прежнему покрывает кадр
 # целиком, без второго круга.
 CLIP_MAX_SECONDS = 18.0
+# Сколько просить под клип в теле, когда видео отстаёт от своей доли:
+# граница предложения ищется около этой длины (см. clip_slot в plan_shots).
+# Ниже CLIP_MAX_SECONDS с запасом на то, что граница уйдёт дальше.
+BODY_CLIP_WANT = 10.0
 
 # Короткий клип на длинном кадре ЗАМЕДЛЯЕТСЯ, а не зацикливается.
 # Сгенерированные вставки приходят на 2-3 секунды (см. magnific.py), и
@@ -319,6 +323,11 @@ THEME_SYNONYMS = {
 }
 
 
+# Одна форма на слово — общее правило с поиском стока, живёт в vet.py:
+# подбор кадра и отбор выдачи обязаны сводить слова ОДИНАКОВО.
+stem = vet.stem
+
+
 def words_of(text: str):
     """Значимые слова строки. Общие и служебные выброшены; синонимы раскрыты."""
     import re
@@ -327,7 +336,8 @@ def words_of(text: str):
     out = set(base)
     for w in base:
         out |= THEME_SYNONYMS.get(w, set())
-    return out
+        out |= THEME_SYNONYMS.get(stem(w), set())
+    return {stem(w) for w in out}
 
 
 class ShotPicker:
@@ -370,10 +380,37 @@ class ShotPicker:
     # а материала на канале конечное количество.
     PRIOR_WEIGHT = 0.5
 
-    def __init__(self, pool, total: float, prior=None, caps=None):
+    # Насколько оценка зрения (1-5) сдвигает выбор при прочих равных.
+    # Шаг оценки весит 0.6 — меньше одного редкого совпадения по смыслу:
+    # смысл важнее красоты, но из двух кадров про одно и то же берётся
+    # лучший. В открывающем окне (opening_until) вес втрое выше: там
+    # зритель решает, остаться ли, и кадр «могли бы открыть им ролик»
+    # обязан выигрывать у «годного, но обычного».
+    QUALITY_WEIGHT = 0.6
+    OPENING_QUALITY_BOOST = 3.0
+
+    def __init__(self, pool, total: float, prior=None, caps=None,
+                 quality=None):
         # pool: [(path, tag, keywords), ...]
         self.pool = pool
         self.total = max(total, 0.001)
+        # Оценка зрения по индексу в пуле; нет оценки — нейтральная тройка.
+        self.quality = dict(quality or {})
+        self.opening_until = -1.0
+        # ВЕС СЛОВА ПО РЕДКОСТИ В ПУЛЕ. Слово темы («tequesta», «miami»)
+        # стоит в запросе у каждого второго файла, и совпадение по нему не
+        # отличает один кадр от другого: раньше оно весило столько же,
+        # сколько «mangrove» — то, что реально звучит в этой фразе и есть
+        # на трёх файлах из сотни. Вес — обратная доля файлов со словом,
+        # как в поисковиках: слово у всех весит единицу, редкое — до
+        # четырёх с лишним.
+        import math
+        df = {}
+        for _p, _t, kw in pool:
+            for w in kw:
+                df[w] = df.get(w, 0) + 1
+        n_pool = max(len(pool), 1)
+        self.idf = {w: 1.0 + math.log(n_pool / c) for w, c in df.items()}
         # СВОЙ ПОТОЛОК ПОКАЗОВ У КАЖДОГО ФАЙЛА, по индексу в пуле.
         # Для стока приходит из ClipCutter.capacity: сколько разных кусков
         # файл способен дать, столько раз его и можно показать. Без этого
@@ -418,16 +455,24 @@ class ShotPicker:
         k = min(n - 1, max(0, int(t / self.total * n)))
         self.calls += 1
 
+        qw = self.QUALITY_WEIGHT * (
+            self.OPENING_QUALITY_BOOST if t < self.opening_until else 1.0)
+
         def score(j):
             path, _tag, kw = self.pool[j]
             used = self.used.get(j, 0) + self.prior.get(j, 0.0)
-            raw = len(want & kw)
+            common = want & kw
+            raw = len(common)
+            qbonus = qw * (self.quality.get(j, 3) - 3)
             # Нулевой overlap — штраф. Два+ совпадения получают бонус,
-            # чтобы «sky + nuremberg» бил «sky» одного поля.
+            # чтобы «sky + nuremberg» бил «sky» одного поля. Каждое
+            # совпадение весит по редкости слова в пуле (см. idf).
             if raw <= 0:
-                overlap = -100 - used
+                overlap = -100 - used + qbonus
             else:
-                overlap = raw * 3 + (2 if raw >= 2 else 0) - used
+                weight = sum(self.idf.get(w, 1.0) for w in common)
+                overlap = (weight * 3 + (2 if raw >= 2 else 0) - used
+                           + qbonus)
             same = 1 if path == self.last else 0
             # Файл, у которого кончились НЕПОКАЗАННЫЕ куски, уступает
             # любому другому — но не запрещён совсем: если весь пул
@@ -659,6 +704,21 @@ def keywords_for(assets: Path, job):
                 ]))
                 out[(name.split("_")[0], n)] = words_of(blob)
 
+    # ЧТО НА КАДРЕ НА САМОМ ДЕЛЕ — слова зрения из vetted.json (см.
+    # vet.seen_of). Запрос говорит, что искали; зрение — что приехало.
+    # Слова увиденного ДОБАВЛЯЮТСЯ к словам запроса, а не заменяют их:
+    # запрос несёт имя темы («tequesta»), которого на кадре не прочесть.
+    seen_n = 0
+    for (kind, n), seen in vet.seen_from(assets).items():
+        blob = " ".join([seen.get("what", "")] + list(seen.get("tags", [])))
+        extra = words_of(blob)
+        if extra:
+            out[(kind, n)] = set(out.get((kind, n), set())) | extra
+            seen_n += 1
+    if seen_n:
+        log(f"  подбор по смыслу: у {seen_n} файлов есть слова увиденного "
+            f"зрением, не только запроса")
+
     missing = 0
     for folder, pat in (("footage", "clip_*"), ("archive", "arch_*")):
         for p in (assets / folder).glob(pat):
@@ -672,6 +732,12 @@ def keywords_for(assets: Path, job):
         log(f"  ! у {missing} файлов нет запроса в манифесте — "
             f"подбор по смыслу для них слабее")
     return out
+
+
+def quality_for(assets: Path):
+    """Оценка зрения 1-5 по (вид, номер) — предпочтение при равном смысле."""
+    return {k: int(v["quality"]) for k, v in vet.seen_from(assets).items()
+            if str(v.get("quality", "")).isdigit()}
 
 
 def opening_plan(st, intro_start, intro_end):
@@ -852,10 +918,24 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     clip_caps = {j: min(MAX_CLIP_REPEATS, cutter.capacity(p, typical))
                  for j, p in enumerate(clips)}
 
+    qual = quality_for(assets)
+
+    def q_of(paths, kind):
+        out = {}
+        for j, p in enumerate(paths):
+            try:
+                q = qual.get((kind, int(p.name.split("_")[1].split(".")[0])))
+            except (IndexError, ValueError):
+                q = None
+            if q:
+                out[j] = q
+        return out
+
     gen_pick = ShotPicker([(p, "gen", kw_of(p)) for p in images], total, prior)
-    arch_pick = ShotPicker([(p, "arch", kw_of(p)) for p in archive], total, prior)
+    arch_pick = ShotPicker([(p, "arch", kw_of(p)) for p in archive], total, prior,
+                           quality=q_of(archive, "arch"))
     clip_pick = ShotPicker([(p, "clip", kw_of(p)) for p in clips], total, prior,
-                           caps=clip_caps)
+                           caps=clip_caps, quality=q_of(clips, "clip"))
     if clips:
         once = sum(1 for v in clip_caps.values() if v <= 1)
         log(f"  сток: {len(clips)} клипов, "
@@ -1048,6 +1128,10 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
     op = opening_plan(st, intro_start, intro_end)
     intro_end = op["end"]
     log(f"  открытие: {st.opening}, вступление до {intro_end:.0f} с")
+    # В открывающем окне лучшие по оценке зрения кадры выигрывают у
+    # обычных сильнее, чем в теле: см. ShotPicker.OPENING_QUALITY_BOOST.
+    for _pk in (gen_pick, arch_pick, clip_pick):
+        _pk.opening_until = intro_start + OPENING_REAL_SECONDS
 
     # Докуда хук подбирается под развязку. Дальше двадцатой секунды это
     # уже не «обещание», а спойлер длиной в главу.
@@ -1265,6 +1349,24 @@ def plan_shots(marks, st, assets, total, job_reject=None, job=None):
             is_anchor = idx in anchors
             cfg = st.clip(body_idx, est_body_shots, is_anchor=is_anchor)
         want = cfg["duration"]
+        # СЛОТ ПОД ВИДЕО ЗАКАЗЫВАЕТСЯ ДО ВЫБОРА ГРАНИЦЫ, а не после.
+        #
+        # Раньше длину кадра просил pacing (в теле это 10-40 с), и только
+        # потом решалось, кому кадр достаётся. Клип при этом берётся лишь
+        # на кадр не длиннее CLIP_MAX_SECONDS — а таких в теле меньшинство,
+        # и доля видео упиралась в потолок, которого жребий не видел. Смоук
+        # на miami-tequesta-01: 13.8% видео в теле при заказанных 30% и
+        # пуле, которого хватало с запасом.
+        #
+        # Теперь, когда видео отстаёт от своей доли, кадр сразу просится
+        # клиповой длины, и граница предложения ищется под неё. Развязка
+        # и якорь по-прежнему не трогаются — там долгий кадр по замыслу.
+        clip_slot = (mix.have["clip"] and mix.clip_behind("body")
+                     and not is_anchor and since_clip >= 1
+                     and (beat is None or beat.kind != "revelation")
+                     and clip_available())
+        if clip_slot and want > BODY_CLIP_WANT:
+            want = BODY_CLIP_WANT
 
         first = i
         start = marks[i]["start"]
