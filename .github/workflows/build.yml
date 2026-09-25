@@ -602,6 +602,22 @@ jobs:
             ${{ steps.out.outputs.dir }}/youtube.txt
           fail_on_unmatched_files: false
 
+      # ВЫКЛАДКА НА GOOGLE DRIVE. Раннер сам льёт файлы в Drive API
+      # кусками (pipeline/drive.py) — ролик не идёт ни через чат, ни через
+      # MCP, токены модели на полгигабайта видео не тратятся. Нет секретов
+      # GDRIVE_* — шаг пропускается сам. Сбой Drive сборку не роняет:
+      # ролик уже в релизе, а перезалить можно workflow «Upload to Google
+      # Drive» по имени выпуска.
+      - name: Выкладываем на Google Drive
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet'
+        continue-on-error: true
+        env:
+          GDRIVE_CLIENT_ID:     ${{ secrets.GDRIVE_CLIENT_ID }}
+          GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
+          GDRIVE_ROOT_NAME:     ${{ vars.GDRIVE_ROOT_NAME }}
+        run: python pipeline/drive.py upload "${{ steps.pick.outputs.id }}" "${{ steps.out.outputs.dir }}"
+
       - name: Обновляем шортсы в релизе
         if: steps.pick.outputs.stage == 'shorts'
         uses: softprops/action-gh-release@v2

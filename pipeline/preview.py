@@ -42,7 +42,7 @@ def index_of(path: Path) -> int:
 
 def frame_of(path: Path, cell: Image.Image = None):
     """Кадр из видео или сама картинка, ужатые под ячейку листа."""
-    if path.suffix.lower() in (".mp4", ".m4v"):
+    if path.suffix.lower() in (".mp4", ".m4v", ".webm", ".ogv", ".mov", ".mkv"):
         tmp = path.with_suffix(".preview.png")
         # берём кадр с середины: первые кадры у стоков часто чёрные
         dur = subprocess.run(
