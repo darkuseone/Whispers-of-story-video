@@ -1554,6 +1554,13 @@ def src_magnific_video(q, n):
     return magnific.search_library(q, n, "video")
 
 
+# Без ключа Openverse отдаёт не больше 20 результатов на страницу: 20 —
+# ответ 200, 21 — отказ 401 (проверено 25 сентября 2026). Код просил до
+# 40, и в логе miami-tequesta-01 таких отказов десятки — источник почти
+# не работал, при этом выглядел живым.
+OPENVERSE_PAGE_MAX = 20
+
+
 def src_openverse(q, n):
     """
     Openverse — общий поиск по открытым коллекциям, ключ не нужен.
@@ -1570,7 +1577,7 @@ def src_openverse(q, n):
     r = http_get("https://api.openverse.org/v1/images/", timeout=TIMEOUT,
                      headers=UA,
                      params={"q": q, "license": "cc0,pdm",
-                             "page_size": min(n * 2, 40),
+                             "page_size": min(n * 2, OPENVERSE_PAGE_MAX),
                              "mature": "false"})
     if not ok(r, "openverse", q):
         return []
@@ -1723,7 +1730,7 @@ def wikimedia_via_openverse(q, n):
     r = http_get("https://api.openverse.org/v1/images/", timeout=TIMEOUT,
                  headers=UA,
                  params={"q": q, "source": "wikimedia", "license": "cc0,pdm",
-                         "page_size": min(n * 2, 40), "mature": "false"})
+                         "page_size": min(n * 2, OPENVERSE_PAGE_MAX), "mature": "false"})
     if not ok(r, "wikimedia→openverse", q):
         return []
     out = []

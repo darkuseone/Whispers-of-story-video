@@ -1,7 +1,7 @@
 # Выкладка роликов на Google Drive
 
-После сборки `build.yml` сам кладёт выпуск в папку
-**Ancient Whispers / <id выпуска>** на твоём Google Drive: `final.mp4`,
+После сборки `build.yml` сам кладёт выпуск в папку канала
+**Whisper of History / <название ролика> [<id>]** на твоём Google Drive: `final.mp4`,
 субтитры, шортсы, обложки, `youtube.txt`. Файлы идут с раннера GitHub
 прямо в Drive API (`pipeline/drive.py`), кусками по 32 МБ с докачкой после
 обрыва. Через чат и MCP видео не проходит — токены на него не тратятся.
@@ -10,8 +10,13 @@
 
 ## Разовая настройка (15 минут)
 
-Доступ выдаётся со scope `drive.file`: конвейер видит **только** то, что
-создал сам, и ничего больше на твоём Диске.
+Доступ выдаётся со scope `drive` (полный Диск). Узкий `drive.file` не
+годится: папку канала создали через коннектор, а с `drive.file` скрипт
+видит только созданное им самим — не нашёл бы её и завёл бы вторую.
+Скрипт при этом пишет только в папку канала. Полный scope Google
+считает «restricted», поэтому при входе будет предупреждение
+«приложение не проверено» — для личного использования его просто
+пропускаешь (Advanced → Go to …).
 
 1. **Проект.** https://console.cloud.google.com → создать проект
    (любое имя, например `ancient-whispers`).
@@ -22,9 +27,8 @@
    - в Test users добавь свой gmail;
    - потом нажми **Publish app → In production**. Это важно: в режиме
      Testing Google выдаёт токен на 7 дней, и через неделю выкладка молча
-     перестанет работать. Для `drive.file` проверка Google не нужна —
-     предупреждение «приложение не проверено» при входе просто
-     пропускаешь (Advanced → Go to …).
+     перестанет работать. Проверка Google для личного использования
+     не нужна.
 4. **Клиент.** APIs & Services → Credentials → Create credentials →
    OAuth client ID → тип **Desktop app**. Скопируй Client ID и Client
    secret.
@@ -43,13 +47,15 @@
    Без Python то же самое делается через https://developers.google.com/oauthplayground
    (шестерёнка → Use your own OAuth credentials; клиент тогда нужен типа
    Web application с redirect URI `https://developers.google.com/oauthplayground`;
-   scope `https://www.googleapis.com/auth/drive.file` → Authorize →
+   scope `https://www.googleapis.com/auth/drive` → Authorize →
    Exchange authorization code for tokens → Refresh token).
 6. **Секреты GitHub.** Репозиторий → Settings → Secrets and variables →
    Actions → New repository secret, три штуки:
    `GDRIVE_CLIENT_ID`, `GDRIVE_CLIENT_SECRET`, `GDRIVE_REFRESH_TOKEN`.
-   Необязательно: переменная (вкладка Variables) `GDRIVE_ROOT_NAME` —
-   своё имя корневой папки вместо «Ancient Whispers».
+   И переменная (вкладка **Variables**, не Secrets)
+   `GDRIVE_FOLDER_ID` = `1Vs4CMdrwWorh26EMu2kM5AaDScadtV6L` — папка
+   «Whisper of History», уже созданная на Диске. Без неё скрипт ищет
+   папку по имени (`GDRIVE_ROOT_NAME`, по умолчанию «Whisper of History»).
 
 ## Как пользоваться
 

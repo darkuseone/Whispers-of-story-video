@@ -11,18 +11,22 @@ MCP-коннектор значит гнать байты через конте�
 Что уезжает (что есть на диске, то и уезжает):
     final.mp4, subs.srt, cover_1/2.jpg, thumbnail.jpg, youtube.txt,
     shorts/short_1..4.mp4
-в папку  <GDRIVE_ROOT_NAME>/<id выпуска>/  («Ancient Whispers» по
-умолчанию). Файл с тем же именем и размером повторно не льётся —
+в папку канала «Whisper of History» (GDRIVE_FOLDER_ID или имя
+GDRIVE_ROOT_NAME), внутри — своя папка на каждый ролик с его НАЗВАНИЕМ
+из youtube.title: «<название> [<id>]». Id в скобках — ключ: название
+можно поправить, а папка найдётся та же. Файл с тем же именем и размером повторно не льётся —
 перезапуск шага ничего не дублирует; другой размер — старый файл
 заменяется новой версией (тот же id, та же ссылка).
 
-Доступ — OAuth со scope drive.file: скрипт видит ТОЛЬКО файлы и папки,
-которые создал сам, и больше ничего на Диске автора. Нужны три секрета
+Доступ — OAuth со scope drive (полный): папку канала автор создаёт сам
+(или её создаёт чат через MCP-коннектор Drive), а при drive.file скрипт
+видит только созданное им самим и чужую папку не нашёл бы — завёл бы
+рядом вторую с тем же именем. Нужны три секрета
 Actions: GDRIVE_CLIENT_ID, GDRIVE_CLIENT_SECRET, GDRIVE_REFRESH_TOKEN.
 Нет секретов — шаг молча пропускается (выход 0), сборка не падает.
 Как их получить — docs/google-drive.md.
 
-    python pipeline/drive.py upload <id> <папка out>
+    python pipeline/drive.py upload jobs/<id>.json <папка out> [--all]
     python pipeline/drive.py auth          # получить refresh token на своём ПК
 """
 
@@ -37,7 +41,8 @@ import requests
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 API = "https://www.googleapis.com/drive/v3"
 UPLOAD = "https://www.googleapis.com/upload/drive/v3/files"
-SCOPE = "https://www.googleapis.com/auth/drive.file"
+SCOPE = "https://www.googleapis.com/auth/drive"
+ROOT_DEFAULT = "Whisper of History"
 FOLDER = "application/vnd.google-apps.folder"
 CHUNK = 32 * 1024 * 1024          # кратно 256 КБ, как требует API
 TRIES = 6
@@ -104,8 +109,9 @@ class Drive:
             return r
         return r
 
-    def find(self, name, parent=None, folder=False):
-        q = [f"name = '{name.replace(chr(39), chr(92) + chr(39))}'",
+    def find(self, name, parent=None, folder=False, contains=False):
+        esc = name.replace("\\", "\\\\").replace("'", "\\'")
+        q = [f"name {'contains' if contains else '='} '{esc}'",
              "trashed = false"]
         if parent:
             q.append(f"'{parent}' in parents")
@@ -193,20 +199,59 @@ class Drive:
         return self.find(path.name, parent)
 
 
-def upload(job_id: str, out_dir: Path):
+def video_folder(d, root_id, job_id, title):
+    """
+    Папка ролика: «<название> [<id>]». Ищется по «[id]», а не по полному
+    имени — поправленное название не плодит вторую папку.
+    """
+    tag = f"[{job_id}]"
+    got = d.find(tag, root_id, folder=True, contains=True)
+    if got:
+        return got
+    clean = "".join(ch for ch in (title or "") if ch not in '/\\:*?"<>|')
+    name = f"{clean.strip()[:120]} {tag}".strip()
+    return d.folder(name, root_id)
+
+
+def collect(out_dir: Path, everything: bool):
+    """
+    Что выкладывать. Из сборки — известный комплект (FILES): в папке out
+    лежит и служебное (монтажный лист, план). Из релиза (--all) — всё,
+    что скачалось: релиз уже и есть комплект выкладки.
+    """
+    if not everything:
+        return [out_dir / rel for rel in FILES if (out_dir / rel).exists()]
+    return sorted(p for p in out_dir.rglob("*") if p.is_file())
+
+
+def upload(job_path: str, out_dir: Path, everything: bool = False):
     c = creds()
     if not c:
         log("Google Drive: секретов GDRIVE_* нет — выкладку пропускаю "
             "(см. docs/google-drive.md)")
         return 0
-    files = [out_dir / rel for rel in FILES if (out_dir / rel).exists()]
+    jp = Path(job_path)
+    job = {}
+    if jp.suffix == ".json" and jp.exists():
+        job = json.loads(jp.read_text(encoding="utf-8"))
+    job_id = job.get("id") or jp.stem
+    title = (job.get("youtube") or {}).get("title") or job_id
+    files = collect(out_dir, everything)
     if not files:
         log(f"Google Drive: в {out_dir} нечего выкладывать")
         return 0
     d = Drive(c)
-    root = d.folder(os.environ.get("GDRIVE_ROOT_NAME") or "Ancient Whispers")
-    sub = d.folder(job_id, root["id"])
-    log(f"Google Drive: {root['name']}/{job_id} — {len(files)} файлов")
+    fid = (os.environ.get("GDRIVE_FOLDER_ID") or "").strip()
+    if fid:
+        r = d.req("GET", f"{API}/files/{fid}", params={"fields": "id,name"})
+        if r.status_code != 200:
+            raise SystemExit(f"GDRIVE_FOLDER_ID {fid}: папка не найдена "
+                             f"({r.status_code}) — нет доступа или удалена")
+        root = r.json()
+    else:
+        root = d.folder(os.environ.get("GDRIVE_ROOT_NAME") or ROOT_DEFAULT)
+    sub = video_folder(d, root["id"], job_id, title)
+    log(f"Google Drive: {root['name']}/{sub['name']} — {len(files)} файлов")
     for p in files:
         d.upload(p, sub["id"])
     link = sub.get("webViewLink") or f"https://drive.google.com/drive/folders/{sub['id']}"
@@ -273,8 +318,8 @@ def main(argv):
     if argv[:1] == ["auth"]:
         auth_flow()
         return 0
-    if len(argv) == 3 and argv[0] == "upload":
-        return upload(argv[1], Path(argv[2]))
+    if len(argv) in (3, 4) and argv[0] == "upload":
+        return upload(argv[1], Path(argv[2]), everything="--all" in argv[3:])
     print(__doc__)
     return 2
 
