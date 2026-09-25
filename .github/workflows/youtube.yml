@@ -1,0 +1,57 @@
+name: Upload to YouTube
+
+# Заливка УЖЕ ГОТОВОГО длинного ролика из релиза final-<id> на YouTube —
+# всегда PRIVATE, публикует автор в Studio. Обычно не нужна: build.yml
+# заливает ролик сам сразу после Drive. Нужна, когда секреты YT_* завели
+# позже, чем собрали ролик, или шаг в build.yml сорвался (квота, сеть).
+# Файлы идут с раннера в YouTube Data API напрямую
+# (pipeline/youtube_upload.py), через чат/MCP — ни байта. Повторный запуск
+# второй ролик не делает: уже залитый находится по названию на канале.
+#
+# Учти: cleanup.yml через неделю удаляет final.mp4 из релиза. После этого
+# заливать нечего — шаг упадёт на «нет final.mp4».
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Имя выпуска (как в jobs/<имя>.json)'
+        required: true
+      privacy:
+        description: 'private или unlisted (public из API не бывает)'
+        required: false
+        default: 'private'
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet requests pillow
+      - name: Берём файлы из релиза
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB: ${{ inputs.job }}
+        run: |
+          set -e
+          ID=$(python -c "import json,sys;print(json.load(open('jobs/'+sys.argv[1]+'.json'))['id'])" "$JOB" 2>/dev/null || echo "$JOB")
+          echo "ID=$ID" >> "$GITHUB_ENV"
+          DIR="work/$ID/out"
+          mkdir -p "$DIR"
+          gh release download "final-$JOB" -D "$DIR" --clobber \
+            -p final.mp4 -p subs.srt -p 'cover_*.jpg' -p thumbnail.jpg -p youtube.txt || true
+          ls -la "$DIR"
+          test -f "$DIR/final.mp4" || { echo "в релизе final-$JOB нет final.mp4 (cleanup.yml удаляет его через неделю)"; exit 1; }
+      - name: Заливаем на YouTube
+        env:
+          YT_CLIENT_ID:     ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: python pipeline/youtube_upload.py upload "jobs/${{ inputs.job }}.json" "work/$ID/out" --privacy "${{ inputs.privacy }}"

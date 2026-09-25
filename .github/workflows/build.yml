@@ -656,6 +656,28 @@ jobs:
           GDRIVE_FOLDER_ID:     ${{ vars.GDRIVE_FOLDER_ID }}
         run: python pipeline/drive.py upload "jobs/${{ steps.pick.outputs.job }}.json" "${{ steps.out.outputs.dir }}"
 
+      # ЗАЛИВКА НА YOUTUBE — ВСЕГДА PRIVATE. Раннер льёт final.mp4 в YouTube
+      # Data API кусками (pipeline/youtube_upload.py), с обложкой и
+      # субтитрами; кнопку Publish автор жмёт сам в Studio. Шортсы здесь не
+      # заливаются. Нет секретов YT_* — шаг пропускается сам. Сбой YouTube
+      # не трогает ни релиз, ни Drive (continue-on-error), а перезалить
+      # можно workflow «Upload to YouTube» по имени выпуска.
+      - name: Заливаем длинный ролик на YouTube (private)
+        id: yt
+        if: steps.pick.outputs.diag != 'true' && steps.pick.outputs.stage != 'assets' && steps.pick.outputs.stage != 'material' && steps.pick.outputs.stage != 'vet' && steps.pick.outputs.stage != 'shorts' && hashFiles(format('{0}/final.mp4', steps.out.outputs.dir)) != ''
+        continue-on-error: true
+        env:
+          YT_CLIENT_ID:     ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: python pipeline/youtube_upload.py upload "jobs/${{ steps.pick.outputs.job }}.json" "${{ steps.out.outputs.dir }}"
+
+      - name: YouTube не уехал
+        if: steps.yt.outcome == 'failure'
+        run: |
+          echo "### :red_circle: YouTube не уехал, Drive на месте — перезалей через workflow «Upload to YouTube» (job: ${{ steps.pick.outputs.job }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "::warning::YouTube не уехал — см. шаг «Заливаем длинный ролик на YouTube»"
+
       - name: Обновляем шортсы в релизе
         if: steps.pick.outputs.stage == 'shorts'
         uses: softprops/action-gh-release@v2
