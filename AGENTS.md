@@ -24,11 +24,20 @@ Your deliverables are always:
    ancient-world channel" — i.e. it rejects the episode's own correct
    footage as anachronistic. This is not hypothetical: it happened on
    `dead-internet-01`, which is the worked example to copy.
-2. `jobs/<id>.youtube.txt` — posting pack (title, description + sources,
-   tags, **two CTR cover prompts** (Anton #FFD400 locked to the upper third;
-   detailed 16:9 scene below; grid in `docs/протокол-обложки.md`),
-   community post + image prompts, two Shorts titles/questions,
-   **pinned first comment**)
+2. `jobs/<id>.youtube.txt` — posting pack (title, **one copy-paste
+   description block**: intro → `Chapters` with timecodes (first `00:00`,
+   ≥ 3, ascending, each ≥ 10 s; estimated before the build, exact ones
+   come from `pipeline/youtube.py` after render) → disclaimer →
+   `Sources` (≥ 5 real, verifiable sources actually used — never
+   invented) → hashtags; **tags as a separate section**, not inside the
+   description, ≤ 500 characters; **two CTR cover prompts** (Anton
+   #FFD400 locked to the upper third; detailed 16:9 scene below; grid in
+   `docs/протокол-обложки.md`), community post + image prompts, two
+   Shorts titles/questions, **pinned first comment**). The same data
+   goes into the job's `youtube` block (`description_intro`,
+   `chapters` — names only, `description_notes`, `sources`, `hashtags`,
+   `tags`). Details: `ИНСТРУКЦИЯ-ЧАТ.md`, sections "Обязательно к
+   каждому длинному ролику" and "Файл 2".
 
 Also read: `docs/протокол-сценария.md`, `docs/протокол-монтажа.md`,
 `docs/протокол-обложки.md`, `jobs/ancient-01.json`, `channel/log.json`.
