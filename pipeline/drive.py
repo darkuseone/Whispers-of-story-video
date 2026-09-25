@@ -92,10 +92,13 @@ class Drive:
 
     def req(self, method, url, **kw):
         """Запрос с повтором на 429/5xx и обрыв сети."""
+        # Заголовки вынимаются ОДИН раз, до цикла: pop внутри цикла на
+        # повторе отдавал пустой словарь, и повторный запрос открытия
+        # сессии уходил без X-Upload-Content-Type/Length.
+        base = dict(kw.pop("headers", {}) or {})
         for attempt in range(TRIES):
             try:
-                h = dict(kw.pop("headers", {}) or {})
-                h.update(self.auth())
+                h = {**base, **self.auth()}
                 r = requests.request(method, url, headers=h, timeout=120, **kw)
             except requests.RequestException as e:
                 if attempt + 1 == TRIES:

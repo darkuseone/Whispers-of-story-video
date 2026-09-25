@@ -30,6 +30,7 @@ pipeline/vet.py        отбраковка: бесплатные ярусы (+ 
 pipeline/scout.py      отбор футажа глазами чата: поиск, листы, pinned_*
 pipeline/preview.py    контактные листы для отбора
 pipeline/drive.py      выкладка готового выпуска на Google Drive
+pipeline/youtube_upload.py  заливка длинного ролика на YouTube (private)
 pipeline/style.py      движения камеры, переходы, эффекты, цветокор
 pipeline/render.py     элементарные операции ffmpeg
 pipeline/build.py      план кадров и сборка
@@ -53,6 +54,7 @@ jobs/ancient-example.json      образец со всеми полями и п
 jobs/ancient-test.json         короткая спецификация для проверки монтажа
 .github/workflows/build.yml    сборка ролика (и выкладка на Google Drive в конце)
 .github/workflows/drive.yml    перезаливка готового релиза на Google Drive
+.github/workflows/youtube.yml  перезаливка готового релиза на YouTube (private)
 .github/workflows/cleanup.yml  уборка старых кэшей, артефактов и final.mp4
 ```
 
@@ -70,6 +72,7 @@ jobs/ancient-test.json         короткая спецификация для 
    | `PEXELS_API_KEY` | стоковое видео | желательно |
    | `PIXABAY_API_KEY` | стоковое видео | желательно |
    | `GDRIVE_CLIENT_ID`, `GDRIVE_CLIENT_SECRET`, `GDRIVE_REFRESH_TOKEN` | выкладка на Google Drive, см. [`docs/google-drive.md`](docs/google-drive.md) | нет |
+   | `YT_CLIENT_ID`, `YT_CLIENT_SECRET`, `YT_REFRESH_TOKEN` | заливка на YouTube (private), см. [`docs/youtube-upload.md`](docs/youtube-upload.md) | нет |
 
    Переменные (вкладка **Variables**): `GDRIVE_FOLDER_ID` — id папки
    канала «Whisper of History» на Диске.
@@ -129,8 +132,11 @@ push `.build/<имя>.retry` в `main`.
    Порядок — `ИНСТРУКЦИЯ-ЧАТ.md`, раздел «Отбор материала глазами чата».
 3. `material` (по желанию) — посмотреть, что даёт запасной поиск;
    негодное из него — номерами в `reject`.
-4. `auto` — полная сборка. В конце ролик уходит в релиз и на Google Drive
-   в папку канала, в отдельную папку с названием выпуска.
+4. `auto` — полная сборка. В конце ролик уходит в релиз, на Google Drive
+   в папку канала (отдельная папка с названием выпуска) и на YouTube как
+   **private** — Publish жмёшь сам в Studio. Шортсы на YouTube — руками или
+   через Buffer. Настройка: [`docs/google-drive.md`](docs/google-drive.md),
+   [`docs/youtube-upload.md`](docs/youtube-upload.md).
 5. Дальше правки монтажа гонять только через `render`: материал лежит в
    кэше, озвучка и генерация не повторяются.
 

@@ -56,6 +56,15 @@ video** with `job` and `stage`. Local: `mock`/`smoke`/`build` as
 appropriate. Never re-run `stage: assets` just to remount — use `auto` so
 voice/image cache is reused.
 
+After a successful build the pipeline delivers by itself: GitHub release
+`final-<id>` → Google Drive folder of the channel (`pipeline/drive.py`) →
+YouTube upload of the **long video only, always PRIVATE**
+(`pipeline/youtube_upload.py`, secrets `YT_*`; setup in
+`docs/youtube-upload.md`). The author presses Publish in Studio. Shorts are
+not uploaded — the author posts them by hand or via Buffer. Never try to
+make a video public from the API, and never route video files through the
+chat/MCP.
+
 ## If the user asks for analytics / feedback on a published video
 
 Follow **`docs/протокол-аналитика.md`**: retention by segment, CTR,

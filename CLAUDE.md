@@ -754,6 +754,19 @@ Openverse без ключа отдаёт не больше 20 результат
 Перезалить готовый выпуск — workflow `drive.yml` по имени. Настройка —
 `docs/google-drive.md`.
 
+## Длинный ролик уезжает на YouTube как private
+
+Сразу после Drive шаг «Заливаем длинный ролик на YouTube (private)»:
+`pipeline/youtube_upload.py` — resumable `videos.insert` + обложка +
+субтитры, описание тем же `youtube.description()`/`chapters()`, без своей
+копии логики глав. Статус ВСЕГДА private (или `publish_at`); Publish жмёт
+автор в Studio. Повтор второй ролик не делает — уже залитый ищется по
+названию среди загрузок канала, статус у него не трогается. Шортсы на
+YouTube не льются — руками или через Buffer. Нет `YT_*` — пропуск; сбой не
+роняет Drive (`continue-on-error`), перезаливка — `youtube.yml`. Настройка —
+`docs/youtube-upload.md`, проверка без ключей —
+`python pipeline/youtube_upload_test.py`.
+
 ## Старое убирается по расписанию
 
 `.github/workflows/cleanup.yml`, каждый день в 04:00 UTC. Старше недели:
