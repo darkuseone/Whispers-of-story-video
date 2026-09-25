@@ -46,3 +46,13 @@ push `.render/<id>.retry` (cache — no voice/images/vet). Manual: **Build
 video** with `job` and `stage`. Local: `mock`/`smoke`/`build` as
 appropriate. Never re-run `stage: assets` just to remount — use `auto` so
 voice/image cache is reused.
+
+## If the user asks for analytics / feedback on a published video
+
+Follow **`docs/протокол-аналитика.md`**: retention by segment, CTR,
+viewer comments, and — mandatory — a title comparison (YouTube Studio
+A/B test "Title only" with the thumbnail fixed, or sequential title swaps
+over fixed windows; conclusions on thin data are marked as hypotheses).
+The feedback brief goes to the scriptwriter (copy to the director); the
+scriptwriter must take its "Заголовки" section into account when writing
+the three titles. Read-only: no changes on YouTube, in `jobs/` or in code.
