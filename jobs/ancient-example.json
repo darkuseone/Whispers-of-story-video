@@ -155,11 +155,7 @@
       "left half a living Mesopotamian city at dusk, right half the same mound empty and grass-covered today"
     ],
     "_cover_scenes": "Герой кадра под выбранный паттерн. Не «foggy ruins».",
-    "cover_prompts": [
-      "YouTube thumbnail 16:9. PATTERN object: extreme close-up of a colossal cracked cuneiform tablet filling the frame, gold rim light, dark navy void. High contrast. Empty negative space for type. Bottom-right clear for duration badge. No faces, no extra text. ONLY text \"{text}\" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, readable at 120px wide.",
-      "YouTube thumbnail 16:9. PATTERN split: 50/50 then/now of the same Mesopotamian city — living dusk city vs empty grass mound today. No arrows. High contrast, dark base. Empty region for type. ONLY text \"{text}\" extra-condensed ALL-CAPS Anton, yellow-gold #FFD400, huge, phone-readable."
-    ],
-    "_cover_prompts": "Два полных промпта. Можно {text} {scene} {pattern}. Без жёлтого хука конвейер допишет TYPE_LOCK. Кадр из протокола-обложки, не со скриншота пейзажа.",
+    "_cover_prompts": "Своих полных промптов ПИСАТЬ НЕ НАДО, и раньше здесь стоял пример, который этому учил. Промпт собирает pipeline/covers.py из cover_patterns + cover_scenes, и его каркас уже знает про свет, палитру, поля, бейдж длительности и читаемость на 120 px. Поле cover_prompts осталось как аварийный люк; если всё-таки пишете свой — НЕ вставляйте туда жёлтый хук: буквы кладёт paint_hook (covers.TEXT_BY_MODEL = False), и модель нарисует свои под нашими.",
     "shorts_questions": [
       "What was really buried there?",
       "Why did it survive at all?"

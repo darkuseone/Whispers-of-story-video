@@ -38,6 +38,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+from editorial import beats as beats_mod
+
 ROOT = Path(__file__).parent.parent
 LOG = ROOT / "channel" / "log.json"
 
@@ -64,6 +67,26 @@ STOP = {"the", "a", "an", "of", "and", "or", "in", "on", "at", "to", "for",
         "story", "stories", "ancient", "antiquity", "history", "historic",
         "mystery", "mysteries", "legend", "legends", "myth", "myths",
         "world", "old", "lost", "secret", "secrets", "whispers"}
+
+# 5.9 — форма сценарной структуры. editorial/ разводит МОНТАЖ и делает это
+# хорошо; текст не разводится ничем, кроме протокола и человека. Здесь —
+# та же дисциплина avoid()/check(), только для структуры сценария, а не
+# для цветокора: три ролика подряд с одинаковым числом глав и той же
+# формой концовки читаются как конвейер так же, как три ролика подряд с
+# одним LUT.
+#
+# «Третий ролик подряд» — сравниваем текущую форму с последними двумя.
+STRUCTURE_DEPTH = 2
+# Первые 150 знаков сценария — сырой текст крючка, тот же масштаб, что
+# в задании 5.9 («I had watched…» и подобное).
+OPENING_PREFIX_LEN = 150
+OPENING_DEPTH = 8
+# Тот же порог и смысл, что у TOPIC_OVERLAP_LIMIT — треть значимых слов
+# общая означает «похожий крючок», не «тот же текст слово в слово».
+OPENING_OVERLAP_LIMIT = 0.34
+# «Четыре из пяти» — с этого числа сходство читается как шаблон, а не
+# совпадение по касательной.
+OPENING_REPEAT_MIN = 4
 
 
 def log(*a):
@@ -132,6 +155,62 @@ def overlap(a: set, b: set) -> float:
     return len(a & b) / len(a | b)
 
 
+# ─────────────────────────── СТРУКТУРА (5.9) ───────────────────────────
+
+def _ending_type(blocks) -> str:
+    """
+    Тип концовки по хвосту последнего блока — дёшево, без модели и без
+    посимвольных тайм-кодов: тот же принцип, что у editorial/ (бесплатный
+    разбор по тексту), только для журнала канала, а не для монтажа.
+    """
+    if not blocks:
+        return "unknown"
+    tail = blocks[-1].rstrip()[-200:].lower()
+    if tail.endswith("?"):
+        return "question"
+    if re.search(r"\b(we don.?t know|nobody knows|still looking|"
+                r"remains? a mystery|unanswered|unexplained)\b", tail):
+        return "unresolved"
+    if re.search(r"\b(subscribe|let (us|me) know|comment below|"
+                r"what do you think)\b", tail):
+        return "call_to_action"
+    return "statement"
+
+
+def _has_mid_turn(blocks) -> bool:
+    """
+    Есть ли слово-указатель поворота (beats.TURN_MARKERS) в средней трети
+    сценария по номеру блока. Тот же словарь, что у editorial/beats.py, —
+    не копия: там он размечает ДОЛИ по тайм-кодам (для этого нужна уже
+    готовая озвучка), здесь по номеру блока сценария (доступно сразу,
+    channel.check вызывается ДО озвучки и плана кадров).
+    """
+    n = len(blocks)
+    if n < 3:
+        return False
+    lo, hi = n // 3, (2 * n) // 3 + 1
+    mid_words = re.findall(r"[a-zA-Zа-яА-ЯёЁ]+",
+                           " ".join(blocks[lo:hi]).lower())
+    return any(w in beats_mod.TURN_MARKERS for w in mid_words)
+
+
+def structure_shape(job) -> dict:
+    """
+    Форма сценарной структуры этого ролика (5.9): число глав, тип
+    концовки, наличие поворота в середине, сырой крючок открытия. Пишется
+    в журнал наравне с цветокором и сверяется в check() — тот же принцип
+    разведения, что у LUT/перехода/подложки, только для текста, который
+    иначе не разводится ничем, кроме протокола и человека.
+    """
+    blocks = job.get("script_blocks") or []
+    return dict(
+        n_chapters=len(blocks),
+        ending_type=_ending_type(blocks),
+        has_mid_turn=_has_mid_turn(blocks),
+        opening_prefix=(blocks[0] if blocks else "")[:OPENING_PREFIX_LEN],
+    )
+
+
 def check(job, data=None):
     """
     Похож ли ролик на что-то недавнее. Возвращает список претензий.
@@ -159,6 +238,40 @@ def check(job, data=None):
         if val and val in av.get(field, []):
             problems.append(f"{field} «{val}» уже был в последних "
                             f"{DEPTH[field]} роликах")
+
+    # 5.9 — та же дисциплина для сценарной структуры, что выше для
+    # цветокора/открытия: три ролика подряд с одинаковой формой читаются
+    # как конвейер точно так же, как три ролика подряд с одним LUT.
+    shape = structure_shape(job)
+    recent_shapes = [e["structure"] for e in aired(d)[-STRUCTURE_DEPTH:]
+                     if e.get("structure")]
+    if len(recent_shapes) == STRUCTURE_DEPTH and all(
+            s.get("n_chapters") == shape["n_chapters"]
+            and s.get("ending_type") == shape["ending_type"]
+            and s.get("has_mid_turn") == shape["has_mid_turn"]
+            for s in recent_shapes):
+        turn = "с поворотом в середине" if shape["has_mid_turn"] \
+            else "без поворота в середине"
+        problems.append(
+            f"{STRUCTURE_DEPTH + 1}-й ролик подряд с одинаковой структурой "
+            f"— {shape['n_chapters']} глав, концовка «{shape['ending_type']}», "
+            f"{turn}")
+
+    # Шаблонное открытие: первые OPENING_PREFIX_LEN знаков сценария
+    # похожи на слишком многие из последних OPENING_DEPTH роликов —
+    # «четыре из пяти открываются одинаково» именно так и выглядит.
+    mine_open = words(shape["opening_prefix"])
+    if mine_open:
+        similar = sum(
+            1 for e in aired(d)[-OPENING_DEPTH:]
+            if overlap(mine_open, words(
+                (e.get("structure") or {}).get("opening_prefix", "")))
+            >= OPENING_OVERLAP_LIMIT)
+        if similar >= OPENING_REPEAT_MIN:
+            problems.append(
+                f"открытие похоже на {similar} из последних "
+                f"{OPENING_DEPTH} роликов — шаблонный крючок "
+                f"(первые {OPENING_PREFIX_LEN} знаков сценария)")
     return problems
 
 
@@ -184,6 +297,10 @@ def entry_from(job, style_card: dict, test=False):
         # это заметнее, чем половина визуальных осей.
         "bed": style_card.get("bed"),
         "bed_second": style_card.get("bed_second"),
+        # 5.9 — форма сценарной структуры, сверяется в check() тем же
+        # способом, что цветокор/открытие: не повторять форму соседних
+        # роликов, а не только их настройки монтажа.
+        "structure": structure_shape(job),
         "intro_seconds": style_card.get("intro_footage_s"),
         "base_duration": style_card.get("base_duration"),
         "generated_share": style_card.get("generated_share"),
