@@ -262,6 +262,49 @@ def cap_clip_resolution(path: Path, max_width: int = CLIP_MAX_WIDTH) -> None:
         tmp.unlink(missing_ok=True)
 
 
+# Видео, которое умеет открыть playable(). Раньше здесь были только mp4 и
+# m4v, и всё прочее проверялось как КАРТИНКА: PIL не открывал .webm и
+# файл выбрасывался как битый. На miami-tequesta-01 так молча пропали
+# все семь закреплённых клипов с Commons — они приходят в .webm и .ogv.
+VIDEO_EXT = vet.VIDEO_EXT
+
+
+def to_mp4(path: Path, limit: float = None) -> Path:
+    """
+    Перекодирует .webm / .ogv / .mov в mp4 (H.264), рядом с оригиналом.
+
+    Монтаж и отбраковка набирают клипы маской clip_*.mp4, а финальная
+    сшивка требует одинакового кодека, поэтому чужой контейнер мало
+    просто принять — его надо привести к общему виду сразу после
+    скачивания. Заодно режется длина (MAX_CLIP_SECONDS) и ширина
+    (CLIP_MAX_WIDTH): это те же шаги, что trim_long_clip и
+    cap_clip_resolution, только за один проход, а не потоковым
+    копированием, которое VP9 и Theora в mp4 не переносит.
+
+    Возвращает путь к mp4; не вышло — прежний путь, как есть.
+    """
+    if path.suffix.lower() in (".mp4", ".m4v"):
+        return path
+    limit = limit or MAX_CLIP_SECONDS
+    dst = path.with_suffix(".mp4")
+    tmp = path.with_suffix(".conv.mp4")
+    res = subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-i", str(path), "-t", f"{limit:.2f}",
+         "-vf", f"scale='min({CLIP_MAX_WIDTH},iw)':-2,fps=30",
+         "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+         "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", str(tmp)],
+        capture_output=True, text=True)
+    if res.returncode == 0 and tmp.exists() and playable(tmp)[0]:
+        tmp.replace(dst)
+        path.unlink(missing_ok=True)
+        log(f"    {path.name}: перекодирован в mp4")
+        return dst
+    tmp.unlink(missing_ok=True)
+    log(f"  ! {path.name}: перекодировать в mp4 не вышло "
+        f"({(res.stderr or '').strip()[:120]})")
+    return path
+
+
 def playable(path: Path):
     """
     Открывается ли скачанный файл вообще. Возвращает (годен, чем плох).
@@ -289,10 +332,10 @@ def playable(path: Path):
     # килобайт видео — это заведомо заглушка, а картинка такого веса
     # совершенно нормальна: кадр 640x360 в jpeg занимает пятнадцать. Общий
     # порог на оба вида честно браковал годные архивные фото.
-    floor = 20000 if path.suffix.lower() in (".mp4", ".m4v") else 1000
+    floor = 20000 if path.suffix.lower() in VIDEO_EXT else 1000
     if path.stat().st_size < floor:
         return False, f"пустой файл ({path.stat().st_size} Б)"
-    if path.suffix.lower() in (".mp4", ".m4v"):
+    if path.suffix.lower() in VIDEO_EXT:
         r = subprocess.run(
             ["ffprobe", "-v", "error", "-select_streams", "v:0",
              "-show_entries", "stream=codec_name,width,height",
@@ -1840,6 +1883,12 @@ def fetch(url, dst: Path, limit=MAX_FILE_BYTES, seconds=FETCH_SECONDS):
     try:
         r = http_get(url, headers=UA, stream=True, timeout=(15, 30))
         if r.status_code != 200:
+            # Молча возвращать ложь нельзя: закреплённые клипы с Commons
+            # пропадали без единой строки в логе, и отличить «адрес умер»
+            # от «сервис просит подождать» было нечем.
+            wait = r.headers.get("Retry-After")
+            log(f"  ! {url.rsplit('/', 1)[-1][:60]}: ответ {r.status_code}"
+                + (f", сервис просит ждать {wait} с" if wait else ""))
             return False
         size = int(r.headers.get("Content-Length") or 0)
         if size > limit:
@@ -2296,6 +2345,14 @@ def gather_pinned(job, work: Path):
             if not fetch(url, dst):
                 continue
             if kind == "video":
+                # .webm / .ogv с Commons — сразу в mp4, иначе монтаж их
+                # не увидит вовсе (набирает clip_*.mp4)
+                dst = to_mp4(dst)
+                if dst.suffix.lower() != ".mp4":
+                    log(f"  ! pinned {dst.name}: не mp4 и не перекодировался "
+                        f"— выбрасываю")
+                    dst.unlink(missing_ok=True)
+                    continue
                 trim_long_clip(dst)
                 cap_clip_resolution(dst)
             ok_file, why = playable(dst)

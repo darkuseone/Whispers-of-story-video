@@ -104,6 +104,10 @@ MODEL_EXCLUDE = ("image", "imagine", "embed", "tts", "whisper")
 # печатал его как поломку. Вернуть: "vet_vision": true в спецификации.
 VISION_DEFAULT = False
 
+# Контейнеры видео, которые понимает конвейер (assets.playable берёт
+# отсюда же). Закреплённые клипы с Commons приходят в .webm и .ogv.
+VIDEO_EXT = (".mp4", ".m4v", ".webm", ".ogv", ".mov", ".mkv")
+
 PROBE_W = 512          # кадр под проверку: больше модели не нужно
 WORKERS = 6            # запросов к зрению одновременно
 VET_TIMEOUT = 60
@@ -325,7 +329,7 @@ def cheap_problems(path: Path):
     только цена: зрение и так отвечало «нет» на белый прямоугольник.
     """
     bad = []
-    if path.suffix.lower() in (".mp4", ".m4v"):
+    if path.suffix.lower() in VIDEO_EXT:
         frames = video_frames(path)
         if not frames:
             return None, ["файл не открылся"], 0.0, []
