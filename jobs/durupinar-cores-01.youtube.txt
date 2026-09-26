@@ -1,0 +1,149 @@
+══════════════════════════════════════
+ANCIENT WHISPERS — YOUTUBE PACK
+id: durupinar-cores-01
+date: 2026-09-26
+══════════════════════════════════════
+
+ЗАГОЛОВОК — 3 ВАРИАНТА
+1. They Drilled the Boat-Shaped Hill in Turkey — The Lab Hasn't Spoken
+2. 538 Feet, the Wrong Mountain, and a Core Tube in Ankara
+3. Durupinar 2026: What a Core Drill Can Actually Prove
+
+ОПИСАНИЕ (копировать одним блоком)
+In September 2026 a tracked drill went into the grassy, boat-shaped hill at Durupinar, south of Mount Ararat, and the headlines got there before the laboratory. The cores are in Ankara. The bit broke at about four or five meters on something the project hopes might be mineralized wood. Nobody has a result yet.
+
+This is not a verdict on Noah's Ark. It is a slow walk through the instruments that have been aimed at the same oval since 1959: an aerial photograph, two days of digging, a metal detector, a geologist who signed a retraction, radar that is still preliminary, and a university permit that finally put steel in the ground. Evidence first. No jump scares. Built to be left on in the dark.
+
+Chapters
+
+00:00  A Drill in the Grass
+01:56  The Wrong Mountain
+03:55  The Photograph of 1959
+05:47  Two Days in the Dirt
+07:32  Measured in Cubits
+09:19  The Paper That Walked It Back
+11:24  How a Hill Grows Ribs
+12:57  What the Radar Will Say
+14:59  The Chemistry of a Hollow
+16:34  A Permit, Not a Discovery
+18:21  Eighteen Meters
+20:30  What a Core Cannot Prove
+22:03  The Winter Between
+
+A general-interest historical investigation, not a religious ruling and not a claim that Noah's Ark has been found. The 1948 shepherd account is a local tradition. Dimensions of the formation circulate between about 157 and 164 meters; Fasold's tape of 538 feet is the long end of that range, and the match to 300 royal Egyptian cubits is only a length comparison. The 1960 expedition is reported as finding soil and rock; explosive use appears in some accounts and is treated as such. Radar corridors, right angles, three levels, the broken bit, and organic-chemistry multiples are project statements from 2024-2026, not peer-reviewed results. Pottery sherds have no published date. Laboratory news is expected in the winter of 2026-2027. The Ararat ice anomaly is a different site and is not investigated here.
+
+Sources
+
+- Collins, Lorence G., and David Fasold. "Bogus 'Noah's Ark' from Turkey Exposed as a Common Geologic Structure." Journal of Geoscience Education 44 (1996). https://www.csun.edu/~vcgeo005/bogus.html
+- Snelling, Andrew A. "Special Report: Amazing 'Ark' Exposé." Creation 14, no. 4 (September 1992); Answers in Genesis. https://answersingenesis.org/creationism/arguments-to-avoid/special-report-amazing-ark-expose/
+- Snelling, Andrew A. "Is Noah's Ark on Mount Ararat?" Answers Magazine (May 2017; featured September 2026). https://answersingenesis.org/noahs-ark/noahs-ark-found/noahs-ark-mount-ararat/
+- "Durupınar site." Wikipedia, retrieved September 2026 (1959 aerial identification, 1960 Archaeological Research Foundation expedition, location and elevation, Fasold/Plimer 1994, anchor stones). https://en.wikipedia.org/wiki/Durupınar_site
+- Noah's Ark Scans. "Core Drilling Begins at Durupinar Noah's Ark Site, Drill Bit Shatters on Possible Layer of Petrified Wood." GlobeNewswire, 23 September 2026, Doğubayazıt. https://www.globenewswire.com/news-release/2026/09/23/3367545/0/en/core-drilling-begins-at-durupinar-noah-s-ark-site-drill-bit-shatters-on-possible-layer-of-petrified-wood.html
+- Noah's Ark Scans / Bakhtar Research. "Not Solid Rock: Veteran U.S. Defense Scientist Deploys Advanced EarthRadar Technology at Turkey's Boat-Shaped Noah's Ark Formation." GlobeNewswire, 18 August 2026. https://www.globenewswire.com/news-release/2026/08/18/3347179/0/en/not-solid-rock-veteran-u-s-defense-scientist-deploys-advanced-earthradar-technology-at-turkey-s-boat-shaped-noah-s-ark-formation.html
+- Plain, Christopher. "New Radar Scans Reveal Mysterious 'Subsurface Anomalies' Beneath Controversial 'Noah's Ark' Site." The Debrief, 20 August 2026. https://thedebrief.org/new-radar-scans-reveal-mysterious-subsurface-anomalies-beneath-controversial-noahs-ark-site/
+- Ramirez, David. "Pottery Found at Türkiye's Mysterious 'Noah's Ark' Formation." Anatolian Archaeology, 23 September 2026. https://www.anatolianarchaeology.net/noahs-ark-pottery-durupinar-formation/
+- Anatolian Archaeology. "Largest-Ever Study Begins at Türkiye's Noah's Ark-Shaped Formation." 4 August 2026. https://www.anatolianarchaeology.net/scientists-begin-the-most-extensive-study-yet-of-turkiyes-noahs-ark-shaped-durupinar-formation/
+- Arkeonews. "Noah's Ark Mystery Deepens as New Discoveries Emerge Near Mount Ararat." 23 September 2026. https://arkeonews.net/noahs-ark-mystery-deepens-as-new-discoveries-emerge-near-mount-ararat/
+- Living Passages. "Was Noah's Ark Found at Durupinar? What the 2026 Scans Test." 5 August 2026, updated 22 September 2026. https://livingpassages.com/durupinar-noahs-ark/
+
+#Durupinar #Archaeology #NoahsArk #History
+
+ТЕГИ (282 из 500 символов)
+Durupinar formation, Noah's Ark Turkey, Mount Ararat, core drilling archaeology, Dogubayazit, Cenker Atila, David Fasold, ground penetrating radar, boat shaped formation, Sivas Cumhuriyet University, eastern Turkey archaeology, sleep documentary, biblical archaeology, Agri province
+
+ПРОМПТЫ ОБЛОЖЕК (xAI)
+1. Хук на обложке: NOT ON ARARAT
+YouTube thumbnail, exact 16:9 photoreal mystery-history still, Ancient Whispers cover grid.
+
+COMPOSITION LOCK:
+- Upper third: empty dark navy/charcoal negative space ONLY for type. The hero sits entirely in the lower two-thirds. Letters never overlap the subject.
+- Type: ONLY the words "NOT ON ARARAT" extra-condensed ALL-CAPS Anton (Impact-like fallback), yellow-gold #FFD400, centered in the upper third, nearly full frame width, letter height 20-30% of the frame, readable at 120px wide. No other text, no subtitle, no arrows, no circles, no UI.
+- 8% safe margins on all sides.
+- Bottom-right 180x72 px kept empty and dark for the duration badge.
+- No faces to camera, no people, no extra typography, no watermarks, no YouTube chrome, no logos, no phone numbers.
+
+HERO / LOWER TWO-THIRDS — one lit subject:
+We are above the Durupinar formation near Uzengili, Agri Province, eastern Turkey, at dusk, looking steeply down. The hero is the boat-shaped geological oval itself, filling the lower two-thirds, not a wooden ship and not a snowy mountain.
+The formation is a pointed oval about 160 meters long: a hull of short olive-green grass, wider amidships, pinched toward a blunt bow and stern. It sits inside a raised rim of eroded earth, reddish-brown and tan, with near-vertical scarps. Those scarps show thin parallel layers of red soil over pale tan, breaking into rib-like streaks that are geology, not timber. A few pale rock outcrops interrupt the grass inside the oval. One side of the rim drops into a shadowed gully. The surrounding hills are the same rust, olive, and dry-grass terraces, folded and gullied, so the oval rhymes with the landscape instead of interrupting it. No planks, no decks, no ribs of wood, no nails, no reconstructed ark.
+
+Background — must read instantly as the highlands south of Ararat, not as the mountain itself and not as a generic desert:
+Far and small on the horizon, the twin volcanic cones of Greater and Lesser Ararat: the taller peak with a modest cap of snow, the lower cone bare, separated from the formation by a wide hazy plain. The snow peak must stay small, maybe eight percent of the frame, so nobody can mistake the grass oval for a wreck on the ice. A few dark poplar trees in the gully. No city, no sea, no glacier under the oval.
+
+LIGHTING / GRADE:
+High contrast, dark navy/charcoal sky. A warm amber-tungsten key rakes the red scarp and the grass so every layer and pebble reads. Cool cyan-teal only in the distant plain and on the small snow cap. Not fogged out, not neon, not an HDR halo, not a flat underexposure.
+
+CAMERA:
+Steep aerial, roughly 35mm equivalent, deep focus from the near rim to the far peak, the oval large and readable at phone size.
+
+QUALITY:
+Photoreal, high-contrast, tactile, cinematic still from a mystery-history documentary. Not beige, not an oversaturated postcard, not illustration, not CGI overlay, not a painting of Noah's flood.
+
+NEGATIVE:
+no faces, no people, no workers, no extra text, no arrows, no circles drawn on the image, no YouTube UI, no watermark, no logo, no wooden ship, no ark reconstruction, no animals, no flood, no oil derrick, no giant snow mountain filling the frame, no glacier under the boat shape, no planks, no decks, no readable signage.
+2. Хук на обложке: THE BIT STOPPED
+YouTube thumbnail, exact 16:9 photoreal mystery-history still, Ancient Whispers cover grid.
+
+COMPOSITION LOCK:
+- Upper third: empty dark navy/charcoal negative space ONLY for type. The hero sits entirely in the lower two-thirds. Letters never overlap the subject.
+- Type: ONLY the words "THE BIT STOPPED" extra-condensed ALL-CAPS Anton (Impact-like fallback), yellow-gold #FFD400, centered in the upper third, nearly full frame width, letter height 20-30% of the frame, readable at 120px wide. No other text, no subtitle, no arrows, no circles, no UI.
+- 8% safe margins on all sides.
+- Bottom-right 180x72 px kept empty and dark for the duration badge.
+- No faces to camera, no people, no extra typography, no watermarks, no YouTube chrome, no logos, no phone numbers, no lettering on the machine.
+
+HERO / LOWER TWO-THIRDS — one lit subject:
+Night on the reddish rim of the Durupinar formation, Agri Province. The hero is a real geotechnical core drill, the kind photographed there in September 2026, with nobody standing in frame.
+A white tracked rig on black caterpillar tracks sits on dry brown-red soil and dead grass. A tall narrow steel mast, about three stories, rises vertically with a sheave at the top. Thick black hydraulic hoses loop from the mast to the body. The body is a plain white box, completely unmarked: no company name, no phone number, no flag. In the immediate foreground, on the dirt, a broken carbide drill bit and a short open steel core barrel, the bit's teeth chipped, warm light catching the metal. A few slender steel rods lie parallel. No plastic coolers, no chairs, no tripods with logos.
+
+Background — must read instantly as the Ararat horizon seen from the drill pad, not as a polar ice cap and not as an oil field:
+Across a dark plain, small in the distance, Greater Ararat with a thin snow cap and the lower bare cone of Lesser Ararat. Dry folded hills, a few black poplar silhouettes in a gully below the rim. The sky is charcoal-navy with a few cold stars. The mountain stays behind the rig and smaller than the mast.
+
+LIGHTING / GRADE:
+High contrast, dark navy/charcoal base. One warm tungsten key from the left rakes the white body, the mast, the hoses, and the broken bit so paint chips, soil crumbs, and metal read clearly. Cool cyan spill only on the distant snow. No fog bank, no neon, no orange explosion, no lightning.
+
+CAMERA:
+Low three-quarter view from the dirt, 35mm, the mast tall in the lower two-thirds, shallow enough that the distant peaks soften slightly but remain recognizable. The broken bit is sharp in the near ground.
+
+QUALITY:
+Photoreal, high-contrast, tactile, cinematic still from a mystery-history documentary. Not beige, not an oversaturated postcard, not illustration, not CGI, not a movie still.
+
+NEGATIVE:
+no faces, no people, no hard hats, no high-visibility vests, no extra text, no arrows, no circles, no YouTube UI, no watermark, no logo, no phone number, no lettering on the rig, no offshore oil platform, no wooden ark, no animals, no floodwater, no cartoon derrick, no giant mountain crushing the rig, no readable documents.
+
+ПОСТ В СООБЩЕСТВО
+A tracked drill sat on the red rim of the Durupinar formation this September, with both peaks of Ararat on the horizon and a core tube headed for Ankara. The press release says the bit broke on something harder than limestone. The university has not said the Ark is found. Tonight's episode stays inside that gap: the 1959 aerial, the 1960 dig, Fasold's cubits, the 1996 paper that called it a syncline, and what eighteen meters of core can and cannot mean. Slow, and unfinished on purpose.
+
+КАРТИНКА К ПОСТУ (1:1)
+1. Photoreal square 1:1 of the grassy boat-shaped Durupinar oval seen from above, red earthen rim, warm low sun, darkening navy sky, no people, no text, no wooden ship
+2. Photoreal square 1:1 of a broken steel drill bit and a short soil core on red dirt, warm spotlight, charcoal background, no people, no text, no logos
+
+ШОРТСЫ
+short_1.mp4
+  Название:        The Boat Shape Is Not on the Mountain
+  Вопрос на карточке: Why is this hill not on Mount Ararat?
+
+short_2.mp4
+  Название:        The Geologist Who Took His Name Off the Ark
+  Вопрос на карточке: What did the 1996 geology paper actually find?
+
+short_3.mp4
+  Название:        Eighteen Meters. The Plan Was a Hundred.
+  Вопрос на карточке: How deep did the 2026 drill really go?
+
+short_4.mp4
+  Название:        A Broken Bit Is Not a Laboratory
+  Вопрос на карточке: What would a core still fail to prove?
+
+ЗАКРЕПЛЁННЫЙ ПЕРВЫЙ КОММЕНТАРИЙ
+The drill is real. The result is not in yet.
+Cores from the Durupinar formation went to Ankara in September 2026. The university has not claimed Noah's Ark. The press release hopes the broken bit hit mineralized wood. Those are different sentences, and the episode keeps them apart.
+If you want the piece that changed my mind while writing this, it is the 1996 Collins and Fasold paper: the oval as a doubly plunging syncline, the "brackets" as limonite. The new cores get to test that. They do not get to skip it.
+What would actually move you: identified wood in context, or a syncline that simply holds?
+
+ЧЕК-ЛИСТ ВЫКЛАДКИ
+- [ ] Заголовок выбран из трёх вариантов (A/B, обложка одна)
+- [ ] Описание вставлено одним блоком, главы с точными таймкодами из релизного youtube.txt
+- [ ] Теги вставлены отдельно, не внутрь описания
+- [ ] Обложка: NOT ON ARARAT или THE BIT STOPPED, без лиц
+- [ ] Ролик забран из релиза final-durupinar-cores-01, на YouTube из конвейера не уходит (skip_upload)
+- [ ] Закреплён первый комментарий
+- [ ] Шортсы выложены вручную

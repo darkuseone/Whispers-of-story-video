@@ -1,0 +1,710 @@
+{
+ "_": "Угол не «нашли ли ковчег», а что каждый прибор на одном и том же овальном холме вообще способен узнать. Открытие — буровая сентября 2026 и разрыв между пресс-релизом и керном, который ещё в Анкаре. Дальше инструменты по одному: аэрофото 1959, раскоп 1960, локти и металлодетектор, статья Коллинза и Фасолда 1996, радар августа 2026, химия почвы, университетский допуск, восемнадцать метров вместо ста, и чего керн не докажет даже если дерево найдут. Араратская ледяная аномалия сознательно отделена: с буровой горы видны, но бур не на них. Брифа аналитика с разделом «Заголовки» в репозитории нет (channel/log.json пуст, протокол — пустой бланк), поэтому три заголовка различаются признаком: оборванное действие, число плюс неверное место, короткий вопрос метода.",
+ "_проверить": [
+  "Длина формации в источниках плавает: Фасолд 164 м / 538 футов; часть текстов 2026 говорит 157 м / 515 футов под царский египетский локоть 52.4 см. В ролике дан диапазон, не одна цифра.",
+  "29 км к вершине Большого Арарата и высота 1966–2004 м — сводка Wikipedia. Снеллинг в 1992 округлял до 6300 футов и 12–15 миль. На фото сентября 2026 оба конуса Арарата реально видны с буровой площадки.",
+  "Пастух Решит Сарихан, 19 мая 1948 — местное предание, не лабораторный факт. Динамит на экспедиции Archaeological Research Foundation в сентябре 1960 есть не во всех пересказах; в ролике это оговорено. Общее у источников: два дня, земля и камни.",
+  "Pix 9 июля 1960 и Life 5 сентября 1960 — по Снеллингу 1992, не по просмотру самих номеров.",
+  "Статья Collins & Fasold 1996, Journal of Geoscience Education 44, текст на https://www.csun.edu/~vcgeo005/bogus.html — синклиналь, лимонит/магнетит, перидотит вместо коры, андезитовые «якоря», более молодой фоссилиферовый известняк.",
+  "Свидетельство Фасолда в австралийском суде 1997 и возможное позднее смягчение (биограф Джун Доуз) — оговорены как сообщения, вывод на предсмертных словах не строится.",
+  "Радар 2019, ERT 2021, коридор ~71 м, прямые углы, три уровня, «втрое больше органики» против «углерод примерно на 40% выше» — формулировки проекта Noah's Ark Scans и вторичных пересказов августа-сентября 2026, не рецензированная статья. Бур сломался на 4–5 м, керны до ~18 м, не до запланированных 75–100 м. GOPHER на 23 сентября 2026 — план, не отснятый фильм. Бурение 1988 с водяным охлаждением — утверждение того же пресс-релиза.",
+  "Черепки: возраст не опубликован. Заголовки «до потопа» в ролике прямо отведены. Университет вопрос ставит уже: геология или след людей, не «ковчег найден».",
+  "youtube.skip_upload = true: автор просил не выкладывать никуда, забрать релиз самому."
+ ],
+ "_структура": "Не хронология цивилизации, не разбор по типам архивных источников, не flash-forward со взрыва и не ревизия города по адресам: РАЗБОР ОДНОГО ХОЛМА ПО ПРИБОРАМ. Открытие — звук бура в сентябре 2026 и отказ выдавать вердикт. Затем приборы по очереди (аэрофото, лопата, локоть и детектор, микроскоп и статья 1996, радар, химия почвы, допуск университета, фактическая глубина против плана). Финал — что даже положительный керн не равен имени Ноя, и сознательная остановка в зиме лаборатории.",
+ "_длительность": "22–24 минуты озвучки по прямой вилке автора (не стандартные 30–40). Ориентир ~3300–3600 слов по script_blocks при ~150 словах в минуту. Тема: историческое расследование бурения формации Дурупынар, сентябрь 2026.",
+ "id": "durupinar-cores-01",
+ "voice_settings": {
+  "stability": 0.65,
+  "similarity": 0.85,
+  "speed": 0.91,
+  "style": 0
+ },
+ "bed_gain_db": -27,
+ "tail_hold": 4.0,
+ "batch": false,
+ "magnific_share": 0.7,
+ "vet_vision": false,
+ "material_overshoot": 1.7,
+ "fill_limit": 26,
+ "photo_sources": [
+  "wikimedia",
+  "openverse",
+  "loc"
+ ],
+ "video_sources": [
+  "pexels",
+  "pixabay",
+  "archive_org",
+  "wikimedia_video"
+ ],
+ "lut": "starlit_lapis",
+ "archive_lut": "archive_cyanotype",
+ "topic": {
+  "slug": "durupinar-cores",
+  "keywords": [
+   "durupinar",
+   "noah ark formation",
+   "mount ararat",
+   "core drilling",
+   "dogubayazit",
+   "ground penetrating radar",
+   "agri turkey"
+  ]
+ },
+ "synonyms": {
+  "durupinar": [
+   "formation",
+   "oval",
+   "mound",
+   "hillside",
+   "grass"
+  ],
+  "ararat": [
+   "volcano",
+   "summit",
+   "snow",
+   "peak",
+   "cone"
+  ],
+  "drill": [
+   "core",
+   "mast",
+   "rig",
+   "barrel",
+   "bit"
+  ],
+  "limonite": [
+   "rust",
+   "iron",
+   "oxide",
+   "mineral"
+  ],
+  "syncline": [
+   "fold",
+   "strata",
+   "layers",
+   "outcrop"
+  ]
+ },
+ "vet_context": "ACCEPT if the frame serves THIS episode: the Durupinar boat-shaped earthen formation near Uzengili and Dogubayazit in Agri Province, eastern Turkey, the 2026 university core-drilling season on that ridge, and the geological argument about whether the oval is a syncline. This is a present-day archaeological and geological investigation of one hillside south of Mount Ararat, not a Mediterranean antiquity episode and not a reenactment of the flood.\n\nACCEPT:\n1. THE FORMATION: aerial and ground views of the grassy pointed-oval mound, red-brown earthen rim and scarps, layered soil, pale rock inside the grass, gullies, the surrounding folded badlands. The boat shape is earth, not timber.\n2. THE PLACE: Agri highlands, Dogubayazit, Uzengili, dry grass, red hills, poplar trees, small streams, Tendurek slopes, the wide plain. Greater and Lesser Ararat as a DISTANT skyline (snow on the high peak, smaller bare cone) are correct context. Do not reject the mountain just because it is modern landscape.\n3. THE 2026 WORK: tracked white geotechnical drill, tall mast, hydraulic hoses, core barrels, drill bits, soil cores, sample bags, pottery sherds on a table, GPS survey, researchers small in frame or seen from behind at the rig. Modern people doing the fieldwork are part of the subject.\n4. THE INSTRUMENTS: ground-penetrating radar sleds, resistivity cables and electrodes, geology laboratories, microscopes, thin sections, radiocarbon or soil labs without giant logos, limonite, magnetite, andesite, folded strata, synclines, badland erosion.\n5. QUIET HISTORICAL CONTEXT: old aerial photographs of Anatolian terrain, maps only if text is not the subject, 1960s fieldwork mood without fake wooden arks.\n\nREJECT:\n1. Wooden ark reconstructions, theme-park arks, the Kentucky ark building, movie stills, animals boarding a ship, CGI floods, cartoons. Those are not this hill.\n2. Offshore oil platforms, oil derricks, and industrial petroleum rigs. The machine here is a small tracked geotechnical drill on a grassy ridge.\n3. The ice-cap \"Ararat anomaly\" presented as if it were the Durupinar formation. A distant snow peak is fine; a glacier wreck as the subject is the wrong site.\n4. Egyptian, Mesopotamian, Greek, or Roman monuments as the subject of the frame. A verbal comparison is not an excuse for a pyramid.\n5. Talking-head interviews, news anchors, faces filling the frame, selfies, lower-thirds, watermarks, logos, and readable phone numbers.\n6. Generic cruise ships, ferries, or cargo ships. This episode is about a shape in the ground.\n7. Blurry, synthetic-looking plastic CGI, and frames that are a title card rather than a place.",
+ "script_blocks": [
+  "In late September 2026 a drill went into a grassy hill in eastern Turkey, and the headlines arrived before the samples did. I want to start with the machine, because the machine is easier to trust than the headline. A core drill does not find a ship. It lifts a column of earth in the order the earth was laid down, and then it stops. Whatever that column means is a winter in a laboratory, not an afternoon on the internet.\n\nThe hill is the Durupinar formation. From the air it looks like a boat, and it has looked like one since a Turkish Army captain, Ilhan Durupinar, marked it on an aerial photograph in 1959. This September a team under Cenker Atila, an archaeologist at Sivas Cumhuriyet University, put steel into that outline. A press release from the American partner, Noah's Ark Scans, said the bit had reached about eighteen meters, that it had broken on something harder than limestone, and that the tubes held organic-rich layers which they believe could be the decayed upper remains of the Ark.\n\nI am not going to pretend a press release and a laboratory result are the same sentence. One is a hope, dated the twenty-third of September. The other has not been written. The university's account is quieter: map the shape, sample the soil, send the cores to Ankara, and ask whether this is only geology or whether any trace of people survives in it. Nobody there has said the Ark has been found.\n\nIf you came for a verdict, I don't have one. What I can do is walk the instruments pointed at this hill, one at a time, and say what each of them is able to know.",
+  "The first thing I had to unlearn is the mountain. Say Noah's Ark and most people look up, at the snow on Greater Ararat, the great volcano on the Turkish border. There is a separate mystery up there, a dark patch in the ice that pilots and satellites have photographed for decades, the so-called Ararat anomaly. Nobody drilled that patch this summer. It is not this story.\n\nDurupinar is in the hill country to the south, near the village of Uzengili, in Agri Province: about sixteen kilometers southeast of Dogubayazit, a few kilometers from the Iranian border, and on the order of twenty-nine kilometers south of Ararat's summit. Another volcano, Tendurek, sits beside it. The boat shape itself rests near two thousand meters, on grass and red earth, with a gully and a stream, not on a glacier.\n\nAnd yet, from the drill pad, Ararat is in the picture. The September photographs show a white tracked rig, a tall mast, black hoses, dry grass, and behind them, across a plain, the two peaks: snow on the high one, a smaller bare cone beside it. Twenty-nine kilometers is nothing when the object is that large. This is how the stories get welded. The mountain is not under the bit. It is simply too big to leave the frame. A film that cuts from the ice to this hollow, as if they were one address, is saving a sentence by lying.\n\nThe biblical text puts the ark in the mountains of Ararat, a region, Urartu, not a pin in one summit. Local names, including Cudi for a ridge in this country, have been argued for centuries by people who want the story to touch a particular slope. That argument is older than the drill. It does not identify the grass.",
+  "There is a local account that a Kurdish shepherd, Reshit Sarihan, saw the outline in May 1948, after rain and earthquakes washed mud off it. I keep that as a local account. The date I can tie to a photograph is 1959, when Ilhan Durupinar, then a captain, noticed a shape that refused to behave like an ordinary hill. Andrew Snelling, writing in 1992, notes that the picture reached the public the next year: Pix magazine in July 1960, and Life on the fifth of September.\n\nThe shape is spoken of as roughly one hundred and fifty-seven to one hundred and sixty-four meters long. David Fasold, years later, would tape the long end of that range: five hundred and thirty-eight feet. It is not a rectangle. From above it is a pointed oval, a hull of grass, wider through the middle, pinched toward the ends, held inside a raised rim of reddish-brown earth. The rim is a scarp. In a low sun it throws a shadow that reads, for one second, as the wall of a ship. Pale rock breaks the grass in a few places inside. The ground around it is the same red and tan, the same gullies, as if the boat were a sentence written in the same ink as the paragraph.\n\nThat rhyme matters, and I will come back to it. A wreck should interrupt its landscape. This one agrees with it.\n\nStill, I understand the captain. The resemblance is not a rumor and it is not a blurry still from a prophecy video. It is a real oval of grass inside a real rim of earth. The eyes are sure. The eyes are not geologists.",
+  "The first people to test the eyes did not wait for radar. In September 1960 an expedition tied to the Archaeological Research Foundation went to the site. Ilhan Durupinar was with them, and so were George Vandeman and Arthur Brandenberger. They had about two days. The reports that have lasted say they dug, and some accounts add that they used explosives, and that what came up was soil and rock. They left the shape as a freak of nature. No visible archaeological remains. Snelling, who wanted the Ark to be findable and who has no love for a sneer, repeats the plain version: dirt and rocks.\n\nI want to sit with how early that verdict is. A generation before the metal detectors and the cubit tapes, a dig had already failed to find a deck, and the silhouette was still there in the morning, as persuasive as ever. That is the curse of this place. A negative result does not erase a shape you can see without a permit. The shape is the evidence people keep, because it does not ask them to read a paper.\n\nI don't think two days in 1960 proved the geology. A shovel, even dynamite if the harsher account is true, can tell you that you are not standing on a wooden hatch. It cannot tell you why a folded mineral layer is pretending to be a gunwale. For that you need a slower kind of looking. The site would get it. The answers would start to agree with each other in a way the photographs never quite have.",
+  "The modern fame of the formation belongs to Ron Wyatt, who promoted it from the late nineteen seventies, and to David Fasold, a merchant marine officer who went with him in the mid nineteen eighties and tried to measure the grass as a ship.\n\nThe biblical ark is three hundred cubits long, fifty wide, and thirty high. A cubit is a forearm, and forearms differ. The long royal Egyptian cubit, about 52.4 centimeters, turns three hundred cubits into about one hundred and fifty-seven meters. Fasold's tape read one hundred and sixty-four. Close, if you need it to be close, and only on the length. The width of the oval and the height of the rim are not a box of fifty by thirty. Proponents have said the walls splayed under the weight of mud. That rescues the width. It does not measure it.\n\nFasold brought a metal detector and, later, ground-penetrating radar. He reported regular iron readings along the sides and read them as brackets, the fasteners of a ship that had turned to stone. Large stones near the village of Kazan, once called Arzap, stones with a hole worked through one end, were read as drogue stones, the storm anchors a hull would trail so it would not broach. I understand the elegance. A hole in a stone looks like a human decision. A line of iron in a wall looks like a nail. You can assemble a ship out of those two ideas without ever cutting a plank.\n\nElegance is not a mineral. The next instrument was a microscope, and the microscope was not kind.",
+  "Fasold did not defend the elegance forever. In September 1994 he walked the site with the Australian geologist Ian Plimer and came away saying it was not a boat. In 1996 he signed a paper with Lorence Collins: Bogus Noah's Ark from Turkey Exposed as a Common Geologic Structure, in the Journal of Geoscience Education.\n\nThe argument is a geologist's argument, not a sermon. The boat shape, they say, is a doubly plunging syncline: a fold that dives at both ends, so erosion draws an oval. Along the steep limbs, limonite and magnetite collected in streaks. Limonite is rust-colored iron oxide. A metal detector shouts at it. A microscope sees weathered volcanic grains, not a forged bracket. What had been called petrified gopher-wood bark, Collins argued, was crinkled metamorphosed peridotite, a deep rock, not a tree. The anchor stones are local andesite, not a cargo from Mesopotamia. A fossil-bearing limestone cuts across the fold and is younger than it. That is a hard problem if the whole oval must be one wooden hull, buried once and never disturbed.\n\nAndrew Snelling writes as a young-earth creationist. He had no reason to comfort a skeptical journal. He looked at the same claims and also called the formation natural, and he was cold about the frequency generator used in the early metal surveys, a gadget he set beside dowsing. When the geologist who wants a wooden ark and the geologist who does not both land on the same outcrop, I pay attention. The fight is no longer science against faith. It is this reading of the minerals against a reading that needs them to be timbers.\n\nFasold's last years are messier than the signature. A 1997 court statement in Australia has him rejecting the ark claim. A biographer says he softened again later. I will not build on that. The paper is what I can use.",
+  "If you only ever see the aerial, the ribs are the part that feels unfair. Regular lines along the inner wall, spaced like frames. People have counted them. I have looked at the close photographs, and what I see is the broken edge of that scarp: red over tan, layers parting because the layers are already parallel. The limbs of a syncline stand steep. Water and frost pull the soft ground out and leave the harder streaks, and the harder streaks are where the iron oxide gathered. The metal detector and the eye are fooled by the same chemistry.\n\nI have to be fair to the people holding the drill in 2026. A geological phrase can become its own elegance. Collins and Fasold wrote with the exposures of the nineteen nineties. They did not have a continuous dry core from this decade. If the new tubes come back as the rocks they named, the model holds. If a tube comes back with something a syncline does not predict, the paper does not get to veto the tube. That is what a core is for.\n\nWhat the aerial still does not show, and what I will not let a painting invent, is decks. Three decks are a line in a text. They are not a thing you can see in the grass. Anyone who draws them in has already left the photograph.",
+  "Between the paper and this year's drill, the formation was scanned by people who do not accept that the question is closed. Project reports describe ground-penetrating radar around 2019, electrical resistivity around 2021, and soil work after that. I have not watched them pass through a journal a stranger can argue with, and I will not promote a slide into a finding because a video needs a middle.\n\nIn August 2026 the claims got sharper, and stayed preliminary. Noah's Ark Scans and Bakhtar Research described a survey called BakhtarRadar, led by Khosrow Bakhtar, an engineer who spent decades on subsurface radar for the United States Air Force. In their words, the formation does not look like one simple mass of rock. They report anomalies and layering, and in the deeper data processed so far they have not seen a clear bedrock boundary. A long central return, a couple of hundred feet, has been called a corridor. The same circle talks about angular returns to about six meters, a run near seventy-one meters, voids about four meters down, and right angles near seven meters. Andrew Jones has read those as beams and walls on three levels.\n\nI can hold two thoughts. \"Not a simple solid rock\" is not the same sentence as a ship. A landslide, a mud-filled fold, a stack of volcanic debris, a buried channel: none of those is simple bedrock, and all of them are at home here. A missing bedrock line, in a processing run that is not finished, is a reason to drill. Bakhtar said as much. It is not yet a reason to redraw a text.\n\nThe other thought is simpler. I want the renders and the processing, not a length in a caption. Five hundred and thirty-eight feet, seventy-one meters, three levels: the numbers always arrive here before the argument.",
+  "Soil spoke before the drill did. Samples taken in September 2024, and discussed that December and again through this year, are said to show more organic matter and more potassium inside the outline than outside it. Carbon has been described as around forty percent higher on the inside. In the more promotional sentences the organic content becomes roughly three times the ground around it. Those are not the same measurement, and both are being asked to mean decayed wood.\n\nA hollow that holds grass, moisture, and finer soil will often be richer in organic carbon than the stony rim that sheds rain. Potassium follows plants and clay. A chemical difference across a boat-shaped depression is a question for a soil scientist before it is a question for a shipwright. It might still be odd. A few of the samples might still deserve a microscope. Worth a microscope is not the upper deck.\n\nThe project reads the chemistry as a possible ghost of timber. That reading is allowed. It is a hypothesis with a test, and the test is the same one as everything else this year. Take the material somewhere that does not need the headline, and see whether the carbon is wood, or roots, or ordinary humus, or a mineral that only looks biological when you average it. A bulk percentage is how you decide where to spend the expensive hours. It is not those hours.",
+  "What actually changed in the summer of 2026 was not a relic. It was permission.\n\nSivas Cumhuriyet University has called the season the widest coordinated look the site has had. Cenker Atila leads it. The rector, Ahmet Sengonul, has stood behind it in public. Andrew Jones is the international deputy, and at least one account also names Evrensel Baris Berkant. About twenty researchers and students, from five countries, were on the ground from the end of June. By late September the calmer reports said the sampling was done: on the order of a thousand soil samples from about a hundred and fifty places, some chosen with radar, plus maps, and core tubes on their way to Ankara.\n\nPottery came up. Fragments. A sherd in eastern Anatolia is not a miracle. People have lived in Agri Province for a very long time. A fragment can roll downhill, or be dropped by a visitor; this hill has had visitors since 1960. It can also, in a sealed context, belong to a particular century, if a specialist will say so. No such dating has been published. Headlines that place the sherds before the flood are dating a feeling.\n\nAtila has pointed the winter at organic material and at any wood, and named radiocarbon if a sample can take a date. Important laboratory news, he has suggested, could come in the winter of 2026 into 2027. The university's question is the only one the season can answer. Is this entirely geological, or is there evidence of people in it. People would be a finding. They would not, by themselves, be a ship.",
+  "Here I have to keep the plan and the hole apart.\n\nThe plan, as Noah's Ark Scans has drawn it, is sequential. Lidar from drones. Newer radar and a thirty-channel resistivity survey. Then dry sonic cores, seventy-five to a hundred meters, far deeper than the holes of the late nineteen eighties. Then a small robot they call Gopher, into whatever voids the radar thinks are rooms. Then one model a stranger could check.\n\nThat plan is not what this September finished.\n\nThe release from Dogubayazit, dated the twenty-third, says material has come from as deep as eighteen meters, not a hundred. The machine in the photographs is a white tracked geotechnical drill, tall mast, black hoses, on the reddish rim, both Ararats on the horizon. Not a cartoon derrick, and not an offshore rig. Jones says the holes inside the outline have not yet shown bedrock or solid limestone, that they met cavities, one of them full of mud and water, and that at four or five meters a bit broke. His wording is the evidence. Whatever the core drill struck was harder than limestone, hard enough to break the bit. Petrified or heavily mineralized wood, he said, are possibilities for a third-party lab. He also said the organic layers might, in their belief, be the decayed top of the Ark.\n\nBelieve is his verb, and it is the right one. A dead bit only means the steel met something harder than it was dressed for. A cobble, a vein, a scrap from an older hole, or organic matter gone to stone: the break does not sort them. The team says 1988 cores were spoiled by cooling water, which is why this attempt stayed dry. I was not in that hole.\n\nGopher, as of the release, is a plan, not a film from inside a corridor. If pictures come back, I will look at them. I will not narrate them tonight.",
+  "Suppose the winter is kind to the hope. Suppose a laboratory says: this interval is wood, and this wood is old. I want to know, before that sentence exists, what it would still not mean.\n\nWood in a hillside can be a buried tree, a structure, a root that calcified, a piece of an ark, a smaller boat, or a later building. Radiocarbon dates organic carbon inside its range, and groundwater can pull it off course. Wood truly replaced by mineral often cannot be dated that way at all, because the carbon of the tree is gone. Harder than limestone and datable wood can be enemies. Jones offered both petrified wood and mineralized wood. Those are different laboratories.\n\nEven old ship timber, inside a shape one hundred and sixty meters long, would open a historical problem before it closed a theological one. You would still have to show one hull, not a scatter, and proportions that survive in three dimensions, not only as an oval of erosion. A sherd and an organic stain can both be true and still be the story of a visit.\n\nAnd the name Noah is not a value a spectrometer returns. I say that without a sneer. The story is old, and serious to the people who hold it. A core can touch soil. It cannot finish the story. Anyone who tells you otherwise is selling the winter short.",
+  "So I am going to leave it here, on purpose, while the tubes are in Ankara and the radar is still a press release with an engineer's name on it.\n\nI don't think the grassy oval is nothing. The resemblance is real, the iron in the rim is real, the 1996 paper is real, and a university permit with cores in a lab is the first new fact in years that does not depend on a frequency box from a treasure magazine. I also don't think one broken bit ends the argument. Eighteen meters is a start. A hundred meters was the plan. The gap between those numbers is the size of the honesty available tonight.\n\nThe letter I most expect is a geological one, because that is what the rocks have said, since 1960, to anyone with a microscope instead of a silhouette. The letter that would change my mind is narrower. Identified wood, or clearly worked material, in a context a syncline does not explain, dated by a method that fits the tube, published where the processing can be checked. Until then the boat shape is a boat shape. The snow will still sit on the horizon, visible, and not under the bit.\n\nI would rather wait with you than invent the sample. That is the whole of the method. It is also the only respect I know how to pay a place that has been asked, for nearly seventy years, to be something it has not yet shown itself to be."
+ ],
+ "image_prompts": [
+  "Dusk aerial of a grassy boat-shaped oval of earth in red eroded hills, eastern Turkey, warm rim light on the scarp, distant small snow peak on the horizon, no people, no text, photoreal, cinematic, 16:9",
+  "Wide view across a dry plain toward the twin peaks of Greater and Lesser Ararat, snow only on the high summit, foreground reddish grass ridge empty of people, blue hour, no text, photoreal, cinematic, 16:9",
+  "1950s-style aerial photograph look, high oblique, of an oval grass formation inside a red earthen rim, folded Anatolian hills, slight film grain, no people, no captions, no text, photoreal, 16:9",
+  "Close view of a shallow archaeological test pit in red-brown soil, only dirt and broken rock in the spoil, late sun, no people, no tools with logos, no text, photoreal, cinematic, 16:9",
+  "Weathered measuring tape and a rust-colored earthen wall in raking light, iron-oxide streaks in parallel, no people, no readable numbers, no text, photoreal, cinematic, 16:9",
+  "Macro of limonite and magnetite grains in a rock fracture, rust red and black metallic flecks, microscope-adjacent still life on dark slate, no people, no text, photoreal, 16:9",
+  "Steep eroded scarp of layered red and tan soil, parallel harder streaks like ribs but clearly geological, grass above, shadow below, no people, no text, photoreal, cinematic, 16:9",
+  "Ground-penetrating radar antenna sled on dry grass at twilight, cables snaking over red soil, no operator visible, no screen text, no logos, photoreal, cinematic, 16:9",
+  "Soil cores of red earth and dark organic bands laid in an open wooden box on a lab bench, cool overhead light, no labels readable, no people, no text, photoreal, cinematic, 16:9",
+  "University laboratory at night, sealed sample bags and a ceramic sherd beside a plain ruler, shallow depth of field, no readable writing, no people, photoreal, cinematic, 16:9",
+  "White tracked geotechnical drill with a tall mast and black hydraulic hoses on a reddish ridge, twin Ararat peaks small on the horizon, golden hour, no people, no lettering on the rig, no text, photoreal, cinematic, 16:9",
+  "Split-feeling still of a steel core barrel cut to show soil layers, one dark organic band, on a black lab table, single warm spotlight, no people, no text, photoreal, cinematic, 16:9",
+  "Night wide shot of the grassy oval formation under a charcoal sky, a single warm work light far on the rim, snow peak faint on the horizon, no people, no text, photoreal, cinematic, 16:9"
+ ],
+ "footage_queries": [
+  "Greater Ararat Lesser Ararat plain",
+  "Dogubayazit Agri highland Turkey",
+  "eroded red hills Anatolia aerial",
+  "tracked geotechnical drill rig",
+  "soil core sample tube geology",
+  "ground penetrating radar field",
+  "rock thin section microscope",
+  "folded strata outcrop syncline",
+  "poplar trees dry hillside Turkey",
+  "eastern Turkey mountain plateau",
+  "andesite volcanic rock close up",
+  "laboratory soil samples bench",
+  "highland stream gully mountains",
+  "aerial oval geological formation",
+  "resistivity cables electrodes field",
+  "snow capped volcano distant plain"
+ ],
+ "archive_queries": [
+  "Durupinar formation aerial",
+  "Mount Ararat",
+  "Dogubayazit landscape",
+  "Mount Tendurek",
+  "Agri province Turkey",
+  "limonite mineral specimen",
+  "andesite volcanic stone",
+  "geological syncline outcrop",
+  "core drilling sample box",
+  "ground penetrating radar",
+  "eastern Anatolia plateau",
+  "petrified wood mineral",
+  "archaeological pottery sherds",
+  "Life magazine 1960 aerial"
+ ],
+ "video_prompts": [
+  "slow aerial drift over a grassy boat-shaped oval in red Anatolian hills at dusk, distant snow peak tiny on the horizon, no people, no text, photoreal, 16:9",
+  "slow push along a red layered soil scarp with iron-oxide streaks, raking sun, no people, no text, photoreal, 16:9",
+  "night, a white tracked drill mast on a dry ridge, warm practical light, twin volcanic peaks faint behind, no people, no text, photoreal, 16:9"
+ ],
+ "reject": {
+  "clip": [],
+  "arch": []
+ },
+ "n_shorts": 4,
+ "youtube": {
+  "title": "They Drilled the Boat-Shaped Hill in Turkey — The Lab Hasn't Spoken",
+  "title_alternatives": [
+   "538 Feet, the Wrong Mountain, and a Core Tube in Ankara",
+   "Durupinar 2026: What a Core Drill Can Actually Prove"
+  ],
+  "description_intro": "In September 2026 a tracked drill went into the grassy, boat-shaped hill at Durupinar, south of Mount Ararat, and the headlines got there before the laboratory. The cores are in Ankara. The bit broke at about four or five meters on something the project hopes might be mineralized wood. Nobody has a result yet.\n\nThis is not a verdict on Noah's Ark. It is a slow walk through the instruments that have been aimed at the same oval since 1959: an aerial photograph, two days of digging, a metal detector, a geologist who signed a retraction, radar that is still preliminary, and a university permit that finally put steel in the ground. Evidence first. No jump scares. Built to be left on in the dark.",
+  "chapters": [
+   "A Drill in the Grass",
+   "The Wrong Mountain",
+   "The Photograph of 1959",
+   "Two Days in the Dirt",
+   "Measured in Cubits",
+   "The Paper That Walked It Back",
+   "How a Hill Grows Ribs",
+   "What the Radar Will Say",
+   "The Chemistry of a Hollow",
+   "A Permit, Not a Discovery",
+   "Eighteen Meters",
+   "What a Core Cannot Prove",
+   "The Winter Between"
+  ],
+  "description_notes": "A general-interest historical investigation, not a religious ruling and not a claim that Noah's Ark has been found. The 1948 shepherd account is a local tradition. Dimensions of the formation circulate between about 157 and 164 meters; Fasold's tape of 538 feet is the long end of that range, and the match to 300 royal Egyptian cubits is only a length comparison. The 1960 expedition is reported as finding soil and rock; explosive use appears in some accounts and is treated as such. Radar corridors, right angles, three levels, the broken bit, and organic-chemistry multiples are project statements from 2024-2026, not peer-reviewed results. Pottery sherds have no published date. Laboratory news is expected in the winter of 2026-2027. The Ararat ice anomaly is a different site and is not investigated here.",
+  "sources": [
+   "Collins, Lorence G., and David Fasold. \"Bogus 'Noah's Ark' from Turkey Exposed as a Common Geologic Structure.\" Journal of Geoscience Education 44 (1996). https://www.csun.edu/~vcgeo005/bogus.html",
+   "Snelling, Andrew A. \"Special Report: Amazing 'Ark' Exposé.\" Creation 14, no. 4 (September 1992); Answers in Genesis. https://answersingenesis.org/creationism/arguments-to-avoid/special-report-amazing-ark-expose/",
+   "Snelling, Andrew A. \"Is Noah's Ark on Mount Ararat?\" Answers Magazine (May 2017; featured September 2026). https://answersingenesis.org/noahs-ark/noahs-ark-found/noahs-ark-mount-ararat/",
+   "\"Durupınar site.\" Wikipedia, retrieved September 2026 (1959 aerial identification, 1960 Archaeological Research Foundation expedition, location and elevation, Fasold/Plimer 1994, anchor stones). https://en.wikipedia.org/wiki/Durupınar_site",
+   "Noah's Ark Scans. \"Core Drilling Begins at Durupinar Noah's Ark Site, Drill Bit Shatters on Possible Layer of Petrified Wood.\" GlobeNewswire, 23 September 2026, Doğubayazıt. https://www.globenewswire.com/news-release/2026/09/23/3367545/0/en/core-drilling-begins-at-durupinar-noah-s-ark-site-drill-bit-shatters-on-possible-layer-of-petrified-wood.html",
+   "Noah's Ark Scans / Bakhtar Research. \"Not Solid Rock: Veteran U.S. Defense Scientist Deploys Advanced EarthRadar Technology at Turkey's Boat-Shaped Noah's Ark Formation.\" GlobeNewswire, 18 August 2026. https://www.globenewswire.com/news-release/2026/08/18/3347179/0/en/not-solid-rock-veteran-u-s-defense-scientist-deploys-advanced-earthradar-technology-at-turkey-s-boat-shaped-noah-s-ark-formation.html",
+   "Plain, Christopher. \"New Radar Scans Reveal Mysterious 'Subsurface Anomalies' Beneath Controversial 'Noah's Ark' Site.\" The Debrief, 20 August 2026. https://thedebrief.org/new-radar-scans-reveal-mysterious-subsurface-anomalies-beneath-controversial-noahs-ark-site/",
+   "Ramirez, David. \"Pottery Found at Türkiye's Mysterious 'Noah's Ark' Formation.\" Anatolian Archaeology, 23 September 2026. https://www.anatolianarchaeology.net/noahs-ark-pottery-durupinar-formation/",
+   "Anatolian Archaeology. \"Largest-Ever Study Begins at Türkiye's Noah's Ark-Shaped Formation.\" 4 August 2026. https://www.anatolianarchaeology.net/scientists-begin-the-most-extensive-study-yet-of-turkiyes-noahs-ark-shaped-durupinar-formation/",
+   "Arkeonews. \"Noah's Ark Mystery Deepens as New Discoveries Emerge Near Mount Ararat.\" 23 September 2026. https://arkeonews.net/noahs-ark-mystery-deepens-as-new-discoveries-emerge-near-mount-ararat/",
+   "Living Passages. \"Was Noah's Ark Found at Durupinar? What the 2026 Scans Test.\" 5 August 2026, updated 22 September 2026. https://livingpassages.com/durupinar-noahs-ark/"
+  ],
+  "hashtags": [
+   "#Durupinar",
+   "#Archaeology",
+   "#NoahsArk",
+   "#History"
+  ],
+  "tags": [
+   "Durupinar formation",
+   "Noah's Ark Turkey",
+   "Mount Ararat",
+   "core drilling archaeology",
+   "Dogubayazit",
+   "Cenker Atila",
+   "David Fasold",
+   "ground penetrating radar",
+   "boat shaped formation",
+   "Sivas Cumhuriyet University",
+   "eastern Turkey archaeology",
+   "sleep documentary",
+   "biblical archaeology",
+   "Agri province"
+  ],
+  "thumbnail_at": 70,
+  "cover_texts": [
+   "NOT ON ARARAT",
+   "THE BIT STOPPED"
+  ],
+  "cover_patterns": [
+   "object",
+   "tension"
+  ],
+  "cover_scenes": [
+   "steep aerial of the grassy pointed-oval Durupinar formation, red layered earthen rim, tiny twin Ararat peaks far on the horizon",
+   "white tracked geotechnical drill and a broken core bit on the reddish rim at night, small snow-capped Ararat behind the mast"
+  ],
+  "cover_prompts": [
+   "YouTube thumbnail, exact 16:9 photoreal mystery-history still, Ancient Whispers cover grid.\n\nCOMPOSITION LOCK:\n- Upper third: empty dark navy/charcoal negative space ONLY for type. The hero sits entirely in the lower two-thirds. Letters never overlap the subject.\n- Type: ONLY the words \"NOT ON ARARAT\" extra-condensed ALL-CAPS Anton (Impact-like fallback), yellow-gold #FFD400, centered in the upper third, nearly full frame width, letter height 20-30% of the frame, readable at 120px wide. No other text, no subtitle, no arrows, no circles, no UI.\n- 8% safe margins on all sides.\n- Bottom-right 180x72 px kept empty and dark for the duration badge.\n- No faces to camera, no people, no extra typography, no watermarks, no YouTube chrome, no logos, no phone numbers.\n\nHERO / LOWER TWO-THIRDS — one lit subject:\nWe are above the Durupinar formation near Uzengili, Agri Province, eastern Turkey, at dusk, looking steeply down. The hero is the boat-shaped geological oval itself, filling the lower two-thirds, not a wooden ship and not a snowy mountain.\nThe formation is a pointed oval about 160 meters long: a hull of short olive-green grass, wider amidships, pinched toward a blunt bow and stern. It sits inside a raised rim of eroded earth, reddish-brown and tan, with near-vertical scarps. Those scarps show thin parallel layers of red soil over pale tan, breaking into rib-like streaks that are geology, not timber. A few pale rock outcrops interrupt the grass inside the oval. One side of the rim drops into a shadowed gully. The surrounding hills are the same rust, olive, and dry-grass terraces, folded and gullied, so the oval rhymes with the landscape instead of interrupting it. No planks, no decks, no ribs of wood, no nails, no reconstructed ark.\n\nBackground — must read instantly as the highlands south of Ararat, not as the mountain itself and not as a generic desert:\nFar and small on the horizon, the twin volcanic cones of Greater and Lesser Ararat: the taller peak with a modest cap of snow, the lower cone bare, separated from the formation by a wide hazy plain. The snow peak must stay small, maybe eight percent of the frame, so nobody can mistake the grass oval for a wreck on the ice. A few dark poplar trees in the gully. No city, no sea, no glacier under the oval.\n\nLIGHTING / GRADE:\nHigh contrast, dark navy/charcoal sky. A warm amber-tungsten key rakes the red scarp and the grass so every layer and pebble reads. Cool cyan-teal only in the distant plain and on the small snow cap. Not fogged out, not neon, not an HDR halo, not a flat underexposure.\n\nCAMERA:\nSteep aerial, roughly 35mm equivalent, deep focus from the near rim to the far peak, the oval large and readable at phone size.\n\nQUALITY:\nPhotoreal, high-contrast, tactile, cinematic still from a mystery-history documentary. Not beige, not an oversaturated postcard, not illustration, not CGI overlay, not a painting of Noah's flood.\n\nNEGATIVE:\nno faces, no people, no workers, no extra text, no arrows, no circles drawn on the image, no YouTube UI, no watermark, no logo, no wooden ship, no ark reconstruction, no animals, no flood, no oil derrick, no giant snow mountain filling the frame, no glacier under the boat shape, no planks, no decks, no readable signage.",
+   "YouTube thumbnail, exact 16:9 photoreal mystery-history still, Ancient Whispers cover grid.\n\nCOMPOSITION LOCK:\n- Upper third: empty dark navy/charcoal negative space ONLY for type. The hero sits entirely in the lower two-thirds. Letters never overlap the subject.\n- Type: ONLY the words \"THE BIT STOPPED\" extra-condensed ALL-CAPS Anton (Impact-like fallback), yellow-gold #FFD400, centered in the upper third, nearly full frame width, letter height 20-30% of the frame, readable at 120px wide. No other text, no subtitle, no arrows, no circles, no UI.\n- 8% safe margins on all sides.\n- Bottom-right 180x72 px kept empty and dark for the duration badge.\n- No faces to camera, no people, no extra typography, no watermarks, no YouTube chrome, no logos, no phone numbers, no lettering on the machine.\n\nHERO / LOWER TWO-THIRDS — one lit subject:\nNight on the reddish rim of the Durupinar formation, Agri Province. The hero is a real geotechnical core drill, the kind photographed there in September 2026, with nobody standing in frame.\nA white tracked rig on black caterpillar tracks sits on dry brown-red soil and dead grass. A tall narrow steel mast, about three stories, rises vertically with a sheave at the top. Thick black hydraulic hoses loop from the mast to the body. The body is a plain white box, completely unmarked: no company name, no phone number, no flag. In the immediate foreground, on the dirt, a broken carbide drill bit and a short open steel core barrel, the bit's teeth chipped, warm light catching the metal. A few slender steel rods lie parallel. No plastic coolers, no chairs, no tripods with logos.\n\nBackground — must read instantly as the Ararat horizon seen from the drill pad, not as a polar ice cap and not as an oil field:\nAcross a dark plain, small in the distance, Greater Ararat with a thin snow cap and the lower bare cone of Lesser Ararat. Dry folded hills, a few black poplar silhouettes in a gully below the rim. The sky is charcoal-navy with a few cold stars. The mountain stays behind the rig and smaller than the mast.\n\nLIGHTING / GRADE:\nHigh contrast, dark navy/charcoal base. One warm tungsten key from the left rakes the white body, the mast, the hoses, and the broken bit so paint chips, soil crumbs, and metal read clearly. Cool cyan spill only on the distant snow. No fog bank, no neon, no orange explosion, no lightning.\n\nCAMERA:\nLow three-quarter view from the dirt, 35mm, the mast tall in the lower two-thirds, shallow enough that the distant peaks soften slightly but remain recognizable. The broken bit is sharp in the near ground.\n\nQUALITY:\nPhotoreal, high-contrast, tactile, cinematic still from a mystery-history documentary. Not beige, not an oversaturated postcard, not illustration, not CGI, not a movie still.\n\nNEGATIVE:\nno faces, no people, no hard hats, no high-visibility vests, no extra text, no arrows, no circles, no YouTube UI, no watermark, no logo, no phone number, no lettering on the rig, no offshore oil platform, no wooden ark, no animals, no floodwater, no cartoon derrick, no giant mountain crushing the rig, no readable documents."
+  ],
+  "shorts_questions": [
+   "Why is this hill not on Mount Ararat?",
+   "What did the 1996 geology paper actually find?",
+   "How deep did the 2026 drill really go?",
+   "What would a core still fail to prove?"
+  ],
+  "shorts_titles": [
+   "The Boat Shape Is Not on the Mountain",
+   "The Geologist Who Took His Name Off the Ark",
+   "Eighteen Meters. The Plan Was a Hundred.",
+   "A Broken Bit Is Not a Laboratory"
+  ],
+  "community_post": "A tracked drill sat on the red rim of the Durupinar formation this September, with both peaks of Ararat on the horizon and a core tube headed for Ankara. The press release says the bit broke on something harder than limestone. The university has not said the Ark is found. Tonight's episode stays inside that gap: the 1959 aerial, the 1960 dig, Fasold's cubits, the 1996 paper that called it a syncline, and what eighteen meters of core can and cannot mean. Slow, and unfinished on purpose.",
+  "community_image_prompts": [
+   "Photoreal square 1:1 of the grassy boat-shaped Durupinar oval seen from above, red earthen rim, warm low sun, darkening navy sky, no people, no text, no wooden ship",
+   "Photoreal square 1:1 of a broken steel drill bit and a short soil core on red dirt, warm spotlight, charcoal background, no people, no text, no logos"
+  ],
+  "skip_upload": true
+ },
+ "style_override": {
+  "generated_share": 0.42,
+  "body_clip_share": 0.12,
+  "intro_clip_share": 0.15
+ },
+ "pinned_archive": [
+  {
+   "url": "https://tile.loc.gov/storage-services/service/pnp/ds/15800/15864v.jpg#h=497&w=1024",
+   "q": "Mount Ararat",
+   "src": "pinned",
+   "kind": "image",
+   "from": "loc",
+   "what": "snow-covered Greater Ararat rising behind a town",
+   "subjects": [
+    "mount ararat",
+    "snow peak",
+    "volcano",
+    "town",
+    "plain"
+   ],
+   "quality": 5
+  },
+  {
+   "url": "https://tile.loc.gov/storage-services/service/pnp/cph/3b40000/3b46000/3b46200/3b46275r.jpg#h=531&w=640",
+   "q": "Mount Ararat",
+   "src": "pinned",
+   "kind": "image",
+   "from": "loc",
+   "what": "historic view of Ararat with a minaret in the town below",
+   "subjects": [
+    "mount ararat",
+    "minaret",
+    "town",
+    "snow",
+    "plain"
+   ],
+   "quality": 4
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/8/84/Drawing%2C_%60Bayazeed%2C_on_the_shoulder_of_Mt._Ararat_%28Dogubayazit%29%27%2C_1836%2C_by_Frederick_Christian_Lewis_Jnr.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+   "q": "Dogubayazit landscape",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "1836 engraving of Dogubayazit on the shoulder of Ararat",
+   "subjects": [
+    "dogubayazit",
+    "mount ararat",
+    "engraving",
+    "mosque",
+    "town"
+   ],
+   "quality": 3
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/f/fd/Tendurek_Dagi_NASA.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+   "q": "Mount Tendurek",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "NASA satellite view of Tendurek volcano",
+   "subjects": [
+    "tendurek",
+    "volcano",
+    "crater",
+    "satellite",
+    "eastern turkey"
+   ],
+   "quality": 4
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/62/Tend%C3%BCrek_Da%C4%9F%C4%B1.jpg/1920px-Tend%C3%BCrek_Da%C4%9F%C4%B1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "Mount Tendurek",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "aerial of Tendurek crater and lava",
+   "subjects": [
+    "tendurek",
+    "crater",
+    "lava",
+    "volcano",
+    "snow"
+   ],
+   "quality": 5
+  },
+  {
+   "url": "https://ids.si.edu/ids/deliveryService/id/ark:/65665/m3d1ea4fae3c4c4ceaa49a00ebe943badf",
+   "q": "Agri province Turkey",
+   "src": "pinned",
+   "kind": "image",
+   "from": "openverse",
+   "what": "eastern Anatolian valley town and mountains",
+   "subjects": [
+    "valley",
+    "town",
+    "mountains",
+    "highland",
+    "river"
+   ],
+   "quality": 3
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Smithsonite_and_limonite_%28GeoDIL_number_-_749%29.jpg",
+   "q": "limonite mineral specimen",
+   "src": "pinned",
+   "kind": "image",
+   "from": "openverse",
+   "what": "botryoidal limonite mineral specimen",
+   "subjects": [
+    "limonite",
+    "iron oxide",
+    "mineral",
+    "specimen",
+    "botryoidal"
+   ],
+   "quality": 4
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/2/2e/LimoniteUSGOV.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+   "q": "limonite mineral specimen",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "limonite specimen, earthy iron oxide",
+   "subjects": [
+    "limonite",
+    "iron oxide",
+    "mineral",
+    "specimen",
+    "rust"
+   ],
+   "quality": 4
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/5/51/Andesite%2C_Lassen_Volcanic_National_Park_%28GeoDIL_number_-_285%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+   "q": "andesite volcanic stone",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "andesite hand specimen, salt-and-pepper volcanic rock",
+   "subjects": [
+    "andesite",
+    "volcanic rock",
+    "specimen",
+    "porphyry"
+   ],
+   "quality": 4
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3d/Basaltic_Andesite_from_Paricutin_volcano_in_Mexico_-_Smithsonian_Rock_Sample.jpg/1920px-Basaltic_Andesite_from_Paricutin_volcano_in_Mexico_-_Smithsonian_Rock_Sample.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "andesite volcanic stone",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "basaltic andesite specimen",
+   "subjects": [
+    "andesite",
+    "volcanic rock",
+    "specimen",
+    "basalt"
+   ],
+   "quality": 4
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/df/SynclineCalico.JPG/1920px-SynclineCalico.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "geological syncline outcrop",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "desert syncline, folded strata, not the Turkish site",
+   "subjects": [
+    "syncline",
+    "folded rock",
+    "strata",
+    "outcrop"
+   ],
+   "quality": 3
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/55/Syncline_in_slate%2C_West_Castleton%2C_Rutland_County%2C_Vermont_dtn00081-82.jpg/1920px-Syncline_in_slate%2C_West_Castleton%2C_Rutland_County%2C_Vermont_dtn00081-82.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "geological syncline outcrop",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "slate syncline outcrop",
+   "subjects": [
+    "syncline",
+    "folded rock",
+    "slate",
+    "outcrop"
+   ],
+   "quality": 3
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/0/0f/Ground_Penetrating_Radar_Outline.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+   "q": "ground penetrating radar",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "ground-penetrating radar antenna on grass, operator from behind",
+   "subjects": [
+    "ground penetrating radar",
+    "antenna",
+    "grass",
+    "geophysics",
+    "survey"
+   ],
+   "quality": 4
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d9/Turkey_%28MODIS_2016-03-06%29.jpg/1920px-Turkey_%28MODIS_2016-03-06%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "eastern Anatolia plateau",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "Anatolian highland valley and plateau town",
+   "subjects": [
+    "anatolia",
+    "plateau",
+    "valley",
+    "town",
+    "mountains"
+   ],
+   "quality": 4
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/b/b6/Mineral_Heritage_Petrified_Wood_10c_1974_issue_U.S._stamp.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+   "q": "petrified wood mineral",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "close texture of petrified wood",
+   "subjects": [
+    "petrified wood",
+    "mineralized wood",
+    "fossil wood",
+    "texture"
+   ],
+   "quality": 5
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/67/Petrified_wood_01.jpg/1920px-Petrified_wood_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "petrified wood mineral",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "petrified logs on open ground",
+   "subjects": [
+    "petrified wood",
+    "fossil log",
+    "mineralized wood"
+   ],
+   "quality": 3
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/8/88/Cu_petrified_wood.jpg",
+   "q": "petrified wood mineral",
+   "src": "pinned",
+   "kind": "image",
+   "from": "openverse",
+   "what": "polished petrified wood specimen",
+   "subjects": [
+    "petrified wood",
+    "mineralized wood",
+    "fossil wood",
+    "specimen"
+   ],
+   "quality": 4
+  },
+  {
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d4/Pottery_sherds_with_marks%2C_baked_clay_-_Museo_Egizio%2C_Turin_S_7190_1_3_p01.jpg/1920px-Pottery_sherds_with_marks%2C_baked_clay_-_Museo_Egizio%2C_Turin_S_7190_1_3_p01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "q": "archaeological pottery sherds",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "tray of archaeological pottery sherds",
+   "subjects": [
+    "pottery",
+    "sherds",
+    "ceramics",
+    "archaeology",
+    "fragments"
+   ],
+   "quality": 4
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/d/d2/DrogueStoneFasold.jpg",
+   "q": "durupinar commons hand pick",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "Fasold drogue stone with a worked hole, visitors small",
+   "subjects": [
+    "drogue stone",
+    "anchor stone",
+    "andesite",
+    "hole",
+    "durupinar"
+   ],
+   "quality": 5
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/f/ff/The_Durupinar_site_in_July_2019.jpg",
+   "q": "durupinar commons hand pick",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "July 2019 aerial of the grassy boat-shaped Durupinar oval and red rim",
+   "subjects": [
+    "durupinar",
+    "boat shape",
+    "aerial",
+    "grass",
+    "earthen rim",
+    "formation"
+   ],
+   "quality": 5
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/1/1a/The_Structure_Claimed_to_be_the_Noah%27s_Ark_near_the_Mount_Ararat_in_Turkey.jpg",
+   "q": "durupinar commons hand pick",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "ground view along the earthen rim of the formation",
+   "subjects": [
+    "durupinar",
+    "earthen rim",
+    "grass",
+    "scarp",
+    "mound"
+   ],
+   "quality": 5
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/8/81/Turecko_Noemova_archa_%2802%29.jpg",
+   "q": "durupinar commons hand pick",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "aerial of the Durupinar oval in red eroded hills",
+   "subjects": [
+    "durupinar",
+    "aerial",
+    "boat shape",
+    "red hills",
+    "grass"
+   ],
+   "quality": 5
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/4/41/Turecko_Noemova_archa_%2803%29.jpg",
+   "q": "durupinar commons hand pick",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "standing inside the grassy formation, rim ahead",
+   "subjects": [
+    "durupinar",
+    "grass",
+    "rim",
+    "interior",
+    "mound"
+   ],
+   "quality": 5
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/d/df/Turecko_Noemova_archa_%2804%29.jpg",
+   "q": "durupinar commons hand pick",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "oblique view of the boat-shaped mound",
+   "subjects": [
+    "durupinar",
+    "mound",
+    "grass",
+    "aerial",
+    "formation"
+   ],
+   "quality": 4
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/e/ea/Mount_Ararat%2C_Two_volcanic_cones%2C_Ararat_Plain%2C_Armenia.jpg",
+   "q": "durupinar commons hand pick",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "Greater and Lesser Ararat above the plain",
+   "subjects": [
+    "greater ararat",
+    "lesser ararat",
+    "snow",
+    "twin peaks",
+    "plain"
+   ],
+   "quality": 5
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/3/3d/Karabulak_19_09_2012_Becken_von_Do%C4%9Fubayaz%C4%B1t_Ararat.jpg",
+   "q": "durupinar commons hand pick",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "Dogubayazit basin with both Ararat peaks",
+   "subjects": [
+    "dogubayazit",
+    "mount ararat",
+    "basin",
+    "plain",
+    "village"
+   ],
+   "quality": 5
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/a/a9/04400_%C3%9Czengili-Do%C4%9Fubayaz%C4%B1t-A%C4%9Fr%C4%B1%2C_Turkey_-_panoramio_%281%29.jpg",
+   "q": "durupinar commons hand pick",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "Uzengili village in the Agri highlands",
+   "subjects": [
+    "uzengili",
+    "village",
+    "agri",
+    "highland",
+    "houses"
+   ],
+   "quality": 5
+  },
+  {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/a/a3/Do%C4%9Fubayaz%C4%B1t_from_%C4%B0shak_Pa%C5%9Fa_Palace.JPG",
+   "q": "durupinar commons hand pick",
+   "src": "pinned",
+   "kind": "image",
+   "from": "wikimedia",
+   "what": "Ishak Pasha palace above Dogubayazit, mountain behind",
+   "subjects": [
+    "ishak pasha",
+    "dogubayazit",
+    "palace",
+    "stone",
+    "mountain"
+   ],
+   "quality": 3
+  }
+ ],
+ "trusted_sources": [
+  "pinned"
+ ]
+}

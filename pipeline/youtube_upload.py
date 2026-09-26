@@ -414,6 +414,10 @@ def upload(job_path, out_dir: Path, privacy: str = "private"):
     if privacy not in ("private", "unlisted"):
         raise SystemExit("--privacy только private или unlisted: публикует автор")
     job = load_job(job_path)
+    if (job.get("youtube") or {}).get("skip_upload"):
+        log("YouTube: пропуск — в спецификации youtube.skip_upload "
+            "(автор забирает ролик из релиза и выкладывает сам)")
+        return 0
     video = out_dir / "final.mp4"
     if not video.exists():
         raise SystemExit(f"нет {video} — заливать нечего")
