@@ -665,6 +665,12 @@ def render_cut(c, out: Path, canvas_cache, tmp: Path):
     (~58%) с кропом по бокам: тряска растёт, но не втрое, а верхнее и
     нижнее поле остаются местом под хук и субтитры, а не пустой рамкой.
 
+    Сток больше не весь горизонтальный: вертикальный ролик Pixabay
+    после scale=-2:1114 оказывался уже 1080px, и crop падал с кодом
+    234 на середине шортса (durupinar-cores-01, clip_032). Поэтому
+    передний план тоже increase+crop: и 16:9, и 9:16 доходят до
+    1080x1114, лишнее срезается.
+
     Пустые поля сверху и снизу заполняет размытая и затемнённая копия
     того же кадра, растянутая на весь холст: подложке лишний зум не
     вредит, потому что смотреть на неё резко никто не будет.
@@ -674,12 +680,22 @@ def render_cut(c, out: Path, canvas_cache, tmp: Path):
         vf = (f"split=2[bg][fg];"
               f"[bg]scale={SW}:{SH}:force_original_aspect_ratio=increase,"
               f"crop={SW}:{SH},gblur=sigma=42,eq=brightness=-0.12[bgb];"
-              f"[fg]scale=-2:{CLIP_VISIBLE_H},crop={SW}:{CLIP_VISIBLE_H}[fgs];"
+              f"[fg]scale={SW}:{CLIP_VISIBLE_H}:"
+              f"force_original_aspect_ratio=increase,"
+              f"crop={SW}:{CLIP_VISIBLE_H}[fgs];"
               f"[bgb][fgs]overlay=(W-w)/2:(H-h)/2,setsar=1,fps={SFPS}")
-        run(f"ffmpeg -y -stream_loop -1 -ss {float(c['src_start']):.2f} "
-            f"-i {shlex.quote(str(src))} -filter_complex {shlex.quote(vf)} "
-            f"-t {c['dur']:.3f} -c:v libx264 -crf 19 -preset veryfast "
-            f"-pix_fmt yuv420p -an {shlex.quote(str(out))}")
+        cmd = (f"ffmpeg -y -stream_loop -1 -ss {float(c['src_start']):.2f} "
+               f"-i {shlex.quote(str(src))} -filter_complex {shlex.quote(vf)} "
+               f"-t {c['dur']:.3f} -c:v libx264 -crf 19 -preset veryfast "
+               f"-pix_fmt yuv420p -an {shlex.quote(str(out))}")
+        try:
+            run(cmd)
+        except subprocess.CalledProcessError:
+            log(f"  ! шортс: {src.name} не открылся, тёмный кадр на {c['dur']:.2f} с")
+            lavfi = f"color=c=0x141820:s={SW}x{SH}:r={SFPS}"
+            run(f"ffmpeg -y -f lavfi -i {shlex.quote(lavfi)} "
+                f"-t {c['dur']:.3f} -c:v libx264 -crf 19 -preset veryfast "
+                f"-pix_fmt yuv420p -an {shlex.quote(str(out))}")
         return
 
     canvas = canvas_cache.get(src)
